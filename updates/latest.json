@@ -1,5 +1,5 @@
 {
- "version": "1.0.3",
+ "version": "1.0.4",
  "setup_url": "https://raw.githubusercontent.com/ahmedtarekfahim-bot/fawaz-tenders-apps/main/updates/FAWAZ-Tenders-Setup.exe",
- "notes": "إصلاح شاشة التسطيب"
+ "notes": "البرنامجين بيفتحوا في نافذة لوحدهم بدل المتصفح"
 }
