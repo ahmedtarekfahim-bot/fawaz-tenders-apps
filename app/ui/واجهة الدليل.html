@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>دليل مناقصات الخليج</title>
+<style>
+:root{--bg:#f4f6f9;--panel:#fff;--ink:#1d2733;--muted:#66727f;--line:#e1e6ec;--brand:#0f5c4d;--brand2:#16806b;--soft:#e7f4f0;--fz:#fff36b;--ok:#1d7a46;--warn:#b3261e;--new:#e8f0ff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI",Tahoma,Arial,sans-serif}
+header{background:var(--brand);color:#fff;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header h1{font-size:18px;margin:0}
+header .stat{font-size:12.5px;opacity:.92}
+header .sp{flex:1}
+button{font:inherit;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--brand2)}
+button.pri{background:var(--brand2);border-color:var(--brand2);color:#fff}
+header button{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff}
+.ctry{display:inline-flex;border:1px solid rgba(255,255,255,.4);border-radius:10px;overflow:hidden}
+.ctry button{border:0;border-radius:0;background:transparent;color:#fff;padding:6px 13px}
+.ctry button.on{background:#fff;color:var(--brand);font-weight:700}
+.bar{padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bar input[type=search]{flex:1;min-width:260px;font:inherit;font-size:16px;padding:9px 14px;border:1.5px solid var(--line);border-radius:10px;outline:none}
+.bar input[type=search]:focus{border-color:var(--brand2)}
+select,.bar input[list]{font:inherit;padding:7px;border:1px solid var(--line);border-radius:8px;background:#fff;max-width:220px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:8px 13px}
+.seg button.on{background:var(--soft);color:var(--brand);font-weight:700}
+.chips{padding:8px 20px 0;display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:#fff;border-radius:20px;padding:3px 11px;font-size:12.5px;cursor:pointer}
+.chip.on{background:var(--brand2);color:#fff;border-color:var(--brand2)}
+.chip.fresh{border-color:#2e6aa3;color:#1f4f85}
+.chip.fresh.on{background:#2e6aa3;color:#fff}
+.chip b{margin-inline-start:4px}
+main{display:grid;grid-template-columns:minmax(360px,44%) 1fr;gap:14px;padding:12px 20px;height:calc(100vh - 170px)}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto}
+.col h3{margin:0;padding:10px 14px;font-size:14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:1}
+.res{padding:9px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.res:hover{background:#f7fafd}
+.res.sel{background:var(--soft);border-right:4px solid var(--brand2)}
+.res .t{font-weight:600}
+.m{color:var(--muted);font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap;margin-top:3px;align-items:center}
+.tno{direction:ltr;unicode-bidi:isolate;display:inline-block;background:#f0f3f7;border-radius:5px;padding:0 6px;font-size:12.5px}
+.st{display:inline-block;font-size:11.5px;padding:0 8px;border-radius:20px;font-weight:600}
+.st-open{background:#d7f0e0;color:#12613a}.st-soon{background:#fde8c8;color:#8a4b00}.st-study{background:#e6ebf2;color:#34465c}
+.st-award{background:#dde7fb;color:#1f3f8a}.st-cancel{background:#fbdcdc;color:#8a1f1f}.st-run{background:#efe3fb;color:#5b2a86}
+.flag{font-size:11px;border-radius:20px;padding:0 7px;font-weight:700}
+.flag-new{background:#2e6aa3;color:#fff}.flag-chg{background:#ffd8a8;color:#7a3e00}
+.cc{font-size:11px;border:1px solid var(--line);border-radius:20px;padding:0 6px}
+.off{font-size:12px;font-weight:700;color:#0b5aa5;text-decoration:none;border:1px solid #bcd3ee;border-radius:6px;padding:0 6px;background:#f1f7fe}
+.off:hover{background:#e0eefc}
+.urgent{color:var(--warn);font-weight:700}
+.fz{background:var(--fz);padding:0 4px;border-radius:4px}
+.fzb{background:var(--fz);color:#5a4b00;font-size:11px;border-radius:20px;padding:0 7px}
+.money{font-weight:700;color:var(--ok)}
+.pad{padding:14px}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:4px 10px}
+.kv div:nth-child(odd){color:var(--muted)}
+h4{margin:14px 0 6px;font-size:14px;color:var(--brand)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{border:1px solid var(--line);padding:4px 6px;text-align:right;vertical-align:top}
+th{background:#f3f6fa}
+tr.chg td{background:#fff7ec}
+.hit{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px;display:flex;gap:10px}
+.badge{display:inline-block;font-size:11.5px;padding:0 7px;border-radius:20px;background:#eef2f6;margin-inline-start:6px}
+.snip{color:var(--muted);font-size:12px;margin-top:3px;max-height:3.2em;overflow:hidden}
+.actions{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap}
+.empty{color:var(--muted);padding:30px;text-align:center}
+.log{font-size:12px;white-space:pre-wrap;background:#0f1a24;color:#cfe3f5;border-radius:8px;padding:8px;max-height:150px;overflow:auto;margin:8px 20px 0}
+a{color:#0b5aa5}
+.only-items,.only-awards{display:contents}
+#modal{position:fixed;inset:0;background:rgba(10,20,30,.6);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px;z-index:5}
+#modal img{max-width:min(900px,96vw);background:#fff;border-radius:6px}
+#toast{position:fixed;bottom:18px;left:18px;background:#1d2733;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:6;max-width:460px}
+@media (max-width:900px){main{grid-template-columns:1fr;height:auto}}
+</style>
+</head>
+<body>
+<header>
+  <h1>دليل مناقصات الخليج</h1>
+  <div class="ctry" id="ctry"><button data-c="" class="on">الكل</button><button data-c="KW">الكويت</button><button data-c="SA">السعودية</button><button data-c="AE">الإمارات</button></div>
+  <span class="stat" id="stat">...</span>
+  <span class="sp"></span>
+  <button id="btnUpdate" title="بيتعمل تلقائي كل كام ساعة وهو مفتوح">تحديث دلوقتي</button>
+  <button onclick="post('/api/open-folder')">فولدر التقارير</button>
+</header>
+<div class="bar">
+  <div class="seg" id="mode"><button data-m="items" class="on">المناقصات والمشاريع</button><button data-m="news">الأخبار</button><button data-m="awards">ترسيات ومحاضر الكويت</button></div>
+  <input type="search" id="q" placeholder="اكتب عنوان المناقصة أو المشروع أو رقمها أو الجهة ... (فاضي = المطروح بترتيب الإقفال)" autofocus>
+  <span class="only-items">
+    <select id="cat"><option value="">كل أنواع الشغل</option></select>
+    <input list="orgs" id="org" placeholder="الجهة"><datalist id="orgs"></datalist>
+    <select id="days"><option value="0">أي موعد إقفال</option><option value="7">بيقفل خلال أسبوع</option><option value="14">خلال أسبوعين</option><option value="30">خلال شهر</option></select>
+    <label><input type="checkbox" id="fawaz"> نطاق فواز</label>
+  </span>
+  <span class="only-awards" style="display:none"><select id="ayear"><option value="">كل السنين</option></select><label><input type="checkbox" id="amin"> بحث مباشر في المحاضر</label><button onclick="post('/api/open-excel')">افتح إكسيل الترسيات</button></span>
+  <button class="pri" id="go">بحث</button>
+</div>
+<div class="chips" id="chips"></div>
+<pre class="log" id="log" style="display:none"></pre>
+<main>
+  <section class="col"><h3 id="lh">النتائج</h3><div id="results"><div class="empty">بحمّل...</div></div></section>
+  <section class="col"><h3>التفاصيل</h3><div id="detail"><div class="empty">اختار مناقصة أو مشروع</div></div></section>
+</main>
+<div id="modal" onclick="this.style.display='none'"><img id="mimg" alt=""></div>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dmy=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const isFz=s=>/فواز|fawaz/i.test(s||'');
+const today=new Date().toISOString().slice(0,10);
+const CN={KW:'الكويت',SA:'السعودية',AE:'الإمارات'};
+let mode='items',status='',fresh=0,country='',current=null,hits=[],lastQ='';
+const STATUSES=['مطروحة','اتوافق على طرحها','إعلان مسبق','مقفولة - تحت الدراسة','أسعار معلنة','مترسية','عقد جاري (قرار الجهاز)','ملغاة'];
+function stClass(s,closing){if(s==='مطروحة'){const d=(new Date(closing)-new Date(today))/864e5;return d<=7?'st-soon':'st-open'}
+  return {'مترسية':'st-award','ملغاة':'st-cancel','عقد جاري (قرار الجهاز)':'st-run','اتوافق على طرحها':'st-soon','إعلان مسبق':'st-soon'}[s]||'st-study'}
+function toast(m,ms=4000){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
+async function get(u){const r=await fetch(u);const j=await r.json();if(j&&j.error)throw new Error(j.error);return j}
+async function post(u,b={}){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(j&&j.error)throw new Error(j.error);return j}
+// official page of the announcement (Dubai eSupply needs its guest session first)
+function openOfficial(url){
+  if(!url)return;
+  if(url.includes('esupply.dubai.gov.ae')){const w=window.open('https://esupply.dubai.gov.ae/esop/guest/go/public/opportunity/current','_blank');
+    setTimeout(()=>{try{w.location=url}catch(e){}},2500);return}
+  window.open(url,'_blank');
+}
+function offLink(r){return r.official?`<a class="off" href="#" data-off="${esc(r.official)}" title="${esc(r.official_label||'')}">الإعلان الرسمي ↗</a>`:''}
+function wireOff(root){(root||document).querySelectorAll('[data-off]').forEach(a=>a.onclick=e=>{e.preventDefault();e.stopPropagation();openOfficial(a.dataset.off)})}
+function isNew(r){return r.first_seen&&(Date.now()-new Date(r.first_seen))<3*864e5}
+function isChg(r){return r.changed&&(Date.now()-new Date(r.changed))<3*864e5}
+async function status_(first){
+  try{const s=await get('/api/status?country='+country);
+    const lr=s.last_run&&s.last_run.finished?(' · آخر تحديث '+s.last_run.finished.replace('T',' ').slice(0,16)):' · لسه متحدّثش';
+    const nx=s.next?(' · الجاي تلقائي '+s.next.replace('T',' ').slice(5,16)):'';
+    $('#stat').textContent=`${s.total.toLocaleString('en')} مناقصة ومشروع · ${s.news.toLocaleString('en')} خبر · ${s.closing_week} بتقفل خلال أسبوع${lr}${nx}`;
+    if(first){s.cats.forEach(c=>$('#cat').insertAdjacentHTML('beforeend',`<option>${c}</option>`));
+      for(let y=new Date().getFullYear();y>=2006;y--)$('#ayear').insertAdjacentHTML('beforeend',`<option>${y}</option>`);}
+    $('#orgs').innerHTML=s.orgs.map(o=>`<option value="${esc(o)}">`).join('');
+    document.querySelectorAll('#ctry button').forEach(b=>{const n=b.dataset.c?(s.countries[b.dataset.c]||0):Object.values(s.countries).reduce((a,b)=>a+b,0);b.textContent=(b.dataset.c?CN[b.dataset.c]:'الكل')+' ('+n.toLocaleString('en')+')'});
+    $('#chips').innerHTML=mode!=='items'?'':`<span class="chip fresh ${fresh?'on':''}" data-f="1">المستجدات (آخر 3 أيام)<b>${s.fresh}</b></span><span class="chip ${status||fresh?'':'on'}" data-s="">الكل<b>${s.total}</b></span>`+STATUSES.filter(x=>s.status[x]).map(x=>`<span class="chip ${status===x?'on':''}" data-s="${x}">${x}<b>${s.status[x]}</b></span>`).join('');
+    document.querySelectorAll('.chip[data-s]').forEach(c=>c.onclick=()=>{status=c.dataset.s;fresh=0;status_();search()});
+    document.querySelectorAll('.chip[data-f]').forEach(c=>c.onclick=()=>{fresh=fresh?0:3;status='';status_();search()});
+    if(s.update==='running'||(s.log&&s.log.length&&s.update)){$('#log').style.display='block';$('#log').textContent=s.log.join('\n');$('#log').scrollTop=1e9}
+    if(s.update==='running'){$('#btnUpdate').textContent='جاري التحديث...';setTimeout(status_,3000)}else{$('#btnUpdate').textContent='تحديث دلوقتي';if(s.update==='done'&&!window._reloaded){window._reloaded=1;search()}}
+  }catch(e){$('#stat').textContent='البرنامج مش شغال - افتحه من الأيقونة'}
+}
+setInterval(()=>status_(),60000);
+$('#btnUpdate').onclick=async()=>{window._reloaded=0;await post('/api/update');toast('بدأ التحديث - بياخد كام دقيقة');status_()};
+document.querySelectorAll('#ctry button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ctry button').forEach(x=>x.classList.toggle('on',x===b));country=b.dataset.c;status='';status_();search()});
+document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));mode=b.dataset.m;
+  $('.only-items').style.display=mode==='awards'?'none':'contents';$('.only-awards').style.display=mode==='awards'?'contents':'none';status_();search()});
+let deb;$('#q').addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(search,450)});
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
+$('#go').onclick=search;['#cat','#days','#fawaz','#org','#ayear','#amin'].forEach(s=>$(s).onchange=search);
+
+async function search(){
+  const q=$('#q').value.trim();lastQ=q;$('#results').innerHTML='<div class="empty">بدوّر...</div>';
+  try{
+    if(mode==='news')return searchNews(q);
+    if(mode==='awards')return searchAwards(q);
+    const p=new URLSearchParams({q,status,country,fresh,cat:$('#cat').value,org:$('#org').value,days:$('#days').value,fawaz:$('#fawaz').checked?1:0});
+    const res=await get('/api/search?'+p);if(q!==lastQ)return;
+    $('#lh').textContent=`النتائج (${res.length}${res.length>=250?'+':''})`;
+    $('#results').innerHTML=res.length?res.map(r=>{
+      const left=r.status==='مطروحة'&&r.closing?Math.round((new Date(r.closing)-new Date(today))/864e5):null;
+      return `<div class="res" data-id="${r.id}"><div class="t">${esc(r.subject)}</div>
+      <div class="m"><span class="st ${stClass(r.status,r.closing)}">${esc(r.status)}</span>${isNew(r)?'<span class="flag flag-new">جديد</span>':isChg(r)?'<span class="flag flag-chg">اتغيّر</span>':''}
+        ${country?'':`<span class="cc">${CN[r.country]||r.country}</span>`}${r.number?`<span class="tno">${esc(r.number)}</span>`:''}<span>${esc(r.org)}</span>${r.fawaz?'<span class="fzb">نطاق فواز</span>':''}</div>
+      <div class="m">${r.closing?`<span class="${left!==null&&left<=7?'urgent':''}">إقفال ${dmy(r.closing)}${left!==null?` (باقي ${left} يوم)`:''}</span>`:''}
+      ${r.winner?`<span class="${isFz(r.winner)?'fz':''}">${esc(r.winner.slice(0,70))}</span>`:''}${r.value?`<span class="money">${esc(r.value)}</span>`:''}${offLink(r)}</div></div>`}).join(''):'<div class="empty">مفيش نتائج - جرّب كلمات أقل أو شيل الفلاتر</div>';
+    wireOff($('#results'));
+    document.querySelectorAll('.res[data-id]').forEach(el=>el.onclick=()=>{document.querySelectorAll('.res').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');detail(+el.dataset.id)});
+    if(q){const f=document.querySelector('.res[data-id]');if(f)f.click()}
+  }catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
+}
+async function searchNews(q){
+  const res=await get(`/api/news?q=${encodeURIComponent(q)}&country=${country}&fawaz=${$('#fawaz').checked?1:0}`);
+  $('#lh').textContent=`الأخبار (${res.length})`;
+  $('#results').innerHTML=res.length?res.map(n=>`<div class="res"><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div>
+    <div class="m"><span>${dmy(n.date)}</span>${country?'':`<span class="cc">${CN[n.country]||''}</span>`}<span>${esc(n.source)}</span><span>${esc(n.cats)}</span>${n.fawaz?'<span class="fzb">نطاق فواز</span>':''}</div>
+    ${n.summary?`<div class="snip">${esc(n.summary)}</div>`:''}</div>`).join(''):'<div class="empty">مفيش أخبار</div>';
+  wireOff($('#results'));$('#detail').innerHTML='<div class="empty">دوس على عنوان الخبر يفتحه في المتصفح</div>';
+}
+function hitsHtml(list,checkAll){return list.map((x,i)=>`<label class="hit"><input type="checkbox" data-i="${i}" ${checkAll||x.score>=0.6?'checked':''}>
+  <div style="flex:1"><div><b>محضر ${x.year}/${x.meeting||'?'} · ${dmy(x.mdate)}</b>${x.type?`<span class="badge">${esc(x.type)}</span>`:''}${x.award_meeting?'<span class="badge" style="background:#d7f0e0">اجتماع الترسية</span>':''}<span class="badge">تطابق ${Math.round(Math.min(x.score,1)*100)}%</span></div>
+  <div class="m">${esc(x.file.split('\\').pop())} · صفحة ${x.page} · <a href="#" data-prev="${i}">معاينة</a></div><div class="snip">${esc(x.snippet)}</div></div></label>`).join('')}
+function wirePrev(){document.querySelectorAll('[data-prev]').forEach(a=>a.onclick=e=>{e.preventDefault();const x=hits[+a.dataset.prev];$('#mimg').src=`/api/page.png?file=${encodeURIComponent(x.file)}&page=${x.page}`;$('#modal').style.display='flex'})}
+async function searchAwards(q){
+  if(!q){$('#results').innerHTML='<div class="empty">اكتب عنوان أو رقم مناقصة كويتية قديمة عشان تعرف اترسّت على مين وبكام</div>';return}
+  if($('#amin').checked){hits=await get('/api/awards/minutes?q='+encodeURIComponent(q));current=null;
+    $('#lh').textContent=`صفحات المحاضر (${hits.length})`;$('#results').innerHTML=hits.length?`<div class="pad">${hitsHtml(hits,true)}</div>`:'<div class="empty">ملقتش صفحات</div>';wirePrev();
+    $('#detail').innerHTML=`<div class="pad">علّم الصفحات واضغط الزرار</div><div class="actions"><button class="pri" onclick="awardsPdf(null)">اعمل PDF واحد</button></div>`;return}
+  const res=await get(`/api/awards/search?q=${encodeURIComponent(q)}&year=${$('#ayear').value}`);if(q!==lastQ)return;
+  $('#lh').textContent=`ترسيات الكويت (${res.length})`;
+  $('#results').innerHTML=res.length?res.map(r=>`<div class="res" data-row="${r.row}"><div class="t">${esc(r.subject)}</div>
+    <div class="m"><span class="tno">${esc(r.tno)}</span><span>${esc(r.org)}</span><span>${dmy(r.date)}</span></div>
+    <div class="m"><span class="${isFz(r.winner)?'fz':''}">${esc(r.winner||'بنود')}</span><span class="money">${esc(r.total)}</span>
+    <a class="off" href="#" data-off="https://capt.gov.kw/ar/tenders/winning-bids/?meeting_date_from=${r.date}&meeting_date_to=${r.date}&form=date">الإعلان الرسمي ↗</a></div></div>`).join(''):'<div class="empty">مفيش نتائج</div>';
+  wireOff($('#results'));
+  document.querySelectorAll('.res[data-row]').forEach(el=>el.onclick=()=>{document.querySelectorAll('.res').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');awardDetail(+el.dataset.row)});
+  const f=document.querySelector('.res[data-row]');if(f)f.click();
+}
+async function awardDetail(row){
+  $('#detail').innerHTML='<div class="empty">بجيب البيانات والمحاضر...</div>';
+  const d=await get('/api/awards/detail?row='+row);current={row};hits=d.hits;const r=d.rec;
+  let h=`<div class="pad"><div class="card"><div class="kv"><div>رقم المناقصة</div><div><span class="tno">${esc(r.tno)}</span></div><div>الموضوع</div><div><b>${esc(r.subject)}</b></div>
+    <div>الجهة</div><div>${esc(r.org)}</div><div>الفائز</div><div><span class="${isFz(r.winner)?'fz':''}">${esc(r.winner||'-')}</span></div><div>القيمة</div><div class="money">${esc(r.total||'-')}</div>
+    <div>تاريخ الترسية</div><div>${dmy(r.date)}</div>${r.notes?`<div>ملاحظات</div><div>${esc(r.notes)}</div>`:''}</div></div>`;
+  if(d.same.length)h+=`<h4>صفوف تانية لنفس الرقم</h4><table><tr><th>التاريخ</th><th>الفائز</th><th>القيمة</th></tr>${d.same.map(x=>`<tr><td>${dmy(x.date)}</td><td class="${isFz(x.winner)?'fz':''}">${esc(x.winner)}</td><td>${esc(x.total)}</td></tr>`).join('')}</table>`;
+  if(d.history.length)h+=`<h4>ترسيات سابقة لنفس نوع الشغل</h4><table><tr><th>التاريخ</th><th>الرقم</th><th>الجهة</th><th>الفائز</th><th>القيمة</th></tr>${d.history.map(x=>`<tr title="${esc(x.subject)}"><td>${dmy(x.date)}</td><td><span class="tno">${esc(x.tno)}</span></td><td>${esc(x.org)}</td><td class="${isFz(x.winner)?'fz':''}">${esc(x.winner.slice(0,80))}</td><td>${esc(x.total)}</td></tr>`).join('')}</table>`;
+  h+=`<h4>من محاضر الجهاز (${d.hits.length})</h4>`+hitsHtml(d.hits,false)+'</div><div class="actions"><button class="pri" onclick="awardsPdf('+row+')">اعمل PDF واحد (الترسية + المحاضر)</button></div>';
+  $('#detail').innerHTML=h;wirePrev();
+}
+async function awardsPdf(row){const sel=[...document.querySelectorAll('.hit input:checked')].map(c=>hits[+c.dataset.i]);toast('بعمل الـ PDF...');
+  try{const r=await post('/api/awards/report',{row,hits:sel,query:lastQ});toast('اتعمل واتفتح: '+r.name,6000)}catch(e){toast('خطأ: '+e.message,6000)}}
+async function detail(id){
+  $('#detail').innerHTML='<div class="empty">بجمع كل حاجة عنها...</div>';
+  try{const d=await get('/api/detail?id='+id);const r=d.item;current=r;hits=d.hits;
+    const F=[['الدولة',CN[r.country]||r.country],['رقم المناقصة',r.number?`<span class="tno">${esc(r.number)}</span>`:''],['الموضوع','<b>'+esc(r.subject)+'</b>'],['الجهة',esc(r.org)],
+      ['الحالة',`<span class="st ${stClass(r.status,r.closing)}">${esc(r.status)}</span>`],['الإعلان الرسمي',r.official?`${offLink(r)} <span class="snip">${esc(r.official_label||'')}</span>`:''],
+      ['تاريخ الطرح',dmy(r.publish)],['آخر موعد للعطاء',dmy(r.closing)],
+      ['الاجتماع التمهيدي',esc(r.ptm)],['سعر الوثائق',esc(r.fees)],['التأمين الأولي',esc(r.bond)],['نوع الطرح',esc(r.ttype)],
+      ['الفائز',r.winner?`<span class="${isFz(r.winner)?'fz':''}">${esc(r.winner)}</span>`:''],['القيمة',r.value?`<span class="money">${esc(r.value)}</span>`:''],
+      ['تاريخ الترسية',dmy(r.award_date)],['نوع الشغل',esc(r.cats)+(r.fawaz?' <span class="fzb">نطاق فواز</span>':'')],
+      ['أول ما ظهرت',r.first_seen&&!r.first_seen.startsWith('2000')?esc(r.first_seen.replace('T',' ').slice(0,16)):'من أول تحميل'],['ملاحظات',esc(r.notes)]];
+    let h=`<div class="pad"><div class="card"><div class="kv">${F.filter(x=>x[1]).map(x=>`<div>${x[0]}</div><div>${x[1]}</div>`).join('')}</div></div>`;
+    if(d.changes.length)h+=`<h4>التغييرات اللي اترصدت (${d.changes.length})</h4><table><tr><th>وقت الرصد</th><th>البند</th><th>كان</th><th>بقى</th></tr>${d.changes.map(c=>`<tr class="chg"><td>${esc(c.at.replace('T',' ').slice(0,16))}</td><td>${esc(c.field)}</td><td>${esc(c.old)}</td><td><b>${esc(c.new)}</b></td></tr>`).join('')}</table>`;
+    if(d.events.length)h+=`<h4>كل اللي اتنشر عنها (${d.events.length})</h4><table><tr><th>التاريخ</th><th>المصدر</th><th>الحدث</th><th>التفاصيل</th></tr>${d.events.map((e,i)=>`<tr><td>${dmy(e.date)}</td><td>${esc(e.source)}</td><td>${esc(e.etype)}</td><td>${esc(e.text)}${e.file&&e.page?` · <a href="#" data-ev="${i}">صفحة الجريدة</a>`:''}${e.url&&e.url.startsWith('http')?` · <a href="#" data-off="${esc(e.url)}">المصدر ↗</a>`:''}</td></tr>`).join('')}</table>`;
+    if(d.history.length)h+=`<h4>ترسيات سابقة لنفس نوع الشغل (للتسعير)</h4><table><tr><th>التاريخ</th><th>الرقم</th><th>الجهة</th><th>الفائز</th><th>القيمة</th></tr>${d.history.map(x=>`<tr title="${esc(x.subject)}"><td>${dmy(x.date)}</td><td><span class="tno">${esc(x.tno)}</span></td><td>${esc(x.org)}</td><td class="${isFz(x.winner)?'fz':''}">${esc((x.winner||'').slice(0,80))}</td><td>${esc(x.total)}</td></tr>`).join('')}</table>`;
+    if(d.news.length)h+=`<h4>أخبار قريبة من الموضوع</h4>${d.news.map(n=>`<div class="m"><span>${dmy(n.date)}</span><span>${esc(n.source)}</span><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div>`).join('')}`;
+    if(r.country==='KW')h+=`<h4>من محاضر الجهاز المركزي (${d.hits.length})</h4>`+(d.hits.length?hitsHtml(d.hits,false):'<p class="snip">مفيش صفحات محاضر مطابقة.</p>');
+    h+=`</div><div class="actions"><button class="pri" onclick="makePdf()">اعمل PDF واحد</button>${r.official?`<button onclick="openOfficial('${esc(r.official)}')">افتح الإعلان الرسمي ↗</button>`:''}</div>`;
+    $('#detail').innerHTML=h;wireOff($('#detail'));wirePrev();
+    document.querySelectorAll('[data-ev]').forEach(a=>a.onclick=e=>{e.preventDefault();const x=d.events[+a.dataset.ev];$('#mimg').src=`/api/page.png?file=${encodeURIComponent(x.file)}&page=${x.page}`;$('#modal').style.display='flex'});
+  }catch(e){$('#detail').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
+}
+async function makePdf(){
+  const sel=[...document.querySelectorAll('.hit input:checked')].map(c=>hits[+c.dataset.i]);toast('بعمل الـ PDF...');
+  try{const r=await post('/api/report',{id:current.id,hits:sel});toast('اتعمل واتفتح: '+r.name,6000)}catch(e){toast('خطأ: '+e.message,6000)}
+}
+status_(true).then(search);
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>برنامج ترسيات CAPT</title>
+<style>
+:root{
+  --bg:#f4f6f9; --panel:#fff; --ink:#1d2733; --muted:#66727f; --line:#e1e6ec;
+  --brand:#1F4E78; --brand2:#2e6aa3; --soft:#eaf1f8; --fz:#fff36b; --ok:#1d7a46; --warn:#b3261e;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI",Tahoma,Arial,sans-serif}
+header{background:var(--brand);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{font-size:18px;margin:0;font-weight:700}
+header .stat{font-size:12.5px;opacity:.9}
+header .sp{flex:1}
+button{font:inherit;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--brand2)}
+button.pri{background:var(--brand2);border-color:var(--brand2);color:#fff}
+button.pri:hover{background:var(--brand)}
+header button{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:#fff}
+header button:hover{background:rgba(255,255,255,.22)}
+.searchbar{padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.searchbar input[type=search]{flex:1;min-width:260px;font:inherit;font-size:16px;padding:10px 14px;border:1.5px solid var(--line);border-radius:10px;outline:none}
+.searchbar input[type=search]:focus{border-color:var(--brand2)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:9px 14px}
+.seg button.on{background:var(--soft);color:var(--brand);font-weight:700}
+select{font:inherit;padding:8px;border:1px solid var(--line);border-radius:8px;background:#fff}
+main{display:grid;grid-template-columns:minmax(360px,44%) 1fr;gap:14px;padding:14px 20px;height:calc(100vh - 128px)}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto}
+.col h3{margin:0;padding:10px 14px;font-size:14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:1}
+.res{padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.res:hover{background:#f7fafd}
+.res.sel{background:var(--soft);border-right:4px solid var(--brand2)}
+.res .t{font-weight:600}
+.res .m{color:var(--muted);font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap;margin-top:3px}
+.tno{direction:ltr;unicode-bidi:isolate;display:inline-block;background:#f0f3f7;border-radius:5px;padding:0 6px;font-size:12.5px}
+.fz{background:var(--fz);padding:0 4px;border-radius:4px}
+.money{font-weight:700;color:var(--ok)}
+.pad{padding:14px}
+.card{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:4px 10px}
+.kv div:nth-child(odd){color:var(--muted)}
+h4{margin:14px 0 6px;font-size:14px;color:var(--brand)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th,td{border:1px solid var(--line);padding:4px 6px;text-align:right;vertical-align:top}
+th{background:#f3f6fa}
+.hit{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px;display:flex;gap:10px}
+.hit input{margin-top:5px}
+.hit .h{font-weight:600}
+.badge{display:inline-block;font-size:11.5px;padding:0 7px;border-radius:20px;background:#eef2f6;color:#334;margin-inline-start:6px}
+.badge.aw{background:#d7f0e0;color:#12613a}
+.snip{color:var(--muted);font-size:12px;margin-top:3px;max-height:3.2em;overflow:hidden}
+.actions{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.empty{color:var(--muted);padding:30px;text-align:center}
+.log{font-size:12px;white-space:pre-wrap;background:#0f1a24;color:#cfe3f5;border-radius:8px;padding:8px;max-height:180px;overflow:auto;margin:0 20px 10px}
+#modal{position:fixed;inset:0;background:rgba(10,20,30,.6);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px;z-index:5}
+#modal img{max-width:min(900px,96vw);background:#fff;border-radius:6px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+#toast{position:fixed;bottom:18px;left:18px;background:#1d2733;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:6;max-width:460px}
+@media (max-width:900px){main{grid-template-columns:1fr;height:auto}}
+</style>
+</head>
+<body>
+<header>
+  <h1>برنامج ترسيات CAPT</h1>
+  <span class="stat" id="stat">...</span>
+  <span class="sp"></span>
+  <button id="btnUpdate" title="يجيب الترسيات والمحاضر الجديدة من موقع الجهاز">تحديث من الموقع</button>
+  <button onclick="post('/api/open-excel')">افتح الإكسيل</button>
+  <button onclick="post('/api/open-folder')">فولدر التقارير</button>
+</header>
+<div class="searchbar">
+  <input type="search" id="q" placeholder="اكتب عنوان المناقصة أو رقمها أو اسم الجهة / الشركة ... مثال: صيانة تكييف محطة الصبية" autofocus>
+  <div class="seg" id="mode">
+    <button data-m="awards" class="on">الترسيات</button>
+    <button data-m="minutes">بحث مباشر في المحاضر</button>
+  </div>
+  <select id="year"><option value="">كل السنين</option></select>
+  <button class="pri" id="go">بحث</button>
+</div>
+<pre class="log" id="log" style="display:none"></pre>
+<main>
+  <section class="col" id="left"><h3 id="lh">النتائج</h3><div id="results"><div class="empty">اكتب في خانة البحث فوق</div></div></section>
+  <section class="col" id="right"><h3 id="rh">التفاصيل</h3><div id="detail"><div class="empty">اختار مناقصة من النتائج</div></div></section>
+</main>
+<div id="modal" onclick="this.style.display='none'"><img id="mimg" alt=""></div>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dmy=s=>s?s.split('-').reverse().join('/'):'';
+const isFz=s=>/فواز|fawaz/i.test(s||'');
+let mode='awards', current=null, currentHits=[], lastQuery='';
+for(let y=new Date().getFullYear(); y>=2006; y--) $('#year').insertAdjacentHTML('beforeend',`<option>${y}</option>`);
+function toast(m,ms=3500){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
+async function get(u){const r=await fetch(u);const j=await r.json();if(j&&j.error)throw new Error(j.error);return j}
+async function post(u,b={}){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(j&&j.error)throw new Error(j.error);return j}
+async function status(){
+  try{const s=await get('/api/status');
+    const ix=s.index||{}; const lm=ix.last_meeting;
+    $('#stat').textContent=`${(s.rows||0).toLocaleString('en')} ترسية · آخر ترسية ${dmy(s.last_award)} · ${(ix.pages||0).toLocaleString('en')} صفحة محاضر · آخر محضر ${lm?lm[0]+'/'+lm[1]+' ('+dmy(lm[2])+')':'-'}`;
+    if(s.update==='running'||(s.log&&s.log.length&&s.update)){$('#log').style.display='block';$('#log').textContent=s.log.join('\n')}
+    if(s.update==='running'){$('#btnUpdate').textContent='جاري التحديث...';setTimeout(status,2500)}
+    else $('#btnUpdate').textContent='تحديث من الموقع';
+  }catch(e){$('#stat').textContent='البرنامج مش شغال - افتحه من الأيقونة'}
+}
+$('#btnUpdate').onclick=async()=>{await post('/api/update');toast('بدأ التحديث من الموقع...');status()};
+document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));mode=b.dataset.m;search()});
+let deb; $('#q').addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(()=>{if(mode==='awards')search()},450)});
+$('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
+$('#go').onclick=search; $('#year').onchange=search;
+
+async function search(){
+  const q=$('#q').value.trim(); lastQuery=q; if(!q) return;
+  $('#results').innerHTML='<div class="empty">بدوّر...</div>';
+  try{
+    if(mode==='awards'){
+      const res=await get(`/api/search?q=${encodeURIComponent(q)}&year=${$('#year').value}`);
+      if(q!==lastQuery) return;
+      $('#lh').textContent=`الترسيات (${res.length})`;
+      $('#results').innerHTML=res.length?res.map(r=>`
+        <div class="res" data-row="${r.row}">
+          <div class="t">${esc(r.subject)}</div>
+          <div class="m"><span class="tno">${esc(r.tno)}</span><span>${esc(r.org)}</span><span>${dmy(r.date)}</span></div>
+          <div class="m"><span class="${isFz(r.winner)?'fz':''}">${esc(r.winner||'بنود / بدون فائز مكتوب')}</span><span class="money">${esc(r.total)}</span></div>
+        </div>`).join(''):'<div class="empty">مفيش نتائج قريبة - جرّب كلمات أقل أو "بحث مباشر في المحاضر"</div>';
+      document.querySelectorAll('.res').forEach(el=>el.onclick=()=>{document.querySelectorAll('.res').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');detail(+el.dataset.row)});
+      const first=document.querySelector('.res'); if(first) first.click();
+    }else{
+      $('#lh').textContent='صفحات المحاضر';
+      const hits=await get(`/api/minutes?q=${encodeURIComponent(q)}`);
+      current=null; currentHits=hits;
+      $('#results').innerHTML=hits.length?`<div class="pad">${hitsHtml(hits,true)}</div>`:'<div class="empty">ملقتش صفحات مطابقة</div>';
+      $('#detail').innerHTML=`<div class="pad"><p>${hits.length} صفحة من المحاضر للبحث: <b>${esc(q)}</b></p><p>علّم الصفحات اللي عاوزها من اليمين، واضغط "اعمل PDF".</p></div>
+        <div class="actions"><button class="pri" onclick="makePdf()">اعمل PDF واحد بالصفحات المختارة</button></div>`;
+      wireHits();
+    }
+  }catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
+}
+function hitsHtml(hits,checkAll){
+  return hits.map((h,i)=>`<label class="hit">
+    <input type="checkbox" data-i="${i}" ${checkAll||h.score>=0.6?'checked':''}>
+    <div style="flex:1">
+      <div class="h">محضر ${h.year}/${h.meeting||'?'} · ${dmy(h.mdate)}
+        ${h.type?`<span class="badge">${esc(h.type)}</span>`:''}${h.award_meeting?'<span class="badge aw">اجتماع الترسية</span>':''}
+        <span class="badge">تطابق ${Math.round(Math.min(h.score,1)*100)}%</span></div>
+      <div class="m" style="color:var(--muted);font-size:12px">${esc(h.file.split('\\').pop())} · صفحة ${h.page}
+        · <a href="#" data-prev="${i}">معاينة</a></div>
+      <div class="snip">${esc(h.snippet)}</div>
+    </div></label>`).join('');
+}
+function wireHits(){
+  document.querySelectorAll('[data-prev]').forEach(a=>a.onclick=e=>{e.preventDefault();const h=currentHits[+a.dataset.prev];
+    $('#mimg').src=`/api/page.png?file=${encodeURIComponent(h.file)}&page=${h.page}`;$('#modal').style.display='flex'});
+}
+async function detail(row){
+  $('#detail').innerHTML='<div class="empty">بجيب البيانات والمحاضر...</div>';
+  try{
+    const d=await get(`/api/detail?row=${row}`); current=d.rec; currentHits=d.hits;
+    const r=d.rec;
+    let h=`<div class="pad"><div class="card"><div class="kv">
+      <div>رقم المناقصة</div><div><span class="tno">${esc(r.tno)}</span></div>
+      <div>الموضوع</div><div><b>${esc(r.subject)}</b></div>
+      <div>الجهة</div><div>${esc(r.org)}</div>
+      <div>الشركة الفائزة</div><div><span class="${isFz(r.winner)?'fz':''}">${esc(r.winner||'-')}</span></div>
+      <div>القيمة</div><div class="money">${esc(r.total||'-')}</div>
+      <div>تاريخ الترسية</div><div>${dmy(r.date)}</div>
+      ${r.notes?`<div>ملاحظات</div><div>${esc(r.notes)}</div>`:''}
+      <div>في الإكسيل</div><div>شيت All - صف ${r.row}</div></div></div>`;
+    if(d.same.length) h+=`<h4>صفوف تانية لنفس رقم المناقصة</h4><table><tr><th>التاريخ</th><th>الفائز</th><th>القيمة</th><th>ملاحظات</th></tr>${
+      d.same.map(x=>`<tr><td>${dmy(x.date)}</td><td class="${isFz(x.winner)?'fz':''}">${esc(x.winner)}</td><td>${esc(x.total)}</td><td>${esc((x.notes||'').slice(0,120))}</td></tr>`).join('')}</table>`;
+    if(d.history.length) h+=`<h4>ترسيات سابقة لنفس نوع الشغل (للتسعير)</h4><table><tr><th>التاريخ</th><th>الرقم</th><th>الجهة</th><th>الفائز</th><th>القيمة</th></tr>${
+      d.history.map(x=>`<tr title="${esc(x.subject)}"><td>${dmy(x.date)}</td><td><span class="tno">${esc(x.tno)}</span></td><td>${esc(x.org)}</td><td class="${isFz(x.winner)?'fz':''}">${esc(x.winner)}</td><td>${esc(x.total)}</td></tr>`).join('')}</table>`;
+    h+=`<h4>من محاضر الاجتماعات (${d.hits.length})</h4>`+(d.hits.length?hitsHtml(d.hits,false):'<p class="snip">ملقتش صفحات محاضر مطابقة بدرجة كافية.</p>')+'</div>';
+    h+=`<div class="actions"><button class="pri" onclick="makePdf()">اعمل PDF واحد (الترسية + المحاضر المختارة)</button><span class="snip" id="pdfmsg"></span></div>`;
+    $('#detail').innerHTML=h; wireHits();
+  }catch(e){$('#detail').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
+}
+async function makePdf(){
+  const sel=[...document.querySelectorAll('.hit input:checked')].map(c=>currentHits[+c.dataset.i]);
+  toast('بعمل الـ PDF...');
+  try{const r=await post('/api/report',{row:current?current.row:null,hits:sel,query:lastQuery});
+    toast('اتعمل واتفتح: '+r.name,6000)}catch(e){toast('خطأ: '+e.message,6000)}
+}
+status();
+</script>
+</body>
+</html>
