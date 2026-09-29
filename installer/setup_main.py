@@ -158,7 +158,7 @@ def gui():
     root.resizable(False, False)
     tk.Label(root, text="FAWAZ Tenders", font=("Segoe UI", 18, "bold"), fg="#0f5c4d").pack(pady=(18, 4))
     tk.Label(root, text=f"الإصدار {ver}", font=("Segoe UI", 10)).pack()
-    tk.Label(root, justify="right", font=("Segoe UI", 10.5), wraplength=470, text=(
+    tk.Label(root, justify="right", font=("Segoe UI", 11), wraplength=470, text=(
         "هيتسطب برنامجين:\n"
         "• دليل مناقصات الخليج (الكويت - السعودية - الإمارات)\n"
         "• برنامج ترسيات CAPT (ترسيات ومحاضر الجهاز المركزي)\n"
