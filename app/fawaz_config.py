@@ -39,6 +39,8 @@ def _defaults():
         "auto_update_hours": 6,                                      # Gulf directory data refresh
         "awards_update_days": 3,                                     # CAPT awards Excel refresh
         "check_program_updates": True,
+        # publish the phone app data to GitHub Pages after each update (one PC is enough)
+        "mobile_publish": LEGACY_ARCHIVE.exists(),
     }
 
 

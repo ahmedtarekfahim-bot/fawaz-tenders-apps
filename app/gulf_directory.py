@@ -863,6 +863,12 @@ def run_update(progress=print, countries=None):
         summary["أخبار جديدة"] = f"خطأ: {e}"
     new_n, chg_n = save_store(store)
     summary["جديد"], summary["اتغيّر"] = new_n, chg_n
+    try:                                    # phone app data (GitHub Pages) - only where mobile_publish is on
+        import mobile_export
+        if mobile_export.publish(progress):
+            summary["نسخة التليفون"] = "اتحدثت"
+    except Exception as e:                  # noqa: BLE001
+        summary["نسخة التليفون"] = f"خطأ: {e}"
     con = db()
     con.execute("INSERT INTO runs(started,finished,summary) VALUES(?,?,?)",
                 (started.isoformat(timespec="seconds"), datetime.datetime.now().isoformat(timespec="seconds"),

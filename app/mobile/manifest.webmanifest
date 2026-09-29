@@ -1,0 +1,19 @@
+{
+  "name": "مناقصات فواز - دليل الخليج وترسيات الكويت",
+  "short_name": "مناقصات فواز",
+  "description": "دليل مناقصات الكويت والسعودية والإمارات + ترسيات الجهاز المركزي للمناقصات",
+  "id": "fawaz-tenders",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "dir": "rtl",
+  "lang": "ar",
+  "background_color": "#0f5c4d",
+  "theme_color": "#0f5c4d",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
