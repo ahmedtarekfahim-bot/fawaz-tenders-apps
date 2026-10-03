@@ -118,8 +118,15 @@ def collect_pc_feed(store, progress):
             it["sources"].add(src)
             it["ev"].append({"date": d, "source": src, "etype": etype, "text": text, "url": url})
         n += 1
-    # the PC's news (incl. what it found before the cloud existed)
+    # the PC's news (incl. what it found before the cloud existed) + its bid-opening price sheets
     con = gd.db()
+    now = datetime.datetime.now().isoformat(timespec="seconds")
+    for r in load(FEED / "directory.json", []):
+        b = r.get("bd")
+        if b and b.get("r"):
+            con.execute("INSERT OR REPLACE INTO bid_sheets VALUES(?,?,?,?,?,?,?,?,?,?)",
+                        (f"{b.get('m', '')}|{r['n']}", b.get("m", ""), r["n"], gd.numkey(r["n"]), r["o"], r["s"], "",
+                         b.get("d", ""), json.dumps(b["r"], ensure_ascii=False), now))
     for x in load(FEED / "news.json", []):
         con.execute("INSERT OR IGNORE INTO news(country,date,source,title,summary,url,query,cats,fawaz,seen_at) "
                     "VALUES(?,?,?,?,?,?,?,?,?,?)", (x["c"], x["d"], x["src"], x["t"], "", x["u"],

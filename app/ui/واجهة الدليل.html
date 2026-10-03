@@ -259,6 +259,9 @@ async function detail(id){
     let h=`<div class="pad"><div class="card"><div class="kv">${F.filter(x=>x[1]).map(x=>`<div>${x[0]}</div><div>${x[1]}</div>`).join('')}</div></div>`;
     if(d.changes.length)h+=`<h4>التغييرات اللي اترصدت (${d.changes.length})</h4><table><tr><th>وقت الرصد</th><th>البند</th><th>كان</th><th>بقى</th></tr>${d.changes.map(c=>`<tr class="chg"><td>${esc(c.at.replace('T',' ').slice(0,16))}</td><td>${esc(c.field)}</td><td>${esc(c.old)}</td><td><b>${esc(c.new)}</b></td></tr>`).join('')}</table>`;
     if(d.events.length)h+=`<h4>كل اللي اتنشر عنها (${d.events.length})</h4><table><tr><th>التاريخ</th><th>المصدر</th><th>الحدث</th><th>التفاصيل</th></tr>${d.events.map((e,i)=>`<tr><td>${dmy(e.date)}</td><td>${esc(e.source)}</td><td>${esc(e.etype)}</td><td>${esc(e.text)}${e.file&&e.page?` · <a href="#" data-ev="${i}">صفحة الجريدة</a>`:''}${e.url&&e.url.startsWith('http')?` · <a href="#" data-off="${esc(e.url)}">المصدر ↗</a>`:''}</td></tr>`).join('')}</table>`;
+    if(d.bids&&d.bids.rows.length){const val=x=>{const m=(x[3]||'').replace(/,/g,'').match(/-?\d+(\.\d+)?/);return m?+m[0]:Infinity};
+      const rows=[...d.bids.rows].sort((a,b)=>(/مستبعد/.test(a[1]+a[2])-/مستبعد/.test(b[1]+b[2]))||val(a)-val(b));
+      h+=`<h4>كشف تفريغ الأسعار - فض العطاءات اجتماع ${esc(d.bids.meeting)} (${esc(d.bids.meeting_date)})</h4><table><tr><th>#</th><th>المقاول</th><th>الحالة</th><th>إجمالي العرض</th></tr>${rows.map((x,i)=>`<tr><td>${/مستبعد/.test(x[1]+x[2])?'-':'L'+(i+1)}</td><td class="${isFz(x[0])?'fz':''}">${esc(x[0])}</td><td>${esc(x[1])}${x[2]&&x[2]!==x[1]?' - '+esc(x[2]):''}</td><td class="money">${esc(x[3]||'-')}</td></tr>`).join('')}</table>`}
     if(d.history.length)h+=`<h4>ترسيات سابقة لنفس نوع الشغل (للتسعير)</h4><table><tr><th>التاريخ</th><th>الرقم</th><th>الجهة</th><th>الفائز</th><th>القيمة</th></tr>${d.history.map(x=>`<tr title="${esc(x.subject)}"><td>${dmy(x.date)}</td><td><span class="tno">${esc(x.tno)}</span></td><td>${esc(x.org)}</td><td class="${isFz(x.winner)?'fz':''}">${esc((x.winner||'').slice(0,80))}</td><td>${esc(x.total)}</td></tr>`).join('')}</table>`;
     if(d.news.length)h+=`<h4>أخبار قريبة من الموضوع</h4>${d.news.map(n=>`<div class="m"><span>${dmy(n.date)}</span><span>${esc(n.source)}</span><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div>`).join('')}`;
     if(r.country==='KW')h+=`<h4>من محاضر الجهاز المركزي (${d.hits.length})</h4>`+(d.hits.length?hitsHtml(d.hits,false):'<p class="snip">مفيش صفحات محاضر مطابقة.</p>');
@@ -278,9 +281,10 @@ async function loadDocs(id){
   let h=off?`<div class="card" style="margin:6px 0;border-color:#0e7c86"><button class="pri" id="docs-site">🌐 افتح صفحة المناقصة على ${site} - سجّل دخولك وحمّل</button>
     <p class="snip" style="margin:6px 0 0">${/capt\.gov\.kw/.test(off)?'من الصفحة دي: "تسجيل الدخول" فوق ← بعدها "كراسة الشروط" وباقي الملفات بتبقى قابلة للتحميل.':/etimad|esupply/.test(off)?'الكراسة بتتحمّل / بتتشتري من المنصة بعد تسجيل الدخول بحساب المورّد.':'الملفات بتتحمّل من الصفحة مباشرة.'}</p></div>`:'';
   h+=d.docs.length?`<table><tr><th>المستند</th><th>المصدر</th><th>التاريخ</th><th></th></tr>${d.docs.map(x=>`<tr><td>${esc(x.label)}</td><td>${esc(x.src||'')}</td><td>${esc(x.date||'')}</td>
-    <td>${x.url?(x.local?`<a href="${esc(x.url)}" target="_blank">فتح</a>`:`<a href="#" data-off="${esc(x.url)}">تحميل ↗</a>`):(off?`<a href="#" data-off="${esc(off)}">من الموقع بحسابك ↗</a>`:'محتاج دخول')}</td></tr>`).join('')}</table>`
+    <td>${x.archived?`<a href="#" data-open="${esc(x.path)}">فتح (من الأرشيف)</a>`:x.url?(x.local?`<a href="${esc(x.url)}" target="_blank">فتح</a>`:`<a href="#" data-off="${esc(x.url)}">تحميل ↗</a>`):(off?`<a href="#" data-off="${esc(off)}">من الموقع بحسابك ↗</a>`:'محتاج دخول')}</td></tr>`).join('')}</table>`
     :'<p class="snip">مفيش مستندات منشورة للمناقصة دي على المواقع.</p>';
   if(d.capt){
+    if(d.capt.note)h+=`<p class="snip" style="color:#8a4b00">ℹ ${esc(d.capt.note)}</p>`;
     if(d.capt.login)h+=`<p class="snip">✔ التحميل التلقائي شغال بحساب الجهاز المركزي (${esc(d.capt.account)})</p>`;
     else h+=`<details style="margin-top:8px"><summary class="snip" style="cursor:pointer">اختياري: تحميل تلقائي بحسابك على الجهاز المركزي (من غير ما تفتح الموقع)</summary>
       <div class="card" style="margin-top:6px"><p class="snip">الإيميل وكلمة السر بيتحفظوا متشفّرين على الجهاز ده بس (Windows).</p>
@@ -289,6 +293,7 @@ async function loadDocs(id){
       <button id="capt-save">احفظ وادخل</button></div></div></details>`;
   }
   box.innerHTML=h;wireOff(box);
+  box.querySelectorAll('[data-open]').forEach(a=>a.onclick=e=>{e.preventDefault();post('/api/open',{url:a.dataset.open})});
   if($('#docs-site'))$('#docs-site').onclick=()=>openOfficial(off);
   if($('#capt-save'))$('#capt-save').onclick=async()=>{const u=$('#capt-u').value.trim(),pw=$('#capt-p').value;if(!u||!pw)return toast('اكتب الإيميل وكلمة السر');
     toast('بيدخل على الجهاز المركزي...');const r=await post('/api/capt-account',{user:u,password:pw});toast(r.msg,7000);if(r.ok)loadDocs(id)};

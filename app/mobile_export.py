@@ -49,6 +49,12 @@ def export(out_dir, award_rows=None, meetings=None):
     data.mkdir(parents=True, exist_ok=True)
     con = gd.db()
     items = []
+    sheets = {}
+    try:
+        for b in con.execute("SELECT numkey, org, meeting, meeting_date, rows FROM bid_sheets"):
+            sheets.setdefault(b["numkey"], []).append(b)
+    except Exception:                                  # noqa: BLE001 - no sheets yet
+        pass
     for r in con.execute("SELECT * FROM items"):
         srcs = set((r["notes"] or "").split("المصادر: ")[-1].split("، ")) if "المصادر: " in (r["notes"] or "") else set()
         if srcs and srcs <= INTERNAL_SOURCES:
@@ -67,7 +73,10 @@ def export(out_dir, award_rows=None, meetings=None):
                       "fs": "" if (r["first_seen"] or "").startswith("2000") else (r["first_seen"] or "")[:16],
                       "ch": (r["changed"] or "")[:16], "ev": ev, "chg": chg,
                       "dc": [[d.get("label", ""), d.get("url", ""), d.get("date", ""), d.get("src", "")]
-                             for d in json.loads(r["docs"] or "[]") if str(d.get("url", "")).startswith("http")]})
+                             for d in json.loads(r["docs"] or "[]") if str(d.get("url", "")).startswith("http")],
+                      "bd": next(({"m": b["meeting"], "d": b["meeting_date"], "r": json.loads(b["rows"] or "[]")}
+                                  for b in sorted(sheets.get(r["numkey"] or "~", []), key=lambda b: -gd.org_sim(r["org"], b["org"]))
+                                  if gd.org_sim(r["org"], b["org"]) >= 0.6), None)})
     news = [{"c": n["country"], "d": n["date"], "src": n["source"], "t": n["title"], "u": n["url"], "cat": n["cats"],
              "fz": n["fawaz"], "fs": (n["seen_at"] or "")[:16], "co": int((n["query"] or "").startswith("شركة:"))}
             for n in con.execute("SELECT * FROM news WHERE query<>'تقرير مشاريع' ORDER BY date DESC")]

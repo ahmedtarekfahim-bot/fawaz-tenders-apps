@@ -155,3 +155,86 @@ def download(item, docs, out_root):
         except Exception as e:                   # noqa: BLE001
             res.append((d.get("label", "ملف"), False, str(e)[:120]))
     return folder, res
+
+
+# ----------------------------------------------------------------- bid opening ("فض العطاءات") price sheets
+# capt.gov.kw/ar/tenders/closing-tenders lists the tenders of the latest bid-opening meetings; for each one
+# it shows every bidder with status and total (or a per-item popup). The site drops them after a few
+# meetings, so the program keeps a copy.
+CLOSING = SITE + "/ar/tenders/closing-tenders/"
+
+
+def _num(v):
+    m = re.search(r"-?[\d,]+(?:\.\d+)?", (v or "").replace(" ", ""))
+    try:
+        return float(m.group(0).replace(",", "")) if m else None
+    except ValueError:
+        return None
+
+
+def _cell_text(c):
+    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<button.*?</button>|<[^>]+>", " ", c, flags=re.S))).strip()
+
+
+def closing_list():
+    """[(meeting, tender number)] currently on the bid-opening page"""
+    h = urllib.request.urlopen(urllib.request.Request(CLOSING, headers=UA), timeout=60).read().decode("utf-8", "replace")
+    return re.findall(r"all_tenders\['([^']+)'\]\.push\('([^']*)'\)", h)
+
+
+def closing_sheet(meeting, number):
+    """one tender's bid-opening sheet -> {meeting, number, subject, org, closing, meeting_date, rows: [[name, status, reason, total]]}"""
+    H = dict(UA, **{"X-Requested-With": "XMLHttpRequest", "Accept": "*/*", "Referer": CLOSING})
+    url = CLOSING + "?" + urllib.parse.urlencode({"meeting_no": meeting, "tender_no": number, "form": "meeting"})
+    x = urllib.request.urlopen(urllib.request.Request(url, headers=H), timeout=60).read().decode("utf-8", "replace")
+    info = {k: _cell_text(v) for k, v in re.findall(r"<ul>\s*<li>([^<]+)</li>\s*<li>(.*?)</li>\s*</ul>", x, re.S)}
+    rows = []
+    for row in x.split('class="table-row tbody"')[1:]:
+        cells = re.findall(r'<div class="table-cell[^"]*">(.*?)</div>', row, re.S)
+        if len(cells) < 6:
+            continue
+        pop = re.search(r'data-popup-url="([^"]+)"', row)
+        name, status, reason, total = _cell_text(cells[2]), _cell_text(cells[3]), _cell_text(cells[4]), _cell_text(cells[5])
+        if not total and pop:                         # per-item offer: add the item totals up
+            try:
+                pp = urllib.request.urlopen(urllib.request.Request(SITE + pop.group(1), headers=H), timeout=60).read().decode("utf-8", "replace")
+                vals = []
+                for prow in pp.split('class="table-row tbody"')[1:]:
+                    pc = [_cell_text(c) for c in re.findall(r'<div class="table-cell[^"]*">(.*?)</div>', prow, re.S)]
+                    if pc:
+                        v = _num(pc[-1])
+                        if v:
+                            vals.append(v)
+                if not vals:                          # some popups are plain tables
+                    vals = [v for v in (_num(t) for t in re.findall(r"([\d,]+\.\d+)\s*د\.ك", pp)) if v]
+                total = f"{sum(vals):,.3f} د.ك (بنود)" if vals else "بنود"
+            except Exception:                         # noqa: BLE001
+                total = "بنود"
+        rows.append([name, status, reason, total])
+    return {"meeting": meeting, "number": info.get("رقم المناقصه", number), "subject": info.get("الموضوع", ""),
+            "org": info.get("الجهة", ""), "closing": info.get("تاريخ الإقفال", ""), "meeting_date": info.get("تاريخ الاجتماع", ""),
+            "rows": rows, "url": CLOSING}
+
+
+def explore_account():
+    """after login: the links of the company area (to find past / purchased tenders) - titles and paths only"""
+    try:
+        op = login(force=True)
+    except Exception as e:                       # noqa: BLE001
+        return {"ok": False, "msg": str(e)}
+    out = {}
+    for path in ("/ar/", "/ar/company/", "/ar/account/", "/ar/company/profile/", "/ar/company/tenders/", "/ar/company/my-tenders/"):
+        try:
+            with op.open(urllib.request.Request(SITE + path, headers=UA), timeout=60) as r:
+                h = r.read().decode("utf-8", "replace")
+                final = r.geturl()
+        except Exception as e:                   # noqa: BLE001
+            out[path] = {"error": str(e)[:100]}
+            continue
+        links = {}
+        for href, label in re.findall(r'<a[^>]+href="(/ar/(?:company|account|tenders)[^"#]*)"[^>]*>(.*?)</a>', h, re.S):
+            t = re.sub(r"<[^>]+>|\s+", " ", label).strip()
+            if t:
+                links[href] = t[:60]
+        out[path] = {"final": final.replace(SITE, ""), "links": links}
+    return {"ok": True, "pages": out}

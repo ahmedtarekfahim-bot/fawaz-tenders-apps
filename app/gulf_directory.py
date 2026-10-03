@@ -212,6 +212,10 @@ def db():
             con.execute("ALTER TABLE items ADD COLUMN docs TEXT DEFAULT ''")
             con.commit()
         con.execute("CREATE TABLE IF NOT EXISTS capt_docs(item_id INTEGER PRIMARY KEY, docs TEXT, fetched TEXT, logged INT)")
+        if "archived" not in [r[1] for r in con.execute("PRAGMA table_info(capt_docs)")]:
+            con.execute("ALTER TABLE capt_docs ADD COLUMN archived TEXT DEFAULT ''")
+        con.execute("CREATE TABLE IF NOT EXISTS bid_sheets(key TEXT PRIMARY KEY, meeting TEXT, number TEXT, numkey TEXT, org TEXT, "
+                    "subject TEXT, closing TEXT, meeting_date TEXT, rows TEXT, fetched TEXT)")
         con.commit()
         _MIGRATED.append(1)
     return con
@@ -259,7 +263,7 @@ class Store:
         else:
             f.pop("kind", None)
             # the tender's own title beats the wording of a board decision about it
-            SUBJ_RANK = {"capt": 5, "pahw": 4, "gazette": 3, "awards": 3, "adham": 2, "capt-minutes": 0}
+            SUBJ_RANK = {"capt": 5, "pahw": 4, "capt-closing": 4, "gazette": 3, "awards": 3, "adham": 2, "capt-minutes": 0}
             if subject and SUBJ_RANK.get(source, 1) > SUBJ_RANK.get(it["subj_src"], 1):
                 it["subject"], it["subj_src"] = subject, source
             if not it["org"] and org:
@@ -580,6 +584,74 @@ def collect_pahw(store, progress, max_pages=25):
     return n
 
 
+# ----------------------------------------------------------------- source: CAPT bid opening (prices of every bidder)
+def bid_text(rows):
+    def val(r):
+        v = re.search(r"[\d,]+(?:\.\d+)?", r[3] or "")
+        try:
+            return float(v.group(0).replace(",", "")) if v else 9e18
+        except ValueError:
+            return 9e18
+    ok = sorted([r for r in rows if "مستبعد" not in (r[1] + r[2])], key=val)
+    return " · ".join(f"L{k + 1} {r[0]} {r[3]}" for k, r in enumerate(ok[:6])) + (f" · مستبعد: {len(rows) - len(ok)}" if len(rows) > len(ok) else "")
+
+
+def collect_capt_closing(store, progress):
+    """keep the bid-opening sheets (the site keeps only the latest meetings) and attach them to the tenders"""
+    import tender_docs as td
+    con = db()
+    known = {r[0]: r[1] for r in con.execute("SELECT key, fetched FROM bid_sheets")}
+    fresh = (datetime.datetime.now() - datetime.timedelta(hours=12)).isoformat(timespec="seconds")
+    try:
+        pairs = td.closing_list()
+    except Exception as e:                          # noqa: BLE001
+        progress(f"فض العطاءات: {e}")
+        pairs = []
+    new = 0
+    for meeting, number in pairs:
+        k = f"{meeting}|{number}"
+        if k in known and known[k] >= fresh:
+            continue
+        try:
+            sh = td.closing_sheet(meeting, number)
+        except Exception as e:                      # noqa: BLE001
+            progress(f"فض العطاءات {number}: {e}")
+            continue
+        con.execute("INSERT OR REPLACE INTO bid_sheets VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    (k, meeting, sh["number"], numkey(sh["number"]), sh["org"], sh["subject"], sh["closing"], sh["meeting_date"],
+                     json.dumps(sh["rows"], ensure_ascii=False), datetime.datetime.now().isoformat(timespec="seconds")))
+        new += 1
+        time.sleep(0.3)
+    con.commit()
+    n = 0
+    for r in con.execute("SELECT * FROM bid_sheets"):
+        rows = json.loads(r["rows"] or "[]")
+        if not rows:
+            continue
+        md = iso(any_date(r["meeting_date"]))
+        store.add("capt-closing", r["number"], r["org"], r["subject"], "أسعار معلنة",
+                  official=(3, td.CLOSING, f"فض العطاءات - اجتماع {r['meeting']}"),
+                  event={"date": md, "etype": f"فض العطاءات - اجتماع {r['meeting']}", "url": td.CLOSING,
+                         "text": f"{len(rows)} عرض: " + bid_text(rows)})
+        n += 1
+    con.close()
+    progress(f"فض العطاءات: {n} مناقصة ({new} جديد)")
+    return n
+
+
+def bid_sheet_for(number, org):
+    con = db()
+    nk = numkey(number)
+    best = None
+    for r in con.execute("SELECT * FROM bid_sheets WHERE numkey=?", (nk,)):
+        if org_sim(org, r["org"]) < 0.6:              # every ministry restarts at 1/2025/2026
+            continue
+        if not best or org_sim(org, r["org"]) > org_sim(org, best["org"]):
+            best = r
+    con.close()
+    return {k: best[k] for k in ("meeting", "number", "org", "closing", "meeting_date")} | {"rows": json.loads(best["rows"] or "[]")} if best else None
+
+
 # ----------------------------------------------------------------- source: recent awards (awards tool Excel)
 def refresh_awards(store, progress):
     """new CAPT awards into the awards Excel + the minutes list, so the directory is fresh on its own
@@ -825,7 +897,7 @@ def collect_news(progress, countries, days=150):
 
 
 # ----------------------------------------------------------------- update (tracking)
-SRC_NAME = {"capt": "الجهاز المركزي (المطروح)", "capt-minutes": "قرارات الجهاز (الكويت اليوم)",
+SRC_NAME = {"capt": "الجهاز المركزي (المطروح)", "capt-minutes": "قرارات الجهاز (الكويت اليوم)", "capt-closing": "فض العطاءات (الجهاز المركزي)",
             "gazette": "جريدة الكويت اليوم", "pahw": "الرعاية السكنية", "adham": "تقرير مشاريع",
             "awards": "كشف الترسيات", "etimad": "منصة اعتماد", "esupply": "دبي eSupply"}
 
@@ -915,7 +987,7 @@ def save_store(store):
 
 
 SOURCES = {"KW": [("ترسيات جديدة من الموقع", refresh_awards), ("الترسيات", collect_awards), ("جريدة الكويت اليوم", collect_gazette), ("تقرير مشاريع", collect_adham),
-                  ("الجهاز المركزي", collect_capt), ("الرعاية السكنية", collect_pahw)],
+                  ("الجهاز المركزي", collect_capt), ("فض العطاءات", collect_capt_closing), ("الرعاية السكنية", collect_pahw)],
            "SA": [("منصة اعتماد", collect_etimad)],
            "AE": [("دبي eSupply", collect_esupply)]}
 
@@ -941,6 +1013,9 @@ def run_update(progress=print, countries=None):
         n_docs = prefetch_capt_docs(progress)
         if n_docs:
             summary["ملفات الجهاز المركزي"] = n_docs
+        n_arch = archive_capt_docs(progress)
+        if n_arch:
+            summary["أرشيف الكراسات"] = n_arch
     except Exception as e:                  # noqa: BLE001
         summary["ملفات الجهاز المركزي"] = f"خطأ: {e}"
     if cfg.S.get("fawaz_watch", True):      # our own tenders + Sanjay's e-mails (PC only, confidential)
@@ -1221,13 +1296,18 @@ def item_docs(iid, live=True):
             try:
                 code, tno = _capt_q(off, it["number"])
                 r = td.capt_docs(tno, code)
-                save_capt_docs(iid, r)
+                kept = json.loads(cached["docs"]) if cached else []
+                if not any(d.get("url") for d in r.get("docs", [])) and any(d.get("url") for d in kept):
+                    r = {"docs": kept, "login": bool(cached["logged"]), "error": "",
+                         "note": "المناقصة اتشالت من صفحة الجهاز - دي اللينكات اللي البرنامج سجّلها وهي مطروحة"}
+                else:
+                    save_capt_docs(iid, r)
             except Exception as e:                  # noqa: BLE001
                 r = {"docs": json.loads(cached["docs"]) if cached else [], "login": bool(cached and cached["logged"]),
                      "error": f"موقع الجهاز ما ردّش: {e}"}
         else:
             r = {"docs": json.loads(cached["docs"]) if cached else [], "login": bool(cached and cached["logged"]), "error": ""}
-        capt = {"login": r.get("login"), "error": r.get("error", ""), "account": td.account()[0]}
+        capt = {"login": r.get("login"), "error": r.get("error", ""), "account": td.account()[0], "note": r.get("note", "")}
         docs += [dict(d, src="الجهاز المركزي", local=False) for d in r.get("docs", [])]
     for e in ev:                                    # CAPT minutes (public PDFs) + gazette pages on this PC
         if (e["url"] or "").lower().endswith(".pdf") and "capt.gov.kw" in (e["url"] or ""):
@@ -1237,6 +1317,8 @@ def item_docs(iid, live=True):
                          "date": e["date"], "src": "الكويت اليوم", "local": True, "file": e["file"], "page": e["page"]})
     if off.lower().endswith(".pdf"):
         docs.append({"label": it.get("official_label") or "المحضر", "url": off, "date": "", "src": "رسمي", "local": False})
+    for f in archived_files(iid):                   # kept from when the tender was still published
+        docs.append({"label": f.stem, "url": "", "path": str(f), "date": "", "src": "أرشيف البرنامج", "local": True, "archived": True})
     seen, out = set(), []
     for d in docs:
         k = d.get("url") or d.get("label")
@@ -1248,7 +1330,12 @@ def item_docs(iid, live=True):
 
 def save_capt_docs(iid, r):
     con = db()
-    con.execute("INSERT OR REPLACE INTO capt_docs VALUES(?,?,?,?)",
+    old = con.execute("SELECT docs FROM capt_docs WHERE item_id=?", (iid,)).fetchone()
+    if old and any(d.get("url") for d in json.loads(old["docs"] or "[]")) and not any(d.get("url") for d in r.get("docs", [])):
+        con.close()                                 # never replace links we have with nothing
+        return
+    con.execute("INSERT INTO capt_docs(item_id, docs, fetched, logged) VALUES(?,?,?,?) ON CONFLICT(item_id) DO UPDATE SET "
+                "docs=excluded.docs, fetched=excluded.fetched, logged=excluded.logged",
                 (iid, json.dumps(r.get("docs", []), ensure_ascii=False), datetime.datetime.now().isoformat(timespec="seconds"),
                  int(bool(r.get("login")))))
     con.commit()
@@ -1277,7 +1364,7 @@ def download_docs(iid):
     return {"folder": str(folder), "files": res, "locked": locked, "capt": d["capt"]}
 
 
-def prefetch_capt_docs(progress, limit=25):
+def prefetch_capt_docs(progress, limit=40):
     """with the owner's CAPT account: keep the file lists of open CAPT tenders fresh (a few per update),
     so the phone can show them too"""
     import tender_docs as td
@@ -1300,6 +1387,43 @@ def prefetch_capt_docs(progress, limit=25):
             break
         time.sleep(0.5)
     return n
+
+
+def archive_capt_docs(progress, limit=6):
+    """download the CAPT files of open tenders (Fawaz scope by default) while they are still published -
+    after closing / award the site removes them, the archive keeps them"""
+    import tender_docs as td
+    scope = cfg.S.get("archive_scope", "fawaz")     # fawaz / all / off
+    if scope == "off" or not all(td.account()):
+        return 0
+    con = db()
+    rows = con.execute("SELECT i.id, i.number, i.subject, i.fawaz, c.docs FROM items i JOIN capt_docs c ON c.item_id=i.id "
+                       "WHERE c.logged=1 AND (c.archived IS NULL OR c.archived='') AND i.status='مطروحة'" +
+                       (" AND i.fawaz=1" if scope == "fawaz" else "") + " LIMIT ?", (limit,)).fetchall()
+    con.close()
+    n = 0
+    for r in rows:
+        files = [d for d in json.loads(r["docs"] or "[]") if d.get("url")]
+        if not files:
+            continue
+        folder, res = td.download({"number": r["number"], "subject": r["subject"]}, files, DOCS_OUT)
+        if any(ok for _n, ok, _x in res):
+            con = db()
+            con.execute("UPDATE capt_docs SET archived=? WHERE item_id=?", (str(folder), r["id"]))
+            con.commit()
+            con.close()
+            n += 1
+    if n:
+        progress(f"أرشيف الكراسات: اتحفظت ملفات {n} مناقصة")
+    return n
+
+
+def archived_files(iid):
+    con = db()
+    r = con.execute("SELECT archived FROM capt_docs WHERE item_id=?", (iid,)).fetchone()
+    con.close()
+    folder = Path(r["archived"]) if r and r["archived"] else None
+    return sorted(folder.iterdir()) if folder and folder.is_dir() else []
 
 
 def detail(iid):
@@ -1328,7 +1452,8 @@ def detail(iid):
                              "org": r["org"], "winner": r["winner"] or "-", "total": r["value"] or "-", "score": sc})
         hist = sorted(hist, key=lambda x: (round(x["score"], 1), x["date"]), reverse=True)[:12]
     news = search_news(it["subject"], limit=12, country=it["country"])
-    return {"item": it, "events": ev, "changes": chg, "history": hist, "hits": hits, "news": news}
+    bids = bid_sheet_for(it["number"], it["org"]) if it["country"] == "KW" and it["number"] else None
+    return {"item": it, "events": ev, "changes": chg, "history": hist, "hits": hits, "news": news, "bids": bids}
 
 
 # ----------------------------------------------------------------- PDF
@@ -1531,6 +1656,8 @@ def serve(open_browser=True):
                 if u.path == "/api/capt-account":
                     import tender_docs as td
                     user, has = td.account()
+                    if q.get("explore"):                # what the company account area offers (menu links only)
+                        return self.send(td.explore_account())
                     return self.send({"user": user, "has_password": has})
                 if u.path == "/api/search":
                     return self.send(search(q.get("q", ""), q.get("status", ""), q.get("cat", ""), q.get("org", ""),
