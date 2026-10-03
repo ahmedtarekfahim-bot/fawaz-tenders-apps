@@ -125,9 +125,82 @@ def collect_pc_feed(store, progress):
     return n
 
 
-gd.SOURCES["KW"] = [("ترسيات جديدة من الموقع", refresh_awards), ("الترسيات", gd.collect_awards),
-                    ("من الكمبيوتر", collect_pc_feed), ("الجهاز المركزي", gd.collect_capt),
-                    ("الرعاية السكنية", gd.collect_pahw)]
+# ----------------------------------------------------------------- never hang on a site that ignores the cloud
+# Some government sites do not answer foreign (GitHub = US) addresses: probe each one quickly and skip it -
+# its items still arrive through the PC feed. The whole collection also has a time budget.
+import urllib.request                                              # noqa: E402
+START, BUDGET = time.time(), 22 * 60
+_get = ct.http_get
+
+
+def quick_get(url, binary=False, tries=2):
+    return _get(url, binary=binary, tries=tries)
+
+
+ct.http_get = quick_get
+_ET_FAILS = [0]
+
+
+def etimad_json(path, params=None):
+    if _ET_FAILS[0] >= 3:                                          # Etimad stopped answering - give up for this run
+        return None
+    url = gd.ETIMAD + path + ("?" + urllib.parse.urlencode(params) if params else "")
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=gd.ET_H), timeout=25) as r:
+            _ET_FAILS[0] = 0
+            return json.loads(r.read())
+    except Exception:                                              # noqa: BLE001
+        _ET_FAILS[0] += 1
+        return None
+
+
+gd.etimad_json = etimad_json
+import urllib.parse                                                # noqa: E402
+
+PROBES = {"الجهاز المركزي": ct.SITE + "/ar/tenders/opening-tenders/", "ترسيات جديدة من الموقع": ct.SITE + "/ar/",
+          "الرعاية السكنية": "https://www.pahw.gov.kw/Tenders_arabic",
+          "منصة اعتماد": gd.ETIMAD + "/Tender/GetMainActivitiesAsync",
+          "دبي eSupply": gd.ESUPPLY + "/esop/guest/go/public/opportunity/current"}
+
+
+def guarded(name, fn):
+    def run(store, progress):
+        if time.time() - START > BUDGET:
+            progress(f"{name}: اتعدّى (وقت التشغيل خلص) - هتيجي من الكمبيوتر")
+            return "اتعدّى: الوقت"
+        url = PROBES.get(name)
+        if url:
+            try:
+                h = gd.ET_H if "etimad" in url else ct.UA
+                with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=20) as r:
+                    r.read(256)
+            except Exception as e:                                 # noqa: BLE001
+                progress(f"{name}: الموقع مش بيرد على السحابة ({e}) - هيجي من الكمبيوتر")
+                return f"اتعدّى: {str(e)[:80]}"
+        t = time.time()
+        n = fn(store, progress)
+        progress(f"{name}: خلص في {time.time() - t:.0f} ثانية")
+        return n
+    return run
+
+
+gd.SOURCES["KW"] = [("ترسيات جديدة من الموقع", guarded("ترسيات جديدة من الموقع", refresh_awards)),
+                    ("الترسيات", gd.collect_awards), ("من الكمبيوتر", collect_pc_feed),
+                    ("الجهاز المركزي", guarded("الجهاز المركزي", gd.collect_capt)),
+                    ("الرعاية السكنية", guarded("الرعاية السكنية", gd.collect_pahw))]
+gd.SOURCES["SA"] = [("منصة اعتماد", guarded("منصة اعتماد", gd.collect_etimad))]
+gd.SOURCES["AE"] = [("دبي eSupply", guarded("دبي eSupply", gd.collect_esupply))]
+_news = gd.collect_news
+
+
+def collect_news(progress, countries, days=150):
+    if time.time() - START > BUDGET:
+        progress("الأخبار: اتعدّت (وقت التشغيل خلص)")
+        return "اتعدّى: الوقت"
+    return _news(progress, countries, days)
+
+
+gd.collect_news = collect_news
 
 
 def main():

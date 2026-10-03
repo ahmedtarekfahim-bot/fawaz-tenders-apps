@@ -35,7 +35,18 @@ jobs:
           python-version: "3.12"
       - run: pip install --quiet openpyxl
       - name: Collect + build the phone data
-        run: python cloud/run_cloud.py state feed site
+        timeout-minutes: 30
+        run: |
+          set -o pipefail
+          python -u cloud/run_cloud.py state feed site 2>&1 | tee run.log
+      - name: Publish the run log (branch cloud-log)
+        if: always()
+        run: |
+          mkdir -p logdir && cp run.log logdir/ 2>/dev/null || echo "no log" > logdir/run.log
+          echo "${{ job.status }} $(date '+%F %T')" > logdir/status.txt
+          cd logdir && git init -q -b cloud-log && git add -A
+          git -c user.name="FAWAZ Tenders (cloud)" -c user.email="ahmedtarekfahim@gmail.com" commit -q -m "log"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" cloud-log
       - name: Save state
         if: always()
         uses: actions/cache/save@v4
