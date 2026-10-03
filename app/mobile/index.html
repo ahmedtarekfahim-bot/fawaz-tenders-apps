@@ -343,7 +343,7 @@ async function load(silent){
     const got=Object.fromEntries(await Promise.all(names.map(async n=>[n,await open(n)])));
     D=[].concat(...['KW','SA','AE'].map(c=>got['directory_'+c]||[]));
     N=[].concat(...['KW','SA','AE'].map(c=>got['news_'+c]||[]),got.news_co||[]);
-    A=got.awards||[];MEET=got.meetings||{}}
+    A=got.awards||[];A.forEach((a,i)=>a.r=i);MEET=got.meetings||{}}   // own unique key per award (details open by it)
   catch(e){if(/OperationError|decrypt/i.test(String(e))){ACC=null;return showLogin('كلمة السر اتغيرت - ادخل بالجديدة')}
     if(!silent)$('#list').innerHTML='<div class="empty">الداتا ما اتفتحتش - جرّب تاني</div>';return}
   META=meta;META._w=sig;ME=me;

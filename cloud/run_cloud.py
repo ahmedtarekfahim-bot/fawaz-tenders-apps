@@ -55,6 +55,11 @@ def merged_awards():
         if award_key(r) not in have:
             rows.append(r)
             have.add(award_key(r))
+    # every row needs its own number - the phone opens an award's details by it (even when the CAPT
+    # site refuses the cloud and refresh_awards below never runs)
+    rows.sort(key=lambda r: r["date"] or "", reverse=True)
+    for i, r in enumerate(rows):
+        r["row"] = i + 3
     return rows
 
 
