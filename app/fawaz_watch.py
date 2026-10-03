@@ -137,13 +137,17 @@ def parse_history(path):
 # ----------------------------------------------------------------- source: "tenders on hand" e-mails
 def outlook_items(days=150):
     """Sanjay's tenders-on-hand e-mails from the local Outlook (newest first); [] when Outlook is not there"""
+    OUTLOOK_ERR[0] = ""
     try:
-        import pythoncom, win32com.client
-    except ImportError:
+        import pythoncom
+        import win32com.client.dynamic
+    except ImportError as e:
+        OUTLOOK_ERR[0] = f"pywin32: {e}"
         return []
     pythoncom.CoInitialize()
     try:
-        ns = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+        # dynamic dispatch: no makepy / gen_py cache, which is not writable inside the installed program
+        ns = win32com.client.dynamic.Dispatch("Outlook.Application").GetNamespace("MAPI")
         items = ns.GetDefaultFolder(6).Items           # Inbox
         since = datetime.datetime.now() - datetime.timedelta(days=days)
         try:
@@ -176,10 +180,14 @@ def outlook_items(days=150):
             except Exception:                           # noqa: BLE001 - skip an odd item
                 continue
         return out
-    except Exception:                                   # noqa: BLE001 - Outlook closed / not configured
+    except Exception as e:                              # noqa: BLE001 - Outlook closed / not configured
+        OUTLOOK_ERR[0] = str(e)[:200]
         return []
     finally:
         pythoncom.CoUninitialize()
+
+
+OUTLOOK_ERR = [""]
 
 
 def parse_onhand(path):
@@ -438,7 +446,8 @@ def run(gd, ct, progress=print):
         add_feed(con, "إيميل Sanjay", m["subject"], f"{m['received'].replace('T', ' ')} · {Path(m['attachment']).name if m['attachment'] else 'من غير مرفق'}",
                  uniq=f"mail|{m['id']}", at=BASELINE if first else None)
         new_mail += 1
-    summary["إيميلات Sanjay"] = f"{len(mails)} ({new_mail} جديد)" if mails else "Outlook مش متاح"
+    summary["إيميلات Sanjay"] = f"{len(mails)} ({new_mail} جديد)" if mails else \
+        f"مفيش من Outlook ({OUTLOOK_ERR[0] or 'ملقيتش إيميلات tenders on hand آخر 150 يوم'})"
     latest = next((m["attachment"] for m in mails if m["attachment"]), "")
     if not latest:
         old = sorted(ONHAND_DIR.glob("*.xls*")) if ONHAND_DIR.exists() else []
