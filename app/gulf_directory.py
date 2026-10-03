@@ -4,7 +4,7 @@
 One program for every tender / practice / project that is open, about to be tendered, under
 study or just awarded. Items are tracked across updates: anything new or changed (status,
 closing date, winner, value) is logged in the `changes` table. The server re-runs the update
-by itself every AUTO_HOURS while it is open.
+by itself every few minutes while it runs (auto_update_minutes, changeable from the window).
 
 Saudi Arabia: Etimad visitor API (tenders.etimad.sa) - visitors only get the first 3 pages
 (72 rows) of any search, so it is queried per activity, newest-first and oldest-first; the
@@ -41,7 +41,16 @@ DB = BASE / "directory.sqlite"
 OUT = BASE / "تقارير الدليل"
 LOG = BASE / "سجل التحديث.txt"
 PORT = 8766
-AUTO_HOURS = float(cfg.S.get("auto_update_hours", 6))
+
+
+def auto_minutes():
+    """minutes between automatic updates (0 = off) - read live, the window can change it"""
+    try:
+        return max(0, int(cfg.S.get("auto_update_minutes", 5)))
+    except (TypeError, ValueError):
+        return 5
+
+
 COUNTRIES = {"KW": "الكويت", "SA": "السعودية", "AE": "الإمارات"}
 GAZETTE_DIRS = [Path(p) for p in cfg.S.get("gazette_dirs", [])]
 GAZETTE_PDF_DIR = Path(cfg.S.get("gazette_pdf_dir", ""))
@@ -188,10 +197,18 @@ BASELINE = "2000-01-01T00:00:00"      # first_seen of items loaded in a country'
 TRACKED = {"status": "الحالة", "closing": "موعد الإقفال", "winner": "الفائز", "value": "القيمة", "award_date": "تاريخ الترسية"}
 
 
+_MIGRATED = []
+
+
 def db():
     con = sqlite3.connect(DB, timeout=30)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
+    if not _MIGRATED:                   # news.seen_at = when we first saw it (for the unread counts)
+        if "seen_at" not in [r[1] for r in con.execute("PRAGMA table_info(news)")]:
+            con.execute("ALTER TABLE news ADD COLUMN seen_at TEXT DEFAULT ''")
+            con.commit()
+        _MIGRATED.append(1)
     return con
 
 
@@ -539,6 +556,17 @@ def collect_pahw(store, progress, max_pages=25):
 
 
 # ----------------------------------------------------------------- source: recent awards (awards tool Excel)
+def refresh_awards(store, progress):
+    """new CAPT awards into the awards Excel + the minutes list, so the directory is fresh on its own
+    (the awards program does the same; the Excel is only rewritten when something new came)"""
+    new, _last = ct.update_excel(progress)
+    try:
+        ct.fetch_meetings()
+    except Exception as e:              # noqa: BLE001 - the minutes list is a bonus
+        progress(f"قائمة المحاضر: {e}")
+    return len(new)
+
+
 def collect_awards(store, progress, days=365):
     since = iso(TODAY() - datetime.timedelta(days=days))
     n = 0
@@ -706,6 +734,16 @@ NEWS = {
 }
 
 
+# news about our own companies - saved with query "شركة: ..." and shown in the Fawaz / KJAC tab
+COMPANY_NEWS = {"gl": "KW", "days": 365, "queries": [
+    '"فواز للتجارة والخدمات الهندسية"', '"شركة فواز للتجارة"', '"فواز للتبريد"', '"شركة فواز" مناقصة',
+    '"الكويتية اليابانية للتكييف"', '"الكويتية اليابانية" تكييف', '"Fawaz Trading" Kuwait', '"Fawaz Refrigeration"',
+    '"KJAC" Kuwait', '"Kuwait Japan Air Conditioning"'],
+    # the full company name in quotes is precise enough even when the name is only inside the article
+    "trust": {'"فواز للتجارة والخدمات الهندسية"', '"شركة فواز للتجارة"', '"الكويتية اليابانية للتكييف"'},
+    "rx": r"فواز|fawaz|kjac|الكويتي[ةه] الياباني[ةه]|kuwait japan", "outlets": r"(?!)"}
+
+
 def news_country_ok(country, title, summary, source):
     c = NEWS[country]
     return bool(re.search(c["rx"], title + " " + summary, re.I) or re.search(c["outlets"], source or "", re.I))
@@ -715,11 +753,16 @@ def collect_news(progress, countries, days=150):
     con = db()
     since = iso(TODAY() - datetime.timedelta(days=days))
     n = 0
-    for cc in countries:
-        cfg = NEWS[cc]
+    seen_at = datetime.datetime.now().isoformat(timespec="seconds")
+    groups = [(cc, NEWS[cc], "") for cc in countries]
+    if "KW" in countries:
+        groups.append(("KW", COMPANY_NEWS, "شركة: "))
+    for cc, cfg, tag in groups:
         for q in cfg["queries"]:
             ar = any("؀" <= ch <= "ۿ" for ch in q)
-            url = ("https://news.google.com/rss/search?q=" + urllib.parse.quote(q + " when:150d") +
+            gdays = cfg.get("days", days)
+            gsince = iso(TODAY() - datetime.timedelta(days=gdays))
+            url = ("https://news.google.com/rss/search?q=" + urllib.parse.quote(q + f" when:{gdays}d") +
                    (f"&hl=ar&gl={cfg['gl']}&ceid={cfg['gl']}:ar" if ar else f"&hl=en-US&gl={cfg['gl']}&ceid={cfg['gl']}:en"))
             try:
                 root = ET.fromstring(ct.http_get(url, binary=True))
@@ -734,20 +777,23 @@ def collect_news(progress, countries, days=150):
                     d = datetime.datetime.strptime((it.findtext("pubDate") or "")[:25].strip(), "%a, %d %b %Y %H:%M:%S").date()
                 except ValueError:
                     d = None
-                if not d or iso(d) < since:
+                if not d or iso(d) < gsince:
                     continue
                 if src and title.endswith(" - " + src):
                     title = title[: -len(src) - 3]
                 desc = ct.strip_tags(it.findtext("description") or "")
-                if not news_country_ok(cc, title, desc, src):
+                if not (q in cfg.get("trust", ()) or re.search(cfg["rx"], title + " " + desc, re.I) or
+                        re.search(cfg["outlets"], src or "", re.I)):
                     continue
-                cur = con.execute("INSERT OR IGNORE INTO news(country,date,source,title,summary,url,query,cats,fawaz) "
-                                  "VALUES(?,?,?,?,?,?,?,?,?)",
-                                  (cc, iso(d), src, title, desc[:400], link, q, ",".join(categorize(title)),
-                                   int(fawaz_scope(title))))
+                cur = con.execute("INSERT OR IGNORE INTO news(country,date,source,title,summary,url,query,cats,fawaz,seen_at) "
+                                  "VALUES(?,?,?,?,?,?,?,?,?,?)",
+                                  (cc, iso(d), src, title, desc[:400], link, tag + q, ",".join(categorize(title)),
+                                   int(fawaz_scope(title) or bool(tag)), seen_at))
+                if tag and not cur.rowcount:    # already there from a general search -> it is about us too
+                    con.execute("UPDATE news SET query=?, fawaz=1 WHERE url=? AND query NOT LIKE 'شركة:%'", (tag + q, link))
                 n += cur.rowcount
             con.commit()
-            progress(f"الأخبار ({COUNTRIES[cc]}): {q}")
+            progress(f"الأخبار ({'فواز و KJAC' if tag else COUNTRIES[cc]}): {q}")
             time.sleep(0.3)
     con.close()
     return n
@@ -840,7 +886,7 @@ def save_store(store):
     return new_n, chg_n
 
 
-SOURCES = {"KW": [("الترسيات", collect_awards), ("جريدة الكويت اليوم", collect_gazette), ("تقرير مشاريع", collect_adham),
+SOURCES = {"KW": [("ترسيات جديدة من الموقع", refresh_awards), ("الترسيات", collect_awards), ("جريدة الكويت اليوم", collect_gazette), ("تقرير مشاريع", collect_adham),
                   ("الجهاز المركزي", collect_capt), ("الرعاية السكنية", collect_pahw)],
            "SA": [("منصة اعتماد", collect_etimad)],
            "AE": [("دبي eSupply", collect_esupply)]}
@@ -863,6 +909,12 @@ def run_update(progress=print, countries=None):
         summary["أخبار جديدة"] = f"خطأ: {e}"
     new_n, chg_n = save_store(store)
     summary["جديد"], summary["اتغيّر"] = new_n, chg_n
+    if cfg.S.get("fawaz_watch", True):      # our own tenders + Sanjay's e-mails (PC only, confidential)
+        try:
+            import fawaz_watch
+            summary["متابعة فواز"] = fawaz_watch.run(sys.modules[__name__], ct, progress)
+        except Exception as e:              # noqa: BLE001
+            summary["متابعة فواز"] = f"خطأ: {e}"
     try:                                    # phone app data (GitHub Pages) - only where mobile_publish is on
         import mobile_export
         if mobile_export.publish(progress):
@@ -963,6 +1015,83 @@ def search_news(q, limit=80, fawaz=False, country=""):
             out.append((sc, r))
     out.sort(key=lambda t: (round(t[0], 1), t[1]["date"]), reverse=True)
     return [dict(r, score=round(s, 2)) for s, r in out[:limit]]
+
+
+# ----------------------------------------------------------------- unread counts (badges on the tabs)
+US_RX = r"فواز|fawaz|kjac|الكويتي[ةه] الياباني[ةه]|kuwait japan"
+
+
+def _seen_store():
+    import fawaz_watch
+    return fawaz_watch
+
+
+def tab_markers():
+    """the current 'everything up to here was read' point of each tab"""
+    con = db()
+    m = {"items": datetime.datetime.now().isoformat(timespec="seconds"),
+         "news": datetime.datetime.now().isoformat(timespec="seconds")}
+    con.close()
+    try:
+        m["awards"] = str(len(ct.read_excel_rows()))
+    except Exception:                   # noqa: BLE001
+        m["awards"] = "0"
+    fw = _seen_store()
+    if fw.DB.exists():
+        c = fw.db()
+        m["watch"] = str(c.execute("SELECT coalesce(max(id),0) FROM feed").fetchone()[0])
+        c.close()
+    else:
+        m["watch"] = "0"
+    return m
+
+
+def unread():
+    """-> ({tab: count}, {tab: marker}); a tab never opened starts at 'nothing unread'"""
+    fw = _seen_store()
+    seen = fw.get_seen()
+    cur = None
+    for tab in ("items", "news", "awards", "watch"):
+        if tab not in seen:
+            cur = cur or tab_markers()
+            fw.set_seen(tab, cur[tab])
+            seen[tab] = cur[tab]
+    con = db()
+    n = {"items": con.execute("SELECT count(*) FROM items WHERE (first_seen>? AND first_seen>?) OR changed>?",
+                              (seen["items"], BASELINE, seen["items"])).fetchone()[0],
+         "news": con.execute("SELECT count(*) FROM news WHERE seen_at>? AND query NOT LIKE 'شركة:%'", (seen["news"],)).fetchone()[0]}
+    con.close()
+    try:
+        n["awards"] = max(0, len(ct.read_excel_rows()) - int(seen["awards"] or 0))
+    except Exception:                   # noqa: BLE001
+        n["awards"] = 0
+    n["watch"] = fw.unread_feed(seen["watch"])
+    return n, seen
+
+
+def mark_seen(tab):
+    m = tab_markers()
+    if tab in m:
+        _seen_store().set_seen(tab, m[tab])
+
+
+def watch_view():
+    """everything for the Fawaz / KJAC tab"""
+    fw = _seen_store()
+    d = fw.data()
+    con = db()
+    d["company_news"] = [dict(r) for r in con.execute(
+        "SELECT id, date, source, title, url, seen_at FROM news WHERE query LIKE 'شركة:%' ORDER BY date DESC LIMIT 150")]
+    d["won_items"] = [dict(r) for r in con.execute(
+        "SELECT id, country, number, org, subject, status, winner, value, award_date, official FROM items "
+        "WHERE winner<>'' ORDER BY award_date DESC")]
+    con.close()
+    d["won_items"] = [r for r in d["won_items"] if re.search(US_RX, r["winner"], re.I)][:150]
+    try:
+        d["awards"] = [r for r in ct.read_excel_rows() if re.search(US_RX, r["winner"] or "", re.I)][:200]
+    except Exception:                   # noqa: BLE001
+        d["awards"] = []
+    return d
 
 
 def detail(iid):
@@ -1094,7 +1223,7 @@ def stats(country=""):
                                      (iso(TODAY() + datetime.timedelta(days=7)), *aw[1])).fetchone()[0],
          "fresh": con.execute(f"SELECT count(*) FROM items WHERE (first_seen>=? OR changed>=?){aw[0]}", (since, since, *aw[1])).fetchone()[0],
          "countries": dict(con.execute("SELECT country, count(*) FROM items GROUP BY country").fetchall()),
-         "country_names": COUNTRIES, "auto_hours": AUTO_HOURS,
+         "country_names": COUNTRIES, "auto_minutes": auto_minutes(),
          "cats": [c for c, _ in CATS] + ["أخرى"]}
     con.close()
     return s
@@ -1132,21 +1261,26 @@ def serve(open_browser=True):
         threading.Thread(target=job, daemon=True).start()
 
     def scheduler():
-        # periodic update from the internet while the program is open
+        # periodic update from the internet while the program runs; the interval can change from the window
+        last_check = 0
         while True:
-            try:                         # installed program: new version on GitHub -> install it
-                if updater.check_and_apply(lambda m: state["log"].append(m)):
-                    os._exit(0)
-            except Exception:            # noqa: BLE001
-                pass
-            age = last_run_age_hours()
-            if age >= AUTO_HOURS:
-                start_update(f"تحديث تلقائي (آخر تحديث من {age:.0f} ساعة)" if age < 1e8 else "أول تحديث")
-                wait = AUTO_HOURS * 3600
-            else:
-                wait = (AUTO_HOURS - age) * 3600
-            state["next"] = (datetime.datetime.now() + datetime.timedelta(seconds=wait)).isoformat(timespec="minutes")
-            time.sleep(max(300, wait))
+            if time.time() - last_check >= 1800:
+                last_check = time.time()
+                try:                     # installed program: new version on GitHub -> install it
+                    if updater.check_and_apply(lambda m: state["log"].append(m)):
+                        os._exit(0)
+                except Exception:        # noqa: BLE001
+                    pass
+            every = auto_minutes()
+            if not every:
+                state["next"] = None
+            elif state["update"] != "running":
+                age = last_run_age_hours() * 60
+                if age >= every:
+                    start_update(f"تحديث تلقائي (آخر تحديث من {age:.0f} دقيقة)" if age < 1e8 else "أول تحديث")
+                    age = 0
+                state["next"] = (datetime.datetime.now() + datetime.timedelta(minutes=every - age)).isoformat(timespec="minutes")
+            time.sleep(20)
 
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
@@ -1168,8 +1302,15 @@ def serve(open_browser=True):
                 if u.path == "/":
                     return self.send((cfg.res_dir() / "ui" / "واجهة الدليل.html").read_bytes(), ctype="text/html; charset=utf-8")
                 if u.path == "/api/status":
+                    try:
+                        un, seen = unread()
+                    except Exception:   # noqa: BLE001
+                        un, seen = {}, {}
                     return self.send(dict(stats(q.get("country", "")), update=state["update"], log=state["log"][-18:],
-                                          next=state["next"], version=cfg.build_info().get("version")))
+                                          next=state["next"], version=cfg.build_info().get("version"),
+                                          unread=un, seen=seen))
+                if u.path == "/api/watch":
+                    return self.send(watch_view())
                 if u.path == "/api/search":
                     return self.send(search(q.get("q", ""), q.get("status", ""), q.get("cat", ""), q.get("org", ""),
                                             q.get("fawaz") == "1", int(q.get("days") or 0), country=q.get("country", ""),
@@ -1233,6 +1374,19 @@ def serve(open_browser=True):
                 if u.path == "/api/update":
                     start_update("تحديث يدوي")
                     return self.send({"status": "running"})
+                if u.path == "/api/seen":
+                    mark_seen(body.get("tab", ""))
+                    return self.send({"ok": True})
+                if u.path == "/api/open-file":            # an attachment we saved (Sanjay's reports)
+                    import fawaz_watch
+                    f = Path(body.get("path", "")).resolve()
+                    if f.exists() and str(f).startswith(str(fawaz_watch.WATCH_DIR.resolve())):
+                        os.startfile(f)
+                    return self.send({"ok": True})
+                if u.path == "/api/settings":
+                    if "auto_update_minutes" in body:
+                        cfg.save_setting("auto_update_minutes", max(0, int(body["auto_update_minutes"])))
+                    return self.send({"auto_minutes": auto_minutes()})
                 self.send({"error": "not found"}, 404)
             except Exception as e:      # noqa: BLE001
                 self.send({"error": str(e)}, 500)

@@ -344,6 +344,8 @@ def update_excel(progress=print):
            and not (r["notes"].startswith("بنود") and
                     row_key(r["date"], r["tno"], "", "", "بنود") in existing)]
     n = len(new)
+    if not n:                       # nothing new: leave the file (and its backups) alone
+        return new, last
     # the pasted top rows keep dates as dd/mm/yyyy text -> make them real dates, same look
     for r in range(3, ws.max_row + 1):
         v = ws.cell(r, 7).value
@@ -966,20 +968,34 @@ def run_update(progress=print):
     return summary
 
 
+def auto_minutes():
+    """minutes between automatic awards + minutes refreshes (0 = off) - the window can change it"""
+    try:
+        return max(0, int(cfg.S.get("awards_update_minutes", 5)))
+    except (TypeError, ValueError):
+        return 5
+
+
 def auto_jobs(state):
-    """installed program: check for a new version, and refresh awards + minutes every few days"""
+    """installed program: check for a new version, and refresh awards + minutes every few minutes"""
+    last_check = 0
     while True:
-        try:
-            if updater.check_and_apply(lambda m: state["log"].append(m)):
-                os._exit(0)             # the setup takes over and restarts the programs
-        except Exception:               # noqa: BLE001
-            pass
+        if time.time() - last_check >= 1800:
+            last_check = time.time()
+            try:
+                if updater.check_and_apply(lambda m: state["log"].append(m)):
+                    os._exit(0)         # the setup takes over and restarts the programs
+            except Exception:           # noqa: BLE001
+                pass
         try:
             last = datetime.datetime.fromisoformat(LAST_RUN.read_text(encoding="utf-8").strip())
-            age = (datetime.datetime.now() - last).total_seconds() / 86400
+            age = (datetime.datetime.now() - last).total_seconds() / 60
         except (OSError, ValueError):
             age = 1e9
-        if age >= cfg.S.get("awards_update_days", 3) and state.get("update") != "running":
+        every = auto_minutes()
+        state["next"] = (datetime.datetime.now() + datetime.timedelta(minutes=max(0, every - age))
+                         ).isoformat(timespec="minutes") if every else None
+        if every and age >= every and state.get("update") != "running":
             state["update"], state["log"] = "running", ["تحديث تلقائي للترسيات والمحاضر"]
             try:
                 s = run_update(lambda m: state["log"].append(m))
@@ -988,7 +1004,7 @@ def auto_jobs(state):
             except Exception as e:      # noqa: BLE001
                 state["log"].append(f"خطأ: {e}")
                 state["update"] = "error"
-        time.sleep(6 * 3600)
+        time.sleep(20)
 
 
 def index_stats():
@@ -1033,7 +1049,10 @@ def serve(open_browser=True):
                     last = max((r["date"] for r in rows if r["date"]), default="")
                     return self.send({"rows": len(rows), "last_award": last, "index": index_stats(),
                                       "version": cfg.build_info().get("version"),
-                                      "update": state["update"], "log": state["log"][-15:]})
+                                      "update": state["update"], "log": state["log"][-15:],
+                                      "auto_minutes": auto_minutes(), "next": state.get("next"),
+                                      "last_update": LAST_RUN.read_text(encoding="utf-8").strip()
+                                      if LAST_RUN.exists() else ""})
                 if u.path == "/api/search":
                     return self.send(search_awards(q.get("q", ""), limit=int(q.get("limit", 40)),
                                                    year=q.get("year") or None))
@@ -1092,6 +1111,10 @@ def serve(open_browser=True):
                             state["update"] = "error"
                     threading.Thread(target=job, daemon=True).start()
                     return self.send({"status": "running"})
+                if u.path == "/api/settings":
+                    if "awards_update_minutes" in body:
+                        cfg.save_setting("awards_update_minutes", max(0, int(body["awards_update_minutes"])))
+                    return self.send({"auto_minutes": auto_minutes()})
                 self.send({"error": "not found"}, 404)
             except Exception as e:          # noqa: BLE001
                 self.send({"error": str(e)}, 500)

@@ -36,10 +36,11 @@ def _defaults():
         "gazette_dirs": [str(p) for p in gz],                       # weekly Kuwait Al-Youm report files
         "gazette_pdf_dir": r"D:\Download 2026",                      # gazette issue PDFs (<issue>.pdf)
         "adham_reports_dir": r"D:\1-Work\1-Masharea Tenders\1- Kuwait\0-Reports",
-        "auto_update_hours": 6,                                      # Gulf directory data refresh
-        "awards_update_days": 3,                                     # CAPT awards Excel refresh
+        # automatic data refresh while the program runs, in minutes (0 = off); changeable from the window
+        "auto_update_minutes": 5,                                    # Gulf directory
+        "awards_update_minutes": 5,                                  # CAPT awards + minutes
         "check_program_updates": True,
-        # publish the phone app data to GitHub Pages after each update (one PC is enough)
+        # send the PC-only public data (gazette reports) to the cloud job that feeds the phone app
         "mobile_publish": LEGACY_ARCHIVE.exists(),
     }
 
@@ -55,6 +56,18 @@ def settings():
         except OSError:
             pass
     return s
+
+
+def save_setting(key, value):
+    """change one setting in settings.json (and in memory) - used by the windows' auto-update option"""
+    S[key] = value
+    try:
+        cur = json.loads(SETTINGS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        cur = {}
+    cur[key] = value
+    LOCAL.mkdir(parents=True, exist_ok=True)
+    SETTINGS.write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 S = settings()

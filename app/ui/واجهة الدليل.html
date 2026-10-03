@@ -38,6 +38,12 @@ main{display:grid;grid-template-columns:minmax(360px,44%) 1fr;gap:14px;padding:1
 .res{padding:9px 14px;border-bottom:1px solid var(--line);cursor:pointer}
 .res:hover{background:#f7fafd}
 .res.sel{background:var(--soft);border-right:4px solid var(--brand2)}
+.res.unread{background:#fff4d6;border-right:4px solid #f59e0b}.res.unread.sel{background:#ffe9b0}
+.bdg{display:inline-block;min-width:18px;background:#e5484d;color:#fff;border-radius:20px;font-size:11px;line-height:17px;padding:0 6px;margin-inline-start:6px;font-weight:700;text-align:center}
+.bdg:empty{display:none}
+.wk{font-size:11px;border-radius:20px;padding:0 8px;background:#e8eef6;color:#26476e;font-weight:700}
+.wk.us{background:var(--fz);color:#5a4b00}
+.mail{white-space:pre-wrap;font-size:13px;background:#f7f9fb;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:420px;overflow:auto}
 .res .t{font-weight:600}
 .m{color:var(--muted);font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap;margin-top:3px;align-items:center}
 .tno{direction:ltr;unicode-bidi:isolate;display:inline-block;background:#f0f3f7;border-radius:5px;padding:0 6px;font-size:12.5px}
@@ -82,11 +88,13 @@ a{color:#0b5aa5}
   <div class="ctry" id="ctry"><button data-c="" class="on">الكل</button><button data-c="KW">الكويت</button><button data-c="SA">السعودية</button><button data-c="AE">الإمارات</button></div>
   <span class="stat" id="stat">...</span>
   <span class="sp"></span>
-  <button id="btnUpdate" title="بيتعمل تلقائي كل كام ساعة وهو مفتوح">تحديث دلوقتي</button>
+  <label class="stat" title="البرنامج بيجيب الجديد من المواقع لوحده طول ما هو شغال (حتى لو النافذة مقفولة)">تحديث تلقائي
+    <select id="auto" style="color:var(--ink)"><option value="5">كل 5 دقايق</option><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
+  <button id="btnUpdate" title="يجيب الجديد من المواقع دلوقتي">تحديث دلوقتي</button>
   <button onclick="post('/api/open-folder')">فولدر التقارير</button>
 </header>
 <div class="bar">
-  <div class="seg" id="mode"><button data-m="items" class="on">المناقصات والمشاريع</button><button data-m="news">الأخبار</button><button data-m="awards">ترسيات ومحاضر الكويت</button></div>
+  <div class="seg" id="mode"><button data-m="items" class="on">المناقصات والمشاريع</button><button data-m="news">الأخبار</button><button data-m="awards">ترسيات ومحاضر الكويت</button><button data-m="watch">متابعة فواز و KJAC</button></div>
   <input type="search" id="q" placeholder="اكتب عنوان المناقصة أو المشروع أو رقمها أو الجهة ... (فاضي = المطروح بترتيب الإقفال)" autofocus>
   <span class="only-items">
     <select id="cat"><option value="">كل أنواع الشغل</option></select>
@@ -139,46 +147,63 @@ async function status_(first){
       for(let y=new Date().getFullYear();y>=2006;y--)$('#ayear').insertAdjacentHTML('beforeend',`<option>${y}</option>`);}
     $('#orgs').innerHTML=s.orgs.map(o=>`<option value="${esc(o)}">`).join('');
     document.querySelectorAll('#ctry button').forEach(b=>{const n=b.dataset.c?(s.countries[b.dataset.c]||0):Object.values(s.countries).reduce((a,b)=>a+b,0);b.textContent=(b.dataset.c?CN[b.dataset.c]:'الكل')+' ('+n.toLocaleString('en')+')'});
-    $('#chips').innerHTML=mode!=='items'?'':`<span class="chip fresh ${fresh?'on':''}" data-f="1">المستجدات (آخر 3 أيام)<b>${s.fresh}</b></span><span class="chip ${status||fresh?'':'on'}" data-s="">الكل<b>${s.total}</b></span>`+STATUSES.filter(x=>s.status[x]).map(x=>`<span class="chip ${status===x?'on':''}" data-s="${x}">${x}<b>${s.status[x]}</b></span>`).join('');
+    if(mode!=='watch')$('#chips').innerHTML=mode!=='items'?'':`<span class="chip fresh ${fresh?'on':''}" data-f="1">المستجدات (آخر 3 أيام)<b>${s.fresh}</b></span><span class="chip ${status||fresh?'':'on'}" data-s="">الكل<b>${s.total}</b></span>`+STATUSES.filter(x=>s.status[x]).map(x=>`<span class="chip ${status===x?'on':''}" data-s="${x}">${x}<b>${s.status[x]}</b></span>`).join('');
     document.querySelectorAll('.chip[data-s]').forEach(c=>c.onclick=()=>{status=c.dataset.s;fresh=0;status_();search()});
     document.querySelectorAll('.chip[data-f]').forEach(c=>c.onclick=()=>{fresh=fresh?0:3;status='';status_();search()});
-    if(s.update==='running'||(s.log&&s.log.length&&s.update)){$('#log').style.display='block';$('#log').textContent=s.log.join('\n');$('#log').scrollTop=1e9}
-    if(s.update==='running'){$('#btnUpdate').textContent='جاري التحديث...';setTimeout(status_,3000)}else{$('#btnUpdate').textContent='تحديث دلوقتي';if(s.update==='done'&&!window._reloaded){window._reloaded=1;search()}}
+    updateBadges(s);
+    if(document.activeElement!==$('#auto'))$('#auto').value=String(s.auto_minutes??5);
+    // the log shows while an update runs (or after one that failed), then hides again
+    if(s.update==='running'||s.update==='error'){$('#log').style.display='block';$('#log').textContent=s.log.join('\n');$('#log').scrollTop=1e9}
+    else $('#log').style.display='none';
+    if(s.update==='running'){$('#btnUpdate').textContent='جاري التحديث...';clearTimeout(window._st);window._st=setTimeout(status_,3000)}
+    else $('#btnUpdate').textContent='تحديث دلوقتي';
+    // every finished update (automatic or manual) refreshes what is on screen by itself
+    const fin=s.last_run&&s.last_run.finished||'';
+    if(window._fin!==undefined&&fin!==window._fin&&mode!=='awards')search(true)
+    window._fin=fin;
   }catch(e){$('#stat').textContent='البرنامج مش شغال - افتحه من الأيقونة'}
 }
-setInterval(()=>status_(),60000);
-$('#btnUpdate').onclick=async()=>{window._reloaded=0;await post('/api/update');toast('بدأ التحديث - بياخد كام دقيقة');status_()};
+setInterval(()=>status_(),30000);
+$('#btnUpdate').onclick=async()=>{await post('/api/update');toast('بدأ التحديث - بياخد كام دقيقة');status_()};
+$('#auto').onchange=async()=>{const v=+$('#auto').value;await post('/api/settings',{auto_update_minutes:v});
+  toast(v?`التحديث التلقائي بقى ${$('#auto').selectedOptions[0].textContent}`:'التحديث التلقائي اتقفل');status_()};
 document.querySelectorAll('#ctry button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ctry button').forEach(x=>x.classList.toggle('on',x===b));country=b.dataset.c;status='';status_();search()});
 document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));mode=b.dataset.m;
-  $('.only-items').style.display=mode==='awards'?'none':'contents';$('.only-awards').style.display=mode==='awards'?'contents':'none';status_();search()});
+  openTab(mode);
+  $('.only-items').style.display=mode==='awards'||mode==='watch'?'none':'contents';$('.only-awards').style.display=mode==='awards'?'contents':'none';status_();search()});
 let deb;$('#q').addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(search,450)});
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
 $('#go').onclick=search;['#cat','#days','#fawaz','#org','#ayear','#amin'].forEach(s=>$(s).onchange=search);
 
-async function search(){
-  const q=$('#q').value.trim();lastQ=q;$('#results').innerHTML='<div class="empty">بدوّر...</div>';
+async function search(keep){
+  // keep=true: silent refresh after an automatic update - same list place, same selection
+  if(keep instanceof Event)keep=false;
+  const q=$('#q').value.trim();lastQ=q;if(!keep)$('#results').innerHTML='<div class="empty">بدوّر...</div>';
+  const top=$('#results').parentElement.scrollTop;
   try{
     if(mode==='news')return searchNews(q);
     if(mode==='awards')return searchAwards(q);
+    if(mode==='watch')return searchWatch(q,keep);
     const p=new URLSearchParams({q,status,country,fresh,cat:$('#cat').value,org:$('#org').value,days:$('#days').value,fawaz:$('#fawaz').checked?1:0});
     const res=await get('/api/search?'+p);if(q!==lastQ)return;
     $('#lh').textContent=`النتائج (${res.length}${res.length>=250?'+':''})`;
     $('#results').innerHTML=res.length?res.map(r=>{
       const left=r.status==='مطروحة'&&r.closing?Math.round((new Date(r.closing)-new Date(today))/864e5):null;
-      return `<div class="res" data-id="${r.id}"><div class="t">${esc(r.subject)}</div>
+      return `<div class="res ${isUnread(r)?'unread':''}" data-id="${r.id}"><div class="t">${esc(r.subject)}</div>
       <div class="m"><span class="st ${stClass(r.status,r.closing)}">${esc(r.status)}</span>${isNew(r)?'<span class="flag flag-new">جديد</span>':isChg(r)?'<span class="flag flag-chg">اتغيّر</span>':''}
         ${country?'':`<span class="cc">${CN[r.country]||r.country}</span>`}${r.number?`<span class="tno">${esc(r.number)}</span>`:''}<span>${esc(r.org)}</span>${r.fawaz?'<span class="fzb">نطاق فواز</span>':''}</div>
       <div class="m">${r.closing?`<span class="${left!==null&&left<=7?'urgent':''}">إقفال ${dmy(r.closing)}${left!==null?` (باقي ${left} يوم)`:''}</span>`:''}
       ${r.winner?`<span class="${isFz(r.winner)?'fz':''}">${esc(r.winner.slice(0,70))}</span>`:''}${r.value?`<span class="money">${esc(r.value)}</span>`:''}${offLink(r)}</div></div>`}).join(''):'<div class="empty">مفيش نتائج - جرّب كلمات أقل أو شيل الفلاتر</div>';
     wireOff($('#results'));
     document.querySelectorAll('.res[data-id]').forEach(el=>el.onclick=()=>{document.querySelectorAll('.res').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');detail(+el.dataset.id)});
+    if(keep){const s=current&&current.id&&document.querySelector(`.res[data-id="${current.id}"]`);if(s)s.classList.add('sel');$('#results').parentElement.scrollTop=top;return}
     if(q){const f=document.querySelector('.res[data-id]');if(f)f.click()}
   }catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
 }
 async function searchNews(q){
   const res=await get(`/api/news?q=${encodeURIComponent(q)}&country=${country}&fawaz=${$('#fawaz').checked?1:0}`);
   $('#lh').textContent=`الأخبار (${res.length})`;
-  $('#results').innerHTML=res.length?res.map(n=>`<div class="res"><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div>
+  $('#results').innerHTML=res.length?res.map(n=>`<div class="res ${n.seen_at&&n.seen_at>HL.news?'unread':''}"><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div>
     <div class="m"><span>${dmy(n.date)}</span>${country?'':`<span class="cc">${CN[n.country]||''}</span>`}<span>${esc(n.source)}</span><span>${esc(n.cats)}</span>${n.fawaz?'<span class="fzb">نطاق فواز</span>':''}</div>
     ${n.summary?`<div class="snip">${esc(n.summary)}</div>`:''}</div>`).join(''):'<div class="empty">مفيش أخبار</div>';
   wireOff($('#results'));$('#detail').innerHTML='<div class="empty">دوس على عنوان الخبر يفتحه في المتصفح</div>';
@@ -194,7 +219,7 @@ async function searchAwards(q){
     $('#detail').innerHTML=`<div class="pad">علّم الصفحات واضغط الزرار</div><div class="actions"><button class="pri" onclick="awardsPdf(null)">اعمل PDF واحد</button></div>`;return}
   const res=await get(`/api/awards/search?q=${encodeURIComponent(q)}&year=${$('#ayear').value}`);if(q!==lastQ)return;
   $('#lh').textContent=`ترسيات الكويت (${res.length})`;
-  $('#results').innerHTML=res.length?res.map(r=>`<div class="res" data-row="${r.row}"><div class="t">${esc(r.subject)}</div>
+  $('#results').innerHTML=res.length?res.map(r=>`<div class="res ${r.row<3+(HL.awardsNew||0)?'unread':''}" data-row="${r.row}"><div class="t">${esc(r.subject)}</div>
     <div class="m"><span class="tno">${esc(r.tno)}</span><span>${esc(r.org)}</span><span>${dmy(r.date)}</span></div>
     <div class="m"><span class="${isFz(r.winner)?'fz':''}">${esc(r.winner||'بنود')}</span><span class="money">${esc(r.total)}</span>
     <a class="off" href="#" data-off="https://capt.gov.kw/ar/tenders/winning-bids/?meeting_date_from=${r.date}&meeting_date_to=${r.date}&form=date">الإعلان الرسمي ↗</a></div></div>`).join(''):'<div class="empty">مفيش نتائج</div>';
@@ -239,6 +264,77 @@ async function detail(id){
 async function makePdf(){
   const sel=[...document.querySelectorAll('.hit input:checked')].map(c=>hits[+c.dataset.i]);toast('بعمل الـ PDF...');
   try{const r=await post('/api/report',{id:current.id,hits:sel});toast('اتعمل واتفتح: '+r.name,6000)}catch(e){toast('خطأ: '+e.message,6000)}
+}
+// ---------------------------------------------------------------- unread badges
+// HL = the "read up to here" point of each tab when it was opened: newer rows stay coloured while
+// you are on the tab; the server marker moves on so the badge clears.
+let HL={},SEEN={},UN={};
+function isUnread(r){return (r.first_seen&&!r.first_seen.startsWith('2000')&&r.first_seen>(HL.items||'~'))||(r.changed&&r.changed>(HL.items||'~'))}
+function updateBadges(s){
+  SEEN=s.seen||{};UN=s.unread||{};
+  document.querySelectorAll('#mode button').forEach(b=>{let x=b.querySelector('.bdg');if(!x){x=document.createElement('span');x.className='bdg';b.appendChild(x)}
+    const n=b.dataset.m===mode?0:(UN[b.dataset.m]||0);x.textContent=n?(n>999?'999+':n):''});
+  if(HL[mode]===undefined)openTab(mode,true);
+  else if(UN[mode]&&!document.hidden)post('/api/seen',{tab:mode}).catch(()=>{});
+  const tot=Object.entries(UN).filter(([k])=>k!==mode).reduce((a,[,v])=>a+(v||0),0);
+  document.title=(tot?`(${tot}) `:'')+'دليل مناقصات الخليج';
+}
+function openTab(tab,noSearch){
+  if(SEEN[tab]===undefined)return;
+  HL[tab]=SEEN[tab];if(tab==='awards')HL.awardsNew=UN.awards||0;if(tab==='watch')HL.watch=+SEEN.watch||0;
+  post('/api/seen',{tab}).catch(()=>{});
+}
+// ---------------------------------------------------------------- متابعة فواز و KJAC
+let W=null,wsec='feed';
+const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار فواز و KJAC'],['won','ترسيات لفواز / KJAC']];
+async function searchWatch(q,keep){
+  try{W=await get('/api/watch')}catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
+  const hl=+HL.watch||0,newFeed=W.feed.filter(f=>f.id>hl&&!f.at.startsWith('2000')).length;
+  const cnt={feed:W.feed.length,live:W.tenders.filter(t=>t.live).length,hist:W.tenders.filter(t=>!t.live).length,mails:W.emails.length,conews:W.company_news.length,won:W.awards.length+W.won_items.length};
+  $('#chips').innerHTML=WSEC.map(([k,l])=>`<span class="chip ${wsec===k?'on':''}" data-w="${k}">${l}<b>${cnt[k]}</b>${k==='feed'&&newFeed?`<span class="bdg">${newFeed} جديد</span>`:''}</span>`).join('');
+  document.querySelectorAll('[data-w]').forEach(c=>c.onclick=()=>{wsec=c.dataset.w;searchWatch($('#q').value.trim())});
+  const qq=norm(q);const m=s=>!qq||norm(s).includes(qq)||(digits(q).length&&digits(q).every(d=>digits(s).includes(d)));
+  let h='',L=0;
+  if(wsec==='feed'){const list=W.feed.filter(f=>m(f.title+' '+f.text+' '+f.kind));L=list.length;
+    h=list.map(f=>`<div class="res ${f.id>hl&&!f.at.startsWith('2000')?'unread':''}" data-tk="${esc(f.tender_key||'')}" data-url="${esc(f.url||'')}"><div class="m"><span class="wk ${/فواز|KJAC/.test(f.kind)?'us':''}">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div class="t">${esc(f.title)}</div><div class="snip">${esc(f.text)}</div></div>`).join('')}
+  else if(wsec==='live'||wsec==='hist'){const list=W.tenders.filter(t=>(wsec==='live')===!!t.live&&m(t.title+' '+t.client+' '+t.number+' '+t.src));L=list.length;
+    h=list.slice(0,400).map(t=>`<div class="res" data-tk="${esc(t.key)}"><div class="t">${esc(t.title)}</div><div class="m"><span class="cc">${esc(t.src)}</span><span>${esc(t.client)}</span>${t.number?`<span class="tno">${esc(t.number)}</span>`:''}${t.closing?`<span>إقفال ${dmy(t.closing)}</span>`:''}${t.fawaz_rank?`<span class="fzb">ترتيبنا L${t.fawaz_rank}</span>`:''}${t.links.length?`<span class="wk">${t.links.length} متابعة</span>`:''}</div>${t.status||t.remarks?`<div class="snip">${esc([t.status,t.remarks].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')}
+  else if(wsec==='mails'){L=W.emails.length;h=W.emails.filter(e=>m(e.subject+' '+e.body)).map((e,i)=>`<div class="res" data-mail="${i}"><div class="t">${esc(e.subject)}</div><div class="m"><span>${esc(e.received.replace('T',' '))}</span><span>${esc(e.sender)}</span>${e.attachment?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('')}
+  else if(wsec==='conews'){const list=W.company_news.filter(n=>m(n.title));L=list.length;h=list.map(n=>`<div class="res"><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div><div class="m"><span>${dmy(n.date)}</span><span>${esc(n.source)}</span></div></div>`).join('')}
+  else{const a=W.awards.filter(x=>m(x.subject+' '+x.tno+' '+x.org)),it=W.won_items.filter(x=>m(x.subject+' '+x.number+' '+x.org));L=a.length+it.length;
+    h=a.map(x=>`<div class="res"><div class="t">${esc(x.subject)}</div><div class="m"><span>${dmy(x.date)}</span><span class="tno">${esc(x.tno)}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.total)}</span><a class="off" href="#" data-off="https://capt.gov.kw/ar/tenders/winning-bids/?meeting_date_from=${x.date}&meeting_date_to=${x.date}&form=date">الإعلان الرسمي ↗</a></div></div>`).join('')+
+      it.map(x=>`<div class="res" data-id="${x.id}"><div class="t">${esc(x.subject)}</div><div class="m"><span class="cc">${CN[x.country]||''}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.value)}</span></div></div>`).join('')}
+  $('#lh').textContent=`${WSEC.find(x=>x[0]===wsec)[1]} (${L})`;
+  const top=$('#results').parentElement.scrollTop;
+  $('#results').innerHTML=h||'<div class="empty">مفيش حاجة هنا لسه - بتتملي مع أول تحديث</div>';
+  if(keep)$('#results').parentElement.scrollTop=top;
+  wireOff($('#results'));
+  document.querySelectorAll('#results .res[data-tk]').forEach(el=>el.onclick=()=>{sel(el);if(el.dataset.tk)tenderDetail(el.dataset.tk);else if(el.dataset.url)openOfficial(el.dataset.url)});
+  document.querySelectorAll('#results .res[data-mail]').forEach(el=>el.onclick=()=>{sel(el);mailDetail(W.emails[+el.dataset.mail])});
+  document.querySelectorAll('#results .res[data-id]').forEach(el=>el.onclick=()=>{sel(el);detail(+el.dataset.id)});
+  if(!keep)$('#detail').innerHTML='<div class="empty">اختار حاجة من القايمة</div>';
+}
+function sel(el){document.querySelectorAll('.res').forEach(x=>x.classList.remove('sel'));el.classList.add('sel')}
+function norm(s){return String(s||'').normalize('NFKC').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).toLowerCase()}
+function digits(s){return norm(s).match(/\d+/g)||[]}
+function tenderDetail(key){
+  const t=W.tenders.find(x=>x.key===key);if(!t){$('#detail').innerHTML='<div class="empty">مش لاقيها</div>';return}
+  const feed=W.feed.filter(f=>f.tender_key===key);
+  let h=`<div class="pad"><div class="card"><div class="kv"><div>المناقصة</div><div><b>${esc(t.title)}</b></div><div>العميل</div><div>${esc(t.client)}</div>
+    ${t.number?`<div>الرقم</div><div><span class="tno">${esc(t.number)}</span></div>`:''}${t.closing?`<div>الإقفال</div><div>${dmy(t.closing)}</div>`:''}
+    <div>المصدر</div><div>${esc(t.src)}</div>${t.status?`<div>الحالة</div><div>${esc(t.status)}</div>`:''}${t.remarks?`<div>ملاحظات</div><div>${esc(t.remarks)}</div>`:''}
+    ${t.fawaz_rank?`<div>ترتيبنا</div><div><span class="fzb">L${t.fawaz_rank}</span></div>`:''}</div></div>`;
+  if(t.bidders.length)h+=`<h4>الأسعار (L1 ...)</h4><table><tr><th>#</th><th>الشركة</th><th>السعر</th></tr>${t.bidders.map((b,i)=>`<tr><td>L${i+1}</td><td class="${isFz(b[0])?'fz':''}">${esc(b[0])}</td><td>${esc(b[1])}</td></tr>`).join('')}</table>`;
+  const items=t.links.filter(l=>l.kind==='item');
+  if(items.length)h+=`<h4>نفس المناقصة في الدليل</h4>${items.map(l=>`<div class="m"><a href="#" data-item="${esc(l.ref)}">${esc(l.title)}</a>${l.url?`<a class="off" href="#" data-off="${esc(l.url)}">الإعلان الرسمي ↗</a>`:''}</div>`).join('')}`;
+  if(feed.length)h+=`<h4>كل اللي اترصد عنها (${feed.length})</h4>${feed.map(f=>`<div class="hit"><div style="flex:1"><div class="m"><span class="wk">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div>${esc(f.text)}${f.url?` <a href="#" data-off="${esc(f.url)}">↗</a>`:''}</div></div></div>`).join('')}`;
+  h+='</div>';$('#detail').innerHTML=h;wireOff($('#detail'));
+  document.querySelectorAll('[data-item]').forEach(a=>a.onclick=e=>{e.preventDefault();detail(+a.dataset.item)});
+}
+function mailDetail(e){
+  $('#detail').innerHTML=`<div class="pad"><div class="card"><div class="kv"><div>الموضوع</div><div><b>${esc(e.subject)}</b></div><div>من</div><div>${esc(e.sender)}</div><div>وصل</div><div>${esc(e.received.replace('T',' '))}</div></div></div>
+    <div class="mail">${esc(e.body)}</div></div>${e.attachment?`<div class="actions"><button class="pri" id="opa">افتح ملف الإكسيل المرفق</button></div>`:''}`;
+  if(e.attachment)$('#opa').onclick=()=>post('/api/open-file',{path:e.attachment}).catch(x=>toast('خطأ: '+x.message));
 }
 status_(true).then(search);
 </script>

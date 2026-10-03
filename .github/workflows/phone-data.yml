@@ -1,0 +1,53 @@
+# Updates the phone app (gh-pages) by itself every 15 minutes - no PC needed.
+# The FAWAZ PC only adds what it alone has, on branch pc-feed (see app/mobile_export.py).
+name: phone-data
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["app/**", "cloud/**", ".github/workflows/phone-data.yml"]
+permissions:
+  contents: write
+concurrency:
+  group: phone-data
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      TZ: Asia/Kuwait          # same clock as the FAWAZ PC (new / changed times)
+    steps:
+      - uses: actions/checkout@v4
+      - name: PC feed
+        run: |
+          git fetch --depth 1 origin pc-feed && git worktree add feed FETCH_HEAD || mkdir -p feed/data
+      - name: Restore state
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: state-${{ github.run_id }}
+          restore-keys: state-
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet openpyxl
+      - name: Collect + build the phone data
+        run: python cloud/run_cloud.py state feed site
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: state
+          key: state-${{ github.run_id }}
+      - name: Publish gh-pages
+        run: |
+          cd site
+          git init -q -b gh-pages
+          git config user.name "FAWAZ Tenders (cloud)"
+          git config user.email "ahmedtarekfahim@gmail.com"
+          git add -A
+          git commit -q -m "data $(date -u +%FT%TZ) (cloud)"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages

@@ -67,7 +67,7 @@ th{background:#f3f6fa}
   <h1>برنامج ترسيات CAPT</h1>
   <span class="stat" id="stat">...</span>
   <span class="sp"></span>
-  <button id="btnUpdate" title="يجيب الترسيات والمحاضر الجديدة من موقع الجهاز">تحديث من الموقع</button>
+  <label class="stat" title="البرنامج بيجيب الترسيات والمحاضر الجديدة لوحده طول ما هو شغال">تحديث تلقائي <select id="auto" style="color:#1d2733"><option value="5">كل 5 دقايق</option><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
   <button onclick="post('/api/open-excel')">افتح الإكسيل</button>
   <button onclick="post('/api/open-folder')">فولدر التقارير</button>
 </header>
@@ -101,12 +101,15 @@ async function status(){
   try{const s=await get('/api/status');
     const ix=s.index||{}; const lm=ix.last_meeting;
     $('#stat').textContent=`${(s.rows||0).toLocaleString('en')} ترسية · آخر ترسية ${dmy(s.last_award)} · ${(ix.pages||0).toLocaleString('en')} صفحة محاضر · آخر محضر ${lm?lm[0]+'/'+lm[1]+' ('+dmy(lm[2])+')':'-'}`;
-    if(s.update==='running'||(s.log&&s.log.length&&s.update)){$('#log').style.display='block';$('#log').textContent=s.log.join('\n')}
-    if(s.update==='running'){$('#btnUpdate').textContent='جاري التحديث...';setTimeout(status,2500)}
+    if(document.activeElement!==$('#auto'))$('#auto').value=String(s.auto_minutes??5);
+    if(s.update==='running'){$('#btnUpdate').textContent='جاري التحديث...';clearTimeout(window._st);window._st=setTimeout(status,2500)}
     else $('#btnUpdate').textContent='تحديث من الموقع';
   }catch(e){$('#stat').textContent='البرنامج مش شغال - افتحه من الأيقونة'}
 }
 $('#btnUpdate').onclick=async()=>{await post('/api/update');toast('بدأ التحديث من الموقع...');status()};
+setInterval(()=>status(),30000);
+$('#auto').onchange=async()=>{const v=+$('#auto').value;await post('/api/settings',{awards_update_minutes:v});
+  toast(v?'التحديث التلقائي بقى '+$('#auto').selectedOptions[0].textContent:'التحديث التلقائي اتقفل');status()};
 document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));mode=b.dataset.m;search()});
 let deb; $('#q').addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(()=>{if(mode==='awards')search()},450)});
