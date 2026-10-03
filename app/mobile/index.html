@@ -150,13 +150,35 @@ async function decrypt(enc,pw){
   const ds=new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'));
   return JSON.parse(await new Response(ds).text());
 }
-let ENC=null;
+let ENC=null,bioOK=false;
+// what the Fawaz tab may show: the private part only after the fingerprint (when that lock is on)
+function visibleP(){return P&&!(store.get('fzbio','')&&!bioOK)?P:null}
+function hasP(){return !!P}
+const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+async function bioEnable(){
+  try{const c=await navigator.credentials.create({publicKey:{rp:{name:'مناقصات فواز'},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'fawaz',displayName:'مناقصات فواز'},
+      challenge:crypto.getRandomValues(new Uint8Array(32)),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'discouraged'},timeout:60000}});
+    store.set('fzbio',b64u(c.rawId));bioOK=true;toast('اتفعّل القفل بالبصمة');render()}
+  catch(e){toast('البصمة ما اتفعّلتش: '+(e.message||e.name))}}
+async function bioUnlock(){
+  try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{type:'public-key',id:b64(store.get('fzbio',''))}],userVerification:'required',timeout:60000}});
+    bioOK=true;wsec='feed';render()}
+  catch(e){toast('ما اتفتحش - جرّب تاني')}}
+function bioOff(){store.set('fzbio','');bioOK=false;toast('اتشال القفل بالبصمة');render()}
+async function forgot(){
+  try{const r=await fetch('data/reset.json?t='+Date.now(),{cache:'no-store'});const j=await r.json();
+    if(!confirm(`هيتعمل كلمة سر جديدة وتتبعت على ${j.mail}.\nالكمبيوتر لازم يكون شغال - بتوصل خلال دقيقة أو اتنين.\nتكمّل؟`))return;
+    const x=await fetch('https://ntfy.sh/'+j.topic,{method:'POST',body:'reset'});if(!x.ok)throw new Error(x.status);
+    store.set('fzpw','');toast(`اتبعت الطلب - افتح الجيميل (${j.mail}) خلال دقايق`,7000)}
+  catch(e){toast('الطلب ما اتبعتش - جرّب تاني بعد شوية')}}
 async function loadPrivate(){
   try{const r=await fetch('data/private.enc?t='+Date.now(),{cache:'no-store'});ENC=r.ok?await r.json():null}catch(e){}
   const pw=store.get('fzpw','');if(ENC&&pw){try{P=await decrypt(ENC,pw)}catch(e){P=null}}
 }
 async function unlock(){const pw=$('#pw').value.trim();if(!pw||!ENC)return;
-  try{P=await decrypt(ENC,pw);store.set('fzpw',pw);MK.watchId=undefined;wsec='feed';badges();openTabMarks('watch');render();toast('اتفتحت بيانات فواز')}
+  try{P=await decrypt(ENC,pw);store.set('fzpw',pw);bioOK=true;MK.watchId=undefined;wsec='feed';badges();openTabMarks('watch');render();toast('اتفتحت بيانات فواز')}
   catch(e){toast('كلمة السر غلط')}}
 
 // ---------------------------------------------------------------- lists
@@ -228,6 +250,7 @@ const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا ا�
 const coNews=()=>N.filter(n=>n.co);
 function wonList(){return {a:A.filter(a=>US.test(a.w||'')).sort((x,y)=>y.d.localeCompare(x.d)),d:D.filter(r=>r.w&&US.test(r.w))}}
 function watchChips(){
+  const P=visibleP();
   const hl=HL.watch||{ts:'~',id:1e12};const w=wonList();
   const cnt={feed:P?P.feed.length:0,live:P?P.tenders.filter(t=>t.lv).length:0,hist:P?P.tenders.filter(t=>!t.lv).length:0,mails:P?P.emails.length:0,conews:coNews().length,won:w.a.length+w.d.length};
   const nw={feed:P?P.feed.filter(f=>f[0]>hl.id&&!f[1].startsWith('2000')).length:0,conews:coNews().filter(n=>n.fs&&n.fs>hl.ts).length};
@@ -236,10 +259,13 @@ function watchChips(){
   document.querySelectorAll('[data-w]').forEach(c=>c.onclick=()=>{wsec=c.dataset.w;shown=150;render()});
 }
 function renderWatch(q){
+  const P=visibleP(),bio=store.get('fzbio','');
   const hl=HL.watch||{ts:'~',id:1e12},qq=norm(q);
   const m=s=>!qq||norm(s).includes(qq)||(digits(q).length&&digits(q).every(d=>digits(s).includes(d)));
   let h='';
-  if(!P&&ENC)h+=`<div class="lock"><b>مناقصاتنا وإيميلات Sanjay</b><div class="note">البيانات دي سرية ومتشفّرة - اكتب كلمة السر مرة واحدة على الموبايل ده (موجودة عند أحمد في برنامج الكمبيوتر).</div><input id="pw" type="password" autocomplete="current-password" placeholder="كلمة السر"><button class="big" id="unl">افتح</button></div>`;
+  if(hasP()&&bio&&!bioOK)h+=`<div class="lock"><b>🔒 مناقصاتنا وإيميلات Sanjay مقفولة بالبصمة</b><button class="big" id="bio">افتح ببصمة الصباع</button></div>`;
+  if(!hasP()&&ENC)h+=`<div class="lock"><b>مناقصاتنا وإيميلات Sanjay</b><div class="note">البيانات دي سرية ومتشفّرة - اكتب كلمة السر مرة واحدة على الموبايل ده (موجودة عند أحمد في برنامج الكمبيوتر).</div><input id="pw" type="password" autocomplete="current-password" placeholder="كلمة السر"><button class="big" id="unl">افتح</button><button class="off" id="forgot">نسيت كلمة السر؟</button></div>`;
+  if(P&&window.PublicKeyCredential)h+=`<div class="note" style="margin:0 4px 8px">${bio?'🔒 التبويب ده مقفول بالبصمة · <a href="#" id="biooff">شيل القفل</a>':'🔓 <a href="#" id="bioon">اقفل التبويب ده ببصمة الصباع</a>'}</div>`;
   if(wsec==='feed'&&P)h+=P.feed.filter(f=>m(f[2]+' '+f[3]+' '+f[4])).slice(0,shown).map(f=>`<div class="card ${f[0]>hl.id&&!f[1].startsWith('2000')?'unread':''}" data-tk="${esc(f[6]||'')}" data-u="${esc(f[5]||'')}"><div class="m"><span class="wk">${esc(f[2])}</span><span>${f[1].startsWith('2000')?'من أول تحميل':esc(f[1].replace('T',' '))}</span></div><div class="t">${esc(f[3])}</div><div class="note">${esc(f[4])}</div></div>`).join('');
   else if((wsec==='live'||wsec==='hist')&&P)h+=P.tenders.filter(t=>(wsec==='live')===!!t.lv&&m(t.t+' '+t.c+' '+t.n+' '+t.src)).slice(0,shown).map(t=>`<div class="card" data-tk="${esc(t.k)}"><div class="t">${esc(t.t)}</div><div class="m"><span class="wk">${esc(t.src)}</span><span>${esc(t.c)}</span>${t.n?`<span class="tno">${esc(t.n)}</span>`:''}${t.cl?`<span>إقفال ${dmy(t.cl)}</span>`:''}${t.rk?`<span class="fzb">ترتيبنا L${t.rk}</span>`:''}${liveStatus(t)}</div>${t.st||t.rm?`<div class="note">${esc([t.st,t.rm].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('');
   else if(wsec==='mails'&&P)h+=P.emails.filter(e=>m(e.s+' '+e.b)).map((e,i)=>`<div class="card" data-mail="${P.emails.indexOf(e)}"><div class="t">${esc(e.s)}</div><div class="m"><span>${esc(e.d.replace('T',' '))}</span><span>${esc(e.f)}</span>${e.a?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('');
@@ -247,6 +273,8 @@ function renderWatch(q){
   else if(wsec==='won'){const w=wonList();h+=w.a.filter(a=>m(a.s+' '+a.n+' '+a.o)).slice(0,shown).map(a=>awCard(a,0)).join('')+w.d.filter(r=>m(r.s+' '+r.n+' '+r.o)).map(dirCard).join('')}
   $('#list').innerHTML=h||'<div class="empty">مفيش حاجة هنا</div>';
   if($('#unl')){$('#unl').onclick=unlock;$('#pw').onkeydown=e=>{if(e.key==='Enter')unlock()}}
+  if($('#forgot'))$('#forgot').onclick=forgot;if($('#bio'))$('#bio').onclick=bioUnlock;
+  if($('#bioon'))$('#bioon').onclick=e=>{e.preventDefault();bioEnable()};if($('#biooff'))$('#biooff').onclick=e=>{e.preventDefault();bioOff()};
   document.querySelectorAll('.card[data-tk]').forEach(c=>c.onclick=()=>{if(c.dataset.tk)openTender(c.dataset.tk);else if(c.dataset.u)window.open(c.dataset.u,'_blank')});
   document.querySelectorAll('.card[data-mail]').forEach(c=>c.onclick=()=>openMail(P.emails[+c.dataset.mail]));
   document.querySelectorAll('.card[data-r]').forEach(c=>c.onclick=()=>openAward(+c.dataset.r));

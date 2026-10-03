@@ -157,28 +157,39 @@ def outlook_items(days=150):
         items.Sort("[ReceivedTime]", True)
         who = cfg.S.get("watch_sender", "sanjay").lower()
         subj = cfg.S.get("watch_subject", "tenders on hand").lower()
-        out = []
-        for it in items:
+        out, scanned, first_err = [], 0, ""
+        it = items.GetFirst()                           # GetFirst/GetNext: safer than iterating a dynamic collection
+        while it is not None:
+            cur, it = it, None
             try:
-                s, snd = it.Subject or "", it.SenderName or ""
+                it = items.GetNext()
+            except Exception:                           # noqa: BLE001
+                it = None
+            scanned += 1
+            try:
+                s, snd = str(cur.Subject or ""), str(cur.SenderName or "")
                 if who not in snd.lower() or subj not in s.lower():
                     continue
-                rec = it.ReceivedTime
+                r0 = cur.ReceivedTime                   # Outlook local time, kept as shown in Outlook
+                rec = datetime.datetime(r0.year, r0.month, r0.day, r0.hour, r0.minute)
                 att = None
-                for a in it.Attachments:
-                    if a.FileName.lower().endswith((".xlsx", ".xlsm")):
+                for k in range(1, cur.Attachments.Count + 1):
+                    a = cur.Attachments.Item(k)
+                    if str(a.FileName).lower().endswith((".xlsx", ".xlsm")):
                         ONHAND_DIR.mkdir(parents=True, exist_ok=True)
-                        safe = re.sub(r'[\\/:*?<>|]', "_", a.FileName)
+                        safe = re.sub(r'[\\/:*?<>|]', "_", str(a.FileName))
                         dst = ONHAND_DIR / f"{rec:%Y-%m-%d %H%M} - {safe}"
                         if not dst.exists():
                             a.SaveAsFile(str(dst))
                         att = dst
                         break
-                out.append({"id": it.EntryID, "received": f"{rec:%Y-%m-%dT%H:%M}", "sender": snd, "subject": s,
-                            "body": re.sub(r"\n{3,}", "\n\n", (it.Body or "").replace("\r", ""))[:2500],
+                out.append({"id": str(cur.EntryID), "received": f"{rec:%Y-%m-%dT%H:%M}", "sender": snd, "subject": s,
+                            "body": re.sub(r"\n{3,}", "\n\n", str(cur.Body or "").replace("\r", ""))[:2500],
                             "attachment": str(att) if att else ""})
-            except Exception:                           # noqa: BLE001 - skip an odd item
-                continue
+            except Exception as e:                      # noqa: BLE001 - skip an odd item, remember why
+                first_err = first_err or f"{type(e).__name__}: {e}"[:200]
+        if not out:
+            OUTLOOK_ERR[0] = f"اتفحص {scanned} إيميل" + (f" - أول خطأ: {first_err}" if first_err else "")
         return out
     except Exception as e:                              # noqa: BLE001 - Outlook closed / not configured
         OUTLOOK_ERR[0] = str(e)[:200]

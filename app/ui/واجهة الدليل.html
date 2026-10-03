@@ -286,11 +286,11 @@ function openTab(tab,noSearch){
 }
 // ---------------------------------------------------------------- متابعة فواز و KJAC
 let W=null,wsec='feed';
-const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار فواز و KJAC'],['won','ترسيات لفواز / KJAC']];
+const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار فواز و KJAC'],['won','ترسيات لفواز / KJAC'],['phone','🔑 كلمة سر الموبايل']];
 async function searchWatch(q,keep){
   try{W=await get('/api/watch')}catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
   const hl=+HL.watch||0,newFeed=W.feed.filter(f=>f.id>hl&&!f.at.startsWith('2000')).length;
-  const cnt={feed:W.feed.length,live:W.tenders.filter(t=>t.live).length,hist:W.tenders.filter(t=>!t.live).length,mails:W.emails.length,conews:W.company_news.length,won:W.awards.length+W.won_items.length};
+  const cnt={feed:W.feed.length,live:W.tenders.filter(t=>t.live).length,hist:W.tenders.filter(t=>!t.live).length,mails:W.emails.length,conews:W.company_news.length,won:W.awards.length+W.won_items.length,phone:''};
   $('#chips').innerHTML=WSEC.map(([k,l])=>`<span class="chip ${wsec===k?'on':''}" data-w="${k}">${l}<b>${cnt[k]}</b>${k==='feed'&&newFeed?`<span class="bdg">${newFeed} جديد</span>`:''}</span>`).join('');
   document.querySelectorAll('[data-w]').forEach(c=>c.onclick=()=>{wsec=c.dataset.w;searchWatch($('#q').value.trim())});
   const qq=norm(q);const m=s=>!qq||norm(s).includes(qq)||(digits(q).length&&digits(q).every(d=>digits(s).includes(d)));
@@ -301,6 +301,7 @@ async function searchWatch(q,keep){
     h=list.slice(0,400).map(t=>`<div class="res" data-tk="${esc(t.key)}"><div class="t">${esc(t.title)}</div><div class="m"><span class="cc">${esc(t.src)}</span><span>${esc(t.client)}</span>${t.number?`<span class="tno">${esc(t.number)}</span>`:''}${t.closing?`<span>إقفال ${dmy(t.closing)}</span>`:''}${t.fawaz_rank?`<span class="fzb">ترتيبنا L${t.fawaz_rank}</span>`:''}${t.links.length?`<span class="wk">${t.links.length} متابعة</span>`:''}</div>${t.status||t.remarks?`<div class="snip">${esc([t.status,t.remarks].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')}
   else if(wsec==='mails'){L=W.emails.length;h=W.emails.filter(e=>m(e.subject+' '+e.body)).map((e,i)=>`<div class="res" data-mail="${i}"><div class="t">${esc(e.subject)}</div><div class="m"><span>${esc(e.received.replace('T',' '))}</span><span>${esc(e.sender)}</span>${e.attachment?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('')}
   else if(wsec==='conews'){const list=W.company_news.filter(n=>m(n.title));L=list.length;h=list.map(n=>`<div class="res"><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div><div class="m"><span>${dmy(n.date)}</span><span>${esc(n.source)}</span></div></div>`).join('')}
+  else if(wsec==='phone'){L=1;h='<div class="empty">كلمة سر الموبايل في التفاصيل ←</div>';setTimeout(phoneBox,0)}
   else{const a=W.awards.filter(x=>m(x.subject+' '+x.tno+' '+x.org)),it=W.won_items.filter(x=>m(x.subject+' '+x.number+' '+x.org));L=a.length+it.length;
     h=a.map(x=>`<div class="res"><div class="t">${esc(x.subject)}</div><div class="m"><span>${dmy(x.date)}</span><span class="tno">${esc(x.tno)}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.total)}</span><a class="off" href="#" data-off="https://capt.gov.kw/ar/tenders/winning-bids/?meeting_date_from=${x.date}&meeting_date_to=${x.date}&form=date">الإعلان الرسمي ↗</a></div></div>`).join('')+
       it.map(x=>`<div class="res" data-id="${x.id}"><div class="t">${esc(x.subject)}</div><div class="m"><span class="cc">${CN[x.country]||''}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.value)}</span></div></div>`).join('')}
@@ -313,6 +314,16 @@ async function searchWatch(q,keep){
   document.querySelectorAll('#results .res[data-mail]').forEach(el=>el.onclick=()=>{sel(el);mailDetail(W.emails[+el.dataset.mail])});
   document.querySelectorAll('#results .res[data-id]').forEach(el=>el.onclick=()=>{sel(el);detail(+el.dataset.id)});
   if(!keep)$('#detail').innerHTML='<div class="empty">اختار حاجة من القايمة</div>';
+}
+async function phoneBox(action){
+  let d;try{d=await post('/api/phone',{action:action||''})}catch(e){$('#detail').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
+  if(action)toast(action==='reset'?'كلمة سر جديدة: '+(d.msg||''):'الإيميل: '+(d.msg||''),6000);
+  $('#detail').innerHTML=`<div class="pad"><div class="card"><div class="kv"><div>كلمة السر</div><div><b style="font-size:20px;direction:ltr;unicode-bidi:isolate;letter-spacing:1px">${esc(d.passphrase)}</b></div>
+    <div>بتتبعت على</div><div>${esc(d.email)}</div></div></div>
+    <p class="snip">دي اللي بتكتبها مرة واحدة في تبويب "فواز و KJAC" على الموبايل (وبعدها تقدر تفعّل البصمة). لو نسيتها على الموبايل دوس "نسيت كلمة السر" هناك - الكمبيوتر ده (وهو شغال) هيعمل واحدة جديدة ويبعتها على الجيميل خلال دقيقة.</p></div>
+    <div class="actions"><button class="pri" id="ph-send">ابعتها على الجيميل</button><button id="ph-reset">اعمل كلمة سر جديدة</button></div>`;
+  $('#ph-send').onclick=()=>phoneBox('send');
+  $('#ph-reset').onclick=()=>{if(confirm('كلمة السر القديمة هتبطل تشتغل على الموبايل. تكمّل؟'))phoneBox('reset')};
 }
 function sel(el){document.querySelectorAll('.res').forEach(x=>x.classList.remove('sel'));el.classList.add('sel')}
 function norm(s){return String(s||'').normalize('NFKC').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).toLowerCase()}

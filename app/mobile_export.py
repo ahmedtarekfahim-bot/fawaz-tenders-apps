@@ -23,6 +23,7 @@ FEED = cfg.GULF_DIR / "mobile feed"
 NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 PAGES = "https://ahmedtarekfahim-bot.github.io/fawaz-tenders-apps/"
 _last_feed = {}
+_PUB = __import__("threading").Lock()
 
 
 def repo_url():
@@ -79,14 +80,16 @@ def export(out_dir, award_rows=None, meetings=None):
 
 
 # ----------------------------------------------------------------- private part (encrypted)
-def passphrase():
-    """the phone passphrase - created once, kept in settings.json on this PC"""
-    p = cfg.S.get("mobile_passphrase")
-    if not p:
-        abc = "abcdefghjkmnpqrstuvwxyz23456789"
-        p = "-".join("".join(secrets.choice(abc) for _ in range(4)) for _ in range(3))
-        cfg.save_setting("mobile_passphrase", p)
+def new_passphrase():
+    abc = "abcdefghjkmnpqrstuvwxyz23456789"
+    p = "-".join("".join(secrets.choice(abc) for _ in range(4)) for _ in range(3))
+    cfg.save_setting("mobile_passphrase", p)
     return p
+
+
+def passphrase():
+    """the phone passphrase - created once, kept in settings.json on this PC (shown in the directory window)"""
+    return cfg.S.get("mobile_passphrase") or new_passphrase()
 
 
 def encrypt(obj, pw):
@@ -147,7 +150,13 @@ def cloud_age_minutes():
         return 1e9
 
 
-def publish(log=print):
+def publish(log=print, force=False):
+    """force=True (new passphrase): push pc-feed and the phone site right away"""
+    with _PUB:                                          # an update and a passphrase reset may meet here
+        return _publish(log, force)
+
+
+def _publish(log, force):
     if not cfg.S.get("mobile_publish") or not shutil.which("git"):
         return None
     url = repo_url()
@@ -160,14 +169,21 @@ def publish(log=print):
         (FEED / "data" / "private.enc").write_text(json.dumps(encrypt(private_bundle(), passphrase())), encoding="utf-8")
     except Exception as e:                              # noqa: BLE001
         log(f"بيانات فواز المشفرة: {e}")
+    try:                                                # where the phone's "forgot the passphrase" goes
+        import phone_lock
+        mail = phone_lock.owner_email()
+        (FEED / "data" / "reset.json").write_text(json.dumps(
+            {"topic": phone_lock.topic(), "mail": mail[:3] + "***" + mail[mail.find("@"):]}), encoding="utf-8")
+    except Exception as e:                              # noqa: BLE001
+        log(f"reset.json: {e}")
     sig = hashlib.sha256(b"".join((FEED / "data" / n).read_bytes() for n in ("directory.json", "news.json", "awards.json"))
                          ).hexdigest()
     # the private file changes every time (new salt) - push when the data changed or every 30 minutes
-    if sig != _last_feed.get("sig") or time.time() - _last_feed.get("at", 0) > 1800:
+    if force or sig != _last_feed.get("sig") or time.time() - _last_feed.get("at", 0) > 1800:
         if push_dir(FEED, "pc-feed", url, f"pc feed {meta['updated']}", log):
             _last_feed.update(sig=sig, at=time.time())
     # 2) fallback: cloud copy stale -> publish the phone site from here too
-    if cloud_age_minutes() > 60:
+    if force or cloud_age_minutes() > 60:
         _rmtree(SITE)
         shutil.copytree(cfg.res_dir() / "mobile", SITE)
         shutil.copytree(FEED / "data", SITE / "data", dirs_exist_ok=True)

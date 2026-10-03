@@ -219,8 +219,9 @@ def main():
     shutil.copytree(ROOT / "app" / "mobile", SITE)
     meta = me.export(SITE, award_rows=AW["rows"], meetings=meetings)
     meta["by"] = "cloud"
-    if (FEED / "private.enc").exists():
-        shutil.copy2(FEED / "private.enc", SITE / "data" / "private.enc")
+    for extra in ("private.enc", "reset.json"):             # encrypted Fawaz part + "forgot the passphrase" topic
+        if (FEED / extra).exists():
+            shutil.copy2(FEED / extra, SITE / "data" / extra)
     pc_meta = load(FEED / "meta.json", {})
     meta["pc_updated"] = pc_meta.get("updated", "")
     meta["sources"] = {k: v for k, v in summary.items() if k != "متابعة فواز"}

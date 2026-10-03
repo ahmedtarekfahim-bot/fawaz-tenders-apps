@@ -1271,6 +1271,13 @@ def serve(open_browser=True):
                         os._exit(0)
                 except Exception:        # noqa: BLE001
                     pass
+            if cfg.S.get("mobile_publish") and time.time() - state.get("phone_poll", 0) >= 60:
+                state["phone_poll"] = time.time()      # "forgot the passphrase" requests from the phone
+                try:
+                    import phone_lock
+                    threading.Thread(target=phone_lock.poll, args=(lambda m: state["log"].append(m),), daemon=True).start()
+                except Exception:        # noqa: BLE001
+                    pass
             every = auto_minutes()
             if not every:
                 state["next"] = None
@@ -1374,6 +1381,15 @@ def serve(open_browser=True):
                 if u.path == "/api/update":
                     start_update("تحديث يدوي")
                     return self.send({"status": "running"})
+                if u.path == "/api/phone":                # phone passphrase: show / mail it / make a new one
+                    import phone_lock, mobile_export
+                    act, msg = body.get("action", ""), ""
+                    if act == "send":
+                        msg = phone_lock.send_mail(mobile_export.passphrase(), "طلبت كلمة السر من برنامج الكمبيوتر.") or "اتبعتت"
+                    elif act == "reset":
+                        _pw, err = phone_lock.reset("عملت كلمة سر جديدة من برنامج الكمبيوتر.", lambda m: state["log"].append(m))
+                        msg = err or "اتعملت واتبعتت"
+                    return self.send({"passphrase": mobile_export.passphrase(), "email": phone_lock.owner_email(), "msg": msg})
                 if u.path == "/api/seen":
                     mark_seen(body.get("tab", ""))
                     return self.send({"ok": True})
@@ -1434,6 +1450,12 @@ def main(argv):
             print(build_pdf(res[min(int(opt.get("pick", 0)), len(res) - 1)]["id"]))
     elif cmd == "serve":
         serve(open_browser="nobrowser" not in opt)
+    elif cmd == "outlook-test":                   # diagnostics for the installed program (it has no console)
+        import fawaz_watch
+        m = fawaz_watch.outlook_items()
+        Path(args[0] if args else "outlook test.json").write_text(json.dumps(
+            {"found": len(m), "error": fawaz_watch.OUTLOOK_ERR[0], "first": m[0]["subject"] if m else "",
+             "received": m[0]["received"] if m else ""}, ensure_ascii=False), encoding="utf-8")
     else:
         print(__doc__)
 
