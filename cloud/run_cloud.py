@@ -138,6 +138,10 @@ def quick_get(url, binary=False, tries=2):
 
 
 ct.http_get = quick_get
+# a full browser header set - some sites refuse bare requests from data centres
+ct.UA.update({"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              "Accept-Language": "ar,en-US;q=0.9,en;q=0.8", "Upgrade-Insecure-Requests": "1",
+              "Sec-Fetch-Dest": "document", "Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "none"})
 _ET_FAILS = [0]
 
 
@@ -171,8 +175,10 @@ def guarded(name, fn):
         url = PROBES.get(name)
         if url:
             try:
+                import http.cookiejar
                 h = gd.ET_H if "etimad" in url else ct.UA
-                with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=20) as r:
+                op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+                with op.open(urllib.request.Request(url, headers=h), timeout=20) as r:   # eSupply needs its guest cookie
                     r.read(256)
             except Exception as e:                                 # noqa: BLE001
                 progress(f"{name}: الموقع مش بيرد على السحابة ({e}) - هيجي من الكمبيوتر")
