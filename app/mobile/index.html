@@ -27,7 +27,7 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Ple
 button{font:inherit}
 header{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:var(--on-brand);padding:12px 14px 10px;padding-top:max(12px,env(safe-area-inset-top));box-shadow:0 2px 10px rgba(11,42,74,.25)}
 header .row{display:flex;align-items:center;gap:10px}
-.logo{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.14);display:grid;place-items:center;font-weight:700;font-size:12px;letter-spacing:.5px;border:1px solid rgba(255,255,255,.22);direction:ltr}
+.logo{width:40px;height:40px;border-radius:12px;background:#fff;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.18)}.logo img{width:32px;height:32px;object-fit:contain}
 .brandname{flex:1;line-height:1.2}
 .brandname b{display:block;font-size:17px;letter-spacing:.3px}
 .brandname span{font-size:11.5px;opacity:.75}
@@ -89,7 +89,7 @@ th{background:var(--accent-soft);color:var(--ink);font-weight:600}
 #install,#bioOffer{display:none;margin:10px 12px 0;padding:10px 12px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--line);font-size:13px}
 #login{position:fixed;inset:0;z-index:40;background:radial-gradient(1200px 600px at 80% -10%,#1c5d8f 0%,transparent 60%),linear-gradient(160deg,#0b2a4a,#071a2e);display:none;align-items:center;justify-content:center;padding:20px}
 #login .box{background:var(--card);color:var(--ink);border-radius:20px;padding:26px 20px 18px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center}
-#login .lg{width:64px;height:64px;border-radius:18px;margin:0 auto;display:grid;place-items:center;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;font-weight:700;letter-spacing:.5px;direction:ltr}
+#login .lg{width:96px;height:96px;object-fit:contain;display:block;margin:0 auto}
 #login h2{margin:10px 0 2px;font-size:21px;direction:ltr}
 #login .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
 #login input{width:100%;font:inherit;font-size:16px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);margin:6px 0;direction:ltr;text-align:left;outline:none}
@@ -122,7 +122,7 @@ th{background:var(--accent-soft);color:var(--ink);font-weight:600}
 </head>
 <body>
 <header id="hdr">
-  <div class="row"><div class="logo">GCC</div><div class="brandname"><b>GCC Tenders</b><span>مناقصات ومشاريع الخليج</span></div>
+  <div class="row"><div class="logo"><img src="icons/logo.png" alt=""></div><div class="brandname"><b>GCC Tenders</b><span>مناقصات ومشاريع الخليج</span></div>
     <span class="upd" id="upd"></span><span id="who" title="خروج"></span><button id="lang" title="Language">EN</button></div>
   <div class="ctry" id="ctry"><button data-c="" class="on">الكل</button><button data-c="KW">الكويت</button><button data-c="SA">السعودية</button><button data-c="AE">الإمارات</button></div>
 </header>
@@ -267,7 +267,7 @@ async function unwrap(key,w){return crypto.subtle.importKey('raw',await crypto.s
 const bioReady=()=>!!(LOGIN_U&&store.get('fzbio','')&&store.get('fzbio_u','')===LOGIN_U);
 function showLogin(msg){
   const bio=bioReady();$('#login').style.display='flex';
-  $('#login .box').innerHTML=`<button class="lt" id="llang">${LANG==='en'?'عربي':'English'}</button><div class="lg">GCC</div><h2>GCC Tenders</h2><div class="sub">مناقصات ومشاريع الخليج</div>${msg?`<div class="err">${esc(msg)}</div>`:''}
+  $('#login .box').innerHTML=`<button class="lt" id="llang">${LANG==='en'?'عربي':'English'}</button><img class="lg" src="icons/logo.png" alt="GCC Tenders"><h2>GCC Tenders</h2><div class="sub">مناقصات ومشاريع الخليج</div>${msg?`<div class="err">${esc(msg)}</div>`:''}
     ${LOGIN_U?`<div style="margin-bottom:6px">أهلاً <b dir="ltr">${esc(LOGIN_U)}</b></div>`:'<input id="lu" placeholder="اسم المستخدم" autocapitalize="none" autocomplete="username">'}
     ${bio?'<button class="big" id="lbio">👆 ادخل بالبصمة</button><div class="note">أو بكلمة السر</div>':''}
     <input id="lp" type="password" placeholder="كلمة السر" autocomplete="current-password"><button class="big" id="lgo">دخول</button>
