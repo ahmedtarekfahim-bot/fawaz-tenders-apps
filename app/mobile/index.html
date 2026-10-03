@@ -150,35 +150,38 @@ async function decrypt(enc,pw){
   const ds=new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'));
   return JSON.parse(await new Response(ds).text());
 }
-let ENC=null,bioOK=false;
-// what the Fawaz tab may show: the private part only after the fingerprint (when that lock is on)
-function visibleP(){return P&&!(store.get('fzbio','')&&!bioOK)?P:null}
-function hasP(){return !!P}
+let ENC=null,opened=false,PW='';
+// The Fawaz part opens once per app session - with the passphrase, or with the fingerprint instead of
+// typing it (the fingerprint then releases the passphrase kept on this phone).
+function visibleP(){return opened?P:null}
+const bioOn=()=>!!(store.get('fzbio','')&&store.get('fzpw',''));
 const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
 async function bioEnable(){
   try{const c=await navigator.credentials.create({publicKey:{rp:{name:'مناقصات فواز'},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:'fawaz',displayName:'مناقصات فواز'},
       challenge:crypto.getRandomValues(new Uint8Array(32)),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
       authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'discouraged'},timeout:60000}});
-    store.set('fzbio',b64u(c.rawId));bioOK=true;toast('اتفعّل القفل بالبصمة');render()}
-  catch(e){toast('البصمة ما اتفعّلتش: '+(e.message||e.name))}}
+    store.set('fzbio',b64u(c.rawId));store.set('fzpw',PW);toast('تمام - المرة الجاية افتح بالبصمة من غير كلمة السر');render()}
+  catch(e){toast('البصمة ما اتسجلتش: '+(e.message||e.name))}}
 async function bioUnlock(){
   try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
-      allowCredentials:[{type:'public-key',id:b64(store.get('fzbio',''))}],userVerification:'required',timeout:60000}});
-    bioOK=true;wsec='feed';render()}
-  catch(e){toast('ما اتفتحش - جرّب تاني')}}
-function bioOff(){store.set('fzbio','');bioOK=false;toast('اتشال القفل بالبصمة');render()}
+      allowCredentials:[{type:'public-key',id:b64(store.get('fzbio',''))}],userVerification:'required',timeout:60000}})}
+  catch(e){toast('البصمة ما اتعرفتش - جرّب تاني أو اكتب كلمة السر');return}
+  try{if(!ENC)await loadPrivate();P=await decrypt(ENC,store.get('fzpw',''));PW=store.get('fzpw','');opened=true;wsec='feed';badges();openTabMarks('watch');render()}
+  catch(e){store.set('fzpw','');toast('كلمة السر اتغيرت - اكتب الجديدة مرة، والبصمة هتشتغل بيها بعد كده',6000);render()}}
+function bioOff(){store.set('fzbio','');store.set('fzpw','');toast('اتلغى الفتح بالبصمة');render()}
 async function forgot(){
   try{const r=await fetch('data/reset.json?t='+Date.now(),{cache:'no-store'});const j=await r.json();
     if(!confirm(`هيتعمل كلمة سر جديدة وتتبعت على ${j.mail}.\nالكمبيوتر لازم يكون شغال - بتوصل خلال دقيقة أو اتنين.\nتكمّل؟`))return;
     const x=await fetch('https://ntfy.sh/'+j.topic,{method:'POST',body:'reset'});if(!x.ok)throw new Error(x.status);
-    store.set('fzpw','');toast(`اتبعت الطلب - افتح الجيميل (${j.mail}) خلال دقايق`,7000)}
+    toast(`اتبعت الطلب - افتح الجيميل (${j.mail}) خلال دقايق`,7000)}
   catch(e){toast('الطلب ما اتبعتش - جرّب تاني بعد شوية')}}
 async function loadPrivate(){
   try{const r=await fetch('data/private.enc?t='+Date.now(),{cache:'no-store'});ENC=r.ok?await r.json():null}catch(e){}
-  const pw=store.get('fzpw','');if(ENC&&pw){try{P=await decrypt(ENC,pw)}catch(e){P=null}}
+  if(ENC&&opened&&PW){try{P=await decrypt(ENC,PW)}catch(e){P=null;opened=false}}   // fresh data while open
 }
 async function unlock(){const pw=$('#pw').value.trim();if(!pw||!ENC)return;
-  try{P=await decrypt(ENC,pw);store.set('fzpw',pw);bioOK=true;MK.watchId=undefined;wsec='feed';badges();openTabMarks('watch');render();toast('اتفتحت بيانات فواز')}
+  try{P=await decrypt(ENC,pw);PW=pw;opened=true;if(store.get('fzbio',''))store.set('fzpw',pw);
+    MK.watchId=undefined;wsec='feed';badges();openTabMarks('watch');render();toast('اتفتحت بيانات فواز')}
   catch(e){toast('كلمة السر غلط')}}
 
 // ---------------------------------------------------------------- lists
@@ -259,13 +262,14 @@ function watchChips(){
   document.querySelectorAll('[data-w]').forEach(c=>c.onclick=()=>{wsec=c.dataset.w;shown=150;render()});
 }
 function renderWatch(q){
-  const P=visibleP(),bio=store.get('fzbio','');
+  const P=visibleP(),bio=bioOn();
   const hl=HL.watch||{ts:'~',id:1e12},qq=norm(q);
   const m=s=>!qq||norm(s).includes(qq)||(digits(q).length&&digits(q).every(d=>digits(s).includes(d)));
   let h='';
-  if(hasP()&&bio&&!bioOK)h+=`<div class="lock"><b>🔒 مناقصاتنا وإيميلات Sanjay مقفولة بالبصمة</b><button class="big" id="bio">افتح ببصمة الصباع</button></div>`;
-  if(!hasP()&&ENC)h+=`<div class="lock"><b>مناقصاتنا وإيميلات Sanjay</b><div class="note">البيانات دي سرية ومتشفّرة - اكتب كلمة السر مرة واحدة على الموبايل ده (موجودة عند أحمد في برنامج الكمبيوتر).</div><input id="pw" type="password" autocomplete="current-password" placeholder="كلمة السر"><button class="big" id="unl">افتح</button><button class="off" id="forgot">نسيت كلمة السر؟</button></div>`;
-  if(P&&window.PublicKeyCredential)h+=`<div class="note" style="margin:0 4px 8px">${bio?'🔒 التبويب ده مقفول بالبصمة · <a href="#" id="biooff">شيل القفل</a>':'🔓 <a href="#" id="bioon">اقفل التبويب ده ببصمة الصباع</a>'}</div>`;
+  if(!P&&ENC)h+=`<div class="lock"><b>مناقصاتنا وإيميلات Sanjay</b><div class="note">البيانات دي سرية ومتشفّرة.</div>
+    ${bio?'<button class="big" id="bio">👆 افتح ببصمة الصباع</button><div class="note" style="text-align:center">أو اكتب كلمة السر</div>':''}
+    <input id="pw" type="password" autocomplete="current-password" placeholder="كلمة السر"><button class="big" id="unl">افتح</button><button class="off" id="forgot">نسيت كلمة السر؟</button></div>`;
+  if(P&&window.PublicKeyCredential)h+=`<div class="note" style="margin:0 4px 8px">${bio?'👆 الفتح بالبصمة شغال · <a href="#" id="biooff">إلغاؤه</a>':'👆 <a href="#" id="bioon">استخدم البصمة بدل كلمة السر المرة الجاية</a>'}</div>`;
   if(wsec==='feed'&&P)h+=P.feed.filter(f=>m(f[2]+' '+f[3]+' '+f[4])).slice(0,shown).map(f=>`<div class="card ${f[0]>hl.id&&!f[1].startsWith('2000')?'unread':''}" data-tk="${esc(f[6]||'')}" data-u="${esc(f[5]||'')}"><div class="m"><span class="wk">${esc(f[2])}</span><span>${f[1].startsWith('2000')?'من أول تحميل':esc(f[1].replace('T',' '))}</span></div><div class="t">${esc(f[3])}</div><div class="note">${esc(f[4])}</div></div>`).join('');
   else if((wsec==='live'||wsec==='hist')&&P)h+=P.tenders.filter(t=>(wsec==='live')===!!t.lv&&m(t.t+' '+t.c+' '+t.n+' '+t.src)).slice(0,shown).map(t=>`<div class="card" data-tk="${esc(t.k)}"><div class="t">${esc(t.t)}</div><div class="m"><span class="wk">${esc(t.src)}</span><span>${esc(t.c)}</span>${t.n?`<span class="tno">${esc(t.n)}</span>`:''}${t.cl?`<span>إقفال ${dmy(t.cl)}</span>`:''}${t.rk?`<span class="fzb">ترتيبنا L${t.rk}</span>`:''}${liveStatus(t)}</div>${t.st||t.rm?`<div class="note">${esc([t.st,t.rm].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('');
   else if(wsec==='mails'&&P)h+=P.emails.filter(e=>m(e.s+' '+e.b)).map((e,i)=>`<div class="card" data-mail="${P.emails.indexOf(e)}"><div class="t">${esc(e.s)}</div><div class="m"><span>${esc(e.d.replace('T',' '))}</span><span>${esc(e.f)}</span>${e.a?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('');
@@ -323,7 +327,7 @@ function openAward(row){const a=A.find(x=>x.r===row);if(!a)return;const m=MEET[a
   if(same.length)h+=`<h3>صفوف تانية لنفس الرقم</h3>`+awTable(same);
   const sim=similarAwards(a.s,a.r);if(sim.length)h+=`<h3>ترسيات سابقة لنفس نوع الشغل</h3>`+awTable(sim);
   showSheet('ترسية',h)}
-document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));tab=b.dataset.t;shown=150;
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));tab=b.dataset.t;shown=150;if(tab==='watch'&&!opened&&bioOn())bioUnlock();
   openTabMarks(tab);badges();
   $('#q').placeholder=tab==='awards'?'عنوان أو رقم المناقصة الكويتية القديمة...':tab==='watch'?'ابحث في مناقصاتنا والتحديثات...':'ابحث بالعنوان أو الرقم أو الجهة...';$('#ctry').style.display=tab==='awards'||tab==='watch'?'none':'flex';setH();render()});
 document.querySelectorAll('#ctry button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ctry button').forEach(x=>x.classList.toggle('on',x===b));country=b.dataset.c;status='';shown=150;render()});
