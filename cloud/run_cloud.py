@@ -110,7 +110,8 @@ def collect_pc_feed(store, progress):
                        country=r["c"], kind=r.get("k") or "مناقصة",
                        official=(2, r["off"], r.get("ol", "")) if r.get("off") else None,
                        publish=r.get("p", ""), closing=r.get("cl", ""), fees=r.get("f", ""), bond=r.get("b", ""),
-                       ttype=r.get("t", ""), value=r.get("v", ""), winner=r.get("w", ""), award_date=r.get("a", ""))
+                       ttype=r.get("t", ""), value=r.get("v", ""), winner=r.get("w", ""), award_date=r.get("a", ""),
+                       docs=[{"label": d[0], "url": d[1], "date": d[2], "src": d[3] if len(d) > 3 else ""} for d in r.get("dc") or []])
         if it is None:
             continue
         for d, src, etype, text, url in evs:

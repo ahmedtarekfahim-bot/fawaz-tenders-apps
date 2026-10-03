@@ -257,11 +257,37 @@ async function detail(id){
     if(d.history.length)h+=`<h4>ترسيات سابقة لنفس نوع الشغل (للتسعير)</h4><table><tr><th>التاريخ</th><th>الرقم</th><th>الجهة</th><th>الفائز</th><th>القيمة</th></tr>${d.history.map(x=>`<tr title="${esc(x.subject)}"><td>${dmy(x.date)}</td><td><span class="tno">${esc(x.tno)}</span></td><td>${esc(x.org)}</td><td class="${isFz(x.winner)?'fz':''}">${esc((x.winner||'').slice(0,80))}</td><td>${esc(x.total)}</td></tr>`).join('')}</table>`;
     if(d.news.length)h+=`<h4>أخبار قريبة من الموضوع</h4>${d.news.map(n=>`<div class="m"><span>${dmy(n.date)}</span><span>${esc(n.source)}</span><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div>`).join('')}`;
     if(r.country==='KW')h+=`<h4>من محاضر الجهاز المركزي (${d.hits.length})</h4>`+(d.hits.length?hitsHtml(d.hits,false):'<p class="snip">مفيش صفحات محاضر مطابقة.</p>');
-    h+=`</div><div class="actions"><button class="pri" onclick="makePdf()">اعمل PDF واحد</button>${r.official?`<button onclick="openOfficial('${esc(r.official)}')">افتح الإعلان الرسمي ↗</button>`:''}</div>`;
-    $('#detail').innerHTML=h;wireOff($('#detail'));wirePrev();
+    h+=`<h4>📥 مستندات المناقصة</h4><div id="docs-box"><p class="snip">بدوّر على المستندات في المواقع الرسمية...</p></div>`;
+    h+=`</div><div class="actions"><button class="pri" onclick="makePdf()">اعمل PDF واحد</button><button onclick="downloadDocs(${r.id})">📥 حمّل كل المستندات</button>${r.official?`<button onclick="openOfficial('${esc(r.official)}')">افتح الإعلان الرسمي ↗</button>`:''}</div>`;
+    $('#detail').innerHTML=h;wireOff($('#detail'));wirePrev();loadDocs(r.id);
     document.querySelectorAll('[data-ev]').forEach(a=>a.onclick=e=>{e.preventDefault();const x=d.events[+a.dataset.ev];$('#mimg').src=`/api/page.png?file=${encodeURIComponent(x.file)}&page=${x.page}`;$('#modal').style.display='flex'});
   }catch(e){$('#detail').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
 }
+// ---------------------------------------------------------------- tender documents
+async function loadDocs(id){
+  const box=$('#docs-box');if(!box)return;
+  let d;try{d=await get('/api/docs?id='+id)}catch(e){box.innerHTML=`<p class="snip">خطأ: ${esc(e.message)}</p>`;return}
+  if(!current||current.id!==id)return;
+  let h=d.docs.length?`<table><tr><th>المستند</th><th>المصدر</th><th>التاريخ</th><th></th></tr>${d.docs.map(x=>`<tr><td>${esc(x.label)}</td><td>${esc(x.src||'')}</td><td>${esc(x.date||'')}</td>
+    <td>${x.url?(x.local?`<a href="${esc(x.url)}" target="_blank">فتح</a>`:`<a href="#" data-off="${esc(x.url)}">تحميل ↗</a>`):'<span class="badge" style="background:#fde8c8">محتاج دخول</span>'}</td></tr>`).join('')}</table>`
+    :'<p class="snip">مفيش مستندات منشورة للمناقصة دي على المواقع.</p>';
+  if(d.capt){
+    if(!d.capt.login)h+=`<div class="card" style="margin-top:8px"><b>ملفات الجهاز المركزي محتاجة حسابك على capt.gov.kw</b>
+      <p class="snip">${d.capt.error?esc(d.capt.error)+' - ':''}اكتب الإيميل وكلمة السر مرة واحدة. بيتحفظوا متشفّرين على الجهاز ده بس (Windows).</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="capt-u" placeholder="الإيميل" value="${esc(d.capt.account||'')}" style="direction:ltr;padding:6px;border:1px solid var(--line);border-radius:8px;min-width:200px">
+      <input id="capt-p" type="password" placeholder="كلمة السر" style="direction:ltr;padding:6px;border:1px solid var(--line);border-radius:8px;min-width:160px">
+      <button class="pri" id="capt-save">احفظ وادخل</button></div></div>`;
+    else h+=`<p class="snip">✔ داخل بحساب الجهاز المركزي (${esc(d.capt.account)}) ${d.capt.error?'- '+esc(d.capt.error):''}</p>`;
+  }
+  box.innerHTML=h;wireOff(box);
+  if($('#capt-save'))$('#capt-save').onclick=async()=>{const u=$('#capt-u').value.trim(),pw=$('#capt-p').value;if(!u||!pw)return toast('اكتب الإيميل وكلمة السر');
+    toast('بيدخل على الجهاز المركزي...');const r=await post('/api/capt-account',{user:u,password:pw});toast(r.msg,7000);if(r.ok)loadDocs(id)};
+}
+async function downloadDocs(id){
+  toast('بحمّل المستندات...',8000);
+  try{const r=await post('/api/docs/download',{id});const ok=r.files.filter(f=>f[1]).length;
+    toast(ok?`اتحمّل ${ok} ملف في فولدر المناقصة واتفتح`+(r.locked.length?` - ${r.locked.length} محتاج دخول/شراء`:''):(r.locked.length?'المستندات محتاجة حساب الجهاز المركزي أو شراء':'مفيش مستندات قابلة للتحميل'),9000)}
+  catch(e){toast('خطأ: '+e.message,7000)}}
 async function makePdf(){
   const sel=[...document.querySelectorAll('.hit input:checked')].map(c=>hits[+c.dataset.i]);toast('بعمل الـ PDF...');
   try{const r=await post('/api/report',{id:current.id,hits:sel});toast('اتعمل واتفتح: '+r.name,6000)}catch(e){toast('خطأ: '+e.message,6000)}

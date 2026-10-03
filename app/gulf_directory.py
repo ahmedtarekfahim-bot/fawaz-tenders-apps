@@ -208,6 +208,11 @@ def db():
         if "seen_at" not in [r[1] for r in con.execute("PRAGMA table_info(news)")]:
             con.execute("ALTER TABLE news ADD COLUMN seen_at TEXT DEFAULT ''")
             con.commit()
+        if "docs" not in [r[1] for r in con.execute("PRAGMA table_info(items)")]:
+            con.execute("ALTER TABLE items ADD COLUMN docs TEXT DEFAULT ''")
+            con.commit()
+        con.execute("CREATE TABLE IF NOT EXISTS capt_docs(item_id INTEGER PRIMARY KEY, docs TEXT, fetched TEXT, logged INT)")
+        con.commit()
         _MIGRATED.append(1)
     return con
 
@@ -247,6 +252,7 @@ class Store:
                   "country": country}
             for k in ("publish", "closing", "ptm", "fees", "bond", "ttype", "value", "winner", "award_date", "notes"):
                 it[k] = ""
+            it["docs"] = []
             self.items.append(it)
             if it["numkey"]:
                 self.by_num[(country, it["numkey"])].append(it)
@@ -263,6 +269,9 @@ class Store:
             if STATUS_RANK.get(status, -1) > STATUS_RANK.get(it["status"], -1):
                 it["status"] = status
         it["sources"].add(source)
+        for d in f.pop("docs", None) or []:          # tender documents published by the source
+            if d["url"] not in {x["url"] for x in it.setdefault("docs", [])}:
+                it["docs"].append(d)
         off = f.pop("official", None)                # (rank, url, label): the most direct official page wins
         if off and off[1] and off[0] > it.get("official", (0, "", ""))[0]:
             it["official"] = off
@@ -523,6 +532,22 @@ def pahw_parse(h):
     return out
 
 
+def pahw_docs(h, number):
+    """public PDFs of one PAHW tender on a list page (file names start with the tender's number)"""
+    m = re.search(r"(\d{3,5})\s*-\s*20\d\d", number) or re.search(r"(\d{3,5})", number)
+    if not m:
+        return []
+    base, out = m.group(1), []
+    for href in dict.fromkeys(re.findall(r"href=['\"](/Downloads/Tenders/[^'\"]+)['\"]", h)):
+        name = urllib.parse.unquote(href.rsplit("/", 1)[-1])
+        if re.search(rf"(?<!\d){base}(\d{{4}})?(?!\d)", name):
+            label = "إقرار المشاركة" if "اقرار" in name else ("ملحق / مرفق" if re.search(rf"{base}\d{{4}}", name) else "إعلان / مرفقات المناقصة")
+            d = re.search(r"-(20\d{6})-", name)
+            out.append({"label": label, "url": "https://www.pahw.gov.kw" + urllib.parse.quote(href),
+                        "date": f"{d.group(1)[:4]}-{d.group(1)[4:6]}-{d.group(1)[6:]}" if d else "", "src": "الرعاية السكنية"})
+    return out
+
+
 def collect_pahw(store, progress, max_pages=25):
     url = "https://www.pahw.gov.kw/Tenders_arabic"
     h = ct.http_get(url)
@@ -535,7 +560,7 @@ def collect_pahw(store, progress, max_pages=25):
             closing = iso(any_date(r["clo"]))
             if status == "مطروحة" and closing and closing < iso(TODAY()):
                 status = "مقفولة - تحت الدراسة"
-            store.add("pahw", r["num"], "المؤسسة العامة للرعاية السكنية", r["sub"], status, url=url,
+            store.add("pahw", r["num"], "المؤسسة العامة للرعاية السكنية", r["sub"], status, url=url, docs=pahw_docs(h, r["num"]),
                       official=(6, url, "موقع الرعاية السكنية (مناقصات)"),
                       publish=iso(any_date(r["pub"])), closing=closing, ttype=r["typ"], award_date=iso(any_date(r["awd"])),
                       event={"date": iso(any_date(r["pub"])), "etype": f"الرعاية السكنية - {st}",
@@ -842,8 +867,11 @@ def save_store(store):
                     fees=it["fees"], bond=it["bond"], ttype=it["ttype"], value=it["value"], winner=it["winner"],
                     award_date=it["award_date"], cats=",".join(categorize(it["subject"], it["org"])), fawaz=int(is_fz(it)),
                     notes=notes, url=it["url"], official=it.get("official", (0, "", ""))[1],
-                    official_label=it.get("official", (0, "", ""))[2])
+                    official_label=it.get("official", (0, "", ""))[2],
+                    docs=json.dumps(it.get("docs") or [], ensure_ascii=False) if it.get("docs") else "")
         old = con.execute("SELECT * FROM items WHERE ukey=?", (k,)).fetchone()
+        if old is not None and not vals["docs"] and old["docs"]:
+            vals["docs"] = old["docs"]
         if old is not None and not vals["official"] and old["official"]:
             vals["official"], vals["official_label"] = old["official"], old["official_label"]
         if old is None:
@@ -909,6 +937,12 @@ def run_update(progress=print, countries=None):
         summary["أخبار جديدة"] = f"خطأ: {e}"
     new_n, chg_n = save_store(store)
     summary["جديد"], summary["اتغيّر"] = new_n, chg_n
+    try:
+        n_docs = prefetch_capt_docs(progress)
+        if n_docs:
+            summary["ملفات الجهاز المركزي"] = n_docs
+    except Exception as e:                  # noqa: BLE001
+        summary["ملفات الجهاز المركزي"] = f"خطأ: {e}"
     if cfg.S.get("fawaz_watch", True):      # our own tenders + Sanjay's e-mails (PC only, confidential)
         try:
             import fawaz_watch
@@ -1159,6 +1193,115 @@ def _until(months, base=None):
     return datetime.date(base.year + y, m + 1, day).isoformat()
 
 
+
+# ----------------------------------------------------------------- tender documents
+DOCS_OUT = BASE / "مستندات المناقصات"
+
+
+def _capt_q(official, number=""):
+    """(ministry code, tender number exactly as CAPT writes it) from the item's official CAPT link"""
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(official or "").query)
+    return q.get("ministry_code", [""])[0], q.get("tender_no", [number])[0] or number
+
+
+def item_docs(iid, live=True):
+    """every document we know for an item: the source's files (PAHW), CAPT's files (with the owner's
+    account), CAPT minutes, gazette pages -> {"item", "docs": [{label,url,date,src,local}], "capt": {...}}"""
+    import tender_docs as td
+    con = db()
+    it = dict(con.execute("SELECT * FROM items WHERE id=?", (iid,)).fetchone())
+    ev = [dict(e) for e in con.execute("SELECT date, source, etype, text, url, file, page FROM events WHERE item_id=?", (iid,))]
+    cached = con.execute("SELECT docs, fetched, logged FROM capt_docs WHERE item_id=?", (iid,)).fetchone()
+    con.close()
+    docs = [dict(d, local=False) for d in json.loads(it.get("docs") or "[]")]
+    capt = None
+    off = it.get("official") or ""
+    if "capt.gov.kw/ar/tenders/opening-tenders" in off and it.get("number"):
+        if live:
+            try:
+                code, tno = _capt_q(off, it["number"])
+                r = td.capt_docs(tno, code)
+                save_capt_docs(iid, r)
+            except Exception as e:                  # noqa: BLE001
+                r = {"docs": json.loads(cached["docs"]) if cached else [], "login": bool(cached and cached["logged"]),
+                     "error": f"موقع الجهاز ما ردّش: {e}"}
+        else:
+            r = {"docs": json.loads(cached["docs"]) if cached else [], "login": bool(cached and cached["logged"]), "error": ""}
+        capt = {"login": r.get("login"), "error": r.get("error", ""), "account": td.account()[0]}
+        docs += [dict(d, src="الجهاز المركزي", local=False) for d in r.get("docs", [])]
+    for e in ev:                                    # CAPT minutes (public PDFs) + gazette pages on this PC
+        if (e["url"] or "").lower().endswith(".pdf") and "capt.gov.kw" in (e["url"] or ""):
+            docs.append({"label": e["etype"] or "محضر الجهاز", "url": e["url"], "date": e["date"], "src": "محاضر الجهاز", "local": False})
+        if e["file"] and str(e["file"]).lower().endswith(".pdf") and e["page"]:
+            docs.append({"label": f"صفحة الجريدة {e['page']}", "url": f"/api/file?path={urllib.parse.quote(e['file'])}#page={e['page']}",
+                         "date": e["date"], "src": "الكويت اليوم", "local": True, "file": e["file"], "page": e["page"]})
+    if off.lower().endswith(".pdf"):
+        docs.append({"label": it.get("official_label") or "المحضر", "url": off, "date": "", "src": "رسمي", "local": False})
+    seen, out = set(), []
+    for d in docs:
+        k = d.get("url") or d.get("label")
+        if k not in seen:
+            seen.add(k)
+            out.append(d)
+    return {"item": {k: it.get(k) for k in ("id", "number", "subject", "org", "country", "official")}, "docs": out, "capt": capt}
+
+
+def save_capt_docs(iid, r):
+    con = db()
+    con.execute("INSERT OR REPLACE INTO capt_docs VALUES(?,?,?,?)",
+                (iid, json.dumps(r.get("docs", []), ensure_ascii=False), datetime.datetime.now().isoformat(timespec="seconds"),
+                 int(bool(r.get("login")))))
+    con.commit()
+    con.close()
+
+
+def download_docs(iid):
+    """download every reachable document of an item into its own folder (gazette: just the page)"""
+    import tender_docs as td
+    d = item_docs(iid)
+    files = [x for x in d["docs"] if x.get("url") and not x.get("local")]
+    folder, res = td.download(d["item"], files, DOCS_OUT)
+    for x in d["docs"]:                              # gazette pages -> one-page PDFs
+        if x.get("local") and x.get("file"):
+            try:
+                import pymupdf
+                src = pymupdf.open(x["file"])
+                out = pymupdf.open()
+                out.insert_pdf(src, from_page=int(x["page"]) - 1, to_page=int(x["page"]) - 1)
+                name = td.safe(f"الكويت اليوم ص {x['page']} - {Path(x['file']).stem}", 80) + ".pdf"
+                out.save(folder / name)
+                res.append((name, True, "صفحة الجريدة"))
+            except Exception as e:                   # noqa: BLE001
+                res.append((x["label"], False, str(e)[:100]))
+    locked = [x["label"] for x in d["docs"] if not x.get("url")]
+    return {"folder": str(folder), "files": res, "locked": locked, "capt": d["capt"]}
+
+
+def prefetch_capt_docs(progress, limit=25):
+    """with the owner's CAPT account: keep the file lists of open CAPT tenders fresh (a few per update),
+    so the phone can show them too"""
+    import tender_docs as td
+    if not all(td.account()):
+        return 0
+    old = (datetime.datetime.now() - datetime.timedelta(hours=20)).isoformat(timespec="seconds")
+    con = db()
+    rows = con.execute("SELECT i.id, i.number, i.official FROM items i LEFT JOIN capt_docs c ON c.item_id=i.id "
+                       "WHERE i.country='KW' AND i.status='مطروحة' AND i.official LIKE '%capt.gov.kw/ar/tenders/opening-tenders%' "
+                       "AND (c.fetched IS NULL OR c.fetched<? OR c.logged=0) ORDER BY i.closing LIMIT ?", (old, limit)).fetchall()
+    con.close()
+    n = 0
+    for r in rows:
+        try:
+            code, tno = _capt_q(r["official"], r["number"])
+            save_capt_docs(r["id"], td.capt_docs(tno, code))
+            n += 1
+        except Exception as e:                       # noqa: BLE001
+            progress(f"ملفات الجهاز المركزي: {e}")
+            break
+        time.sleep(0.5)
+    return n
+
+
 def detail(iid):
     con = db()
     it = dict(con.execute("SELECT * FROM items WHERE id=?", (iid,)).fetchone())
@@ -1383,6 +1526,12 @@ def serve(open_browser=True):
                                           unread=un, seen=seen))
                 if u.path == "/api/watch":
                     return self.send(watch_view())
+                if u.path == "/api/docs":
+                    return self.send(item_docs(int(q["id"])))
+                if u.path == "/api/capt-account":
+                    import tender_docs as td
+                    user, has = td.account()
+                    return self.send({"user": user, "has_password": has})
                 if u.path == "/api/search":
                     return self.send(search(q.get("q", ""), q.get("status", ""), q.get("cat", ""), q.get("org", ""),
                                             q.get("fawaz") == "1", int(q.get("days") or 0), country=q.get("country", ""),
@@ -1446,6 +1595,15 @@ def serve(open_browser=True):
                 if u.path == "/api/update":
                     start_update("تحديث يدوي")
                     return self.send({"status": "running"})
+                if u.path == "/api/docs/download":
+                    r = download_docs(int(body["id"]))
+                    if any(ok for _n, ok, _x in r["files"]):
+                        os.startfile(r["folder"])
+                    return self.send(r)
+                if u.path == "/api/capt-account":         # the owner types it in the window; kept DPAPI-encrypted
+                    import tender_docs as td
+                    td.set_account(body.get("user", ""), body.get("password", ""))
+                    return self.send(td.test_login() if body.get("password") else {"ok": True, "msg": "اتمسح الحساب"})
                 if u.path == "/api/accounts":             # phone app accounts (admin)
                     return self.send(accounts_api(body, lambda m: state["log"].append(m)))
                 if u.path == "/api/seen":

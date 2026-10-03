@@ -65,7 +65,9 @@ def export(out_dir, award_rows=None, meetings=None):
                       "fz": r["fawaz"], "off": off if off.startswith("http") else "",
                       "ol": r["official_label"] if off.startswith("http") else "",
                       "fs": "" if (r["first_seen"] or "").startswith("2000") else (r["first_seen"] or "")[:16],
-                      "ch": (r["changed"] or "")[:16], "ev": ev, "chg": chg})
+                      "ch": (r["changed"] or "")[:16], "ev": ev, "chg": chg,
+                      "dc": [[d.get("label", ""), d.get("url", ""), d.get("date", ""), d.get("src", "")]
+                             for d in json.loads(r["docs"] or "[]") if str(d.get("url", "")).startswith("http")]})
     news = [{"c": n["country"], "d": n["date"], "src": n["source"], "t": n["title"], "u": n["url"], "cat": n["cats"],
              "fz": n["fawaz"], "fs": (n["seen_at"] or "")[:16], "co": int((n["query"] or "").startswith("شركة:"))}
             for n in con.execute("SELECT * FROM news WHERE query<>'تقرير مشاريع' ORDER BY date DESC")]
@@ -83,6 +85,19 @@ def export(out_dir, award_rows=None, meetings=None):
 
 
 # ----------------------------------------------------------------- private part (sealed per account, see accounts.py)
+def capt_docs_map():
+    """CAPT tender files seen with the owner's account -> {"number|org": [[label, url, date]]}"""
+    import gulf_directory as gd
+    con = gd.db()
+    out = {}
+    for r in con.execute("SELECT i.number, i.org, c.docs FROM capt_docs c JOIN items i ON i.id=c.item_id WHERE c.logged=1"):
+        files = [[d.get("label", ""), d["url"], d.get("date", "")] for d in json.loads(r["docs"] or "[]") if d.get("url")]
+        if files:
+            out[f"{r['number']}|{r['org']}"] = files
+    con.close()
+    return out
+
+
 def private_bundle():
     import fawaz_watch as fw
     d = fw.data(limit_feed=600)
@@ -91,6 +106,7 @@ def private_bundle():
             "tenders": [{"k": t["key"], "src": t["src"], "t": t["title"], "c": t["client"], "n": t["number"], "nk": t["numkey"],
                          "cl": t["closing"], "st": t["status"], "rm": t["remarks"], "lv": t["live"], "rk": t["fawaz_rank"],
                          "b": t["bidders"], "ln": [[l["kind"], l["title"], l["url"]] for l in t["links"]]} for t in d["tenders"]],
+            "cd": capt_docs_map(),
             "emails": [{"d": e["received"], "f": e["sender"], "s": e["subject"], "b": e["body"][:1800],
                         "a": Path(e["attachment"]).name if e["attachment"] else ""} for e in d["emails"]]}
 
