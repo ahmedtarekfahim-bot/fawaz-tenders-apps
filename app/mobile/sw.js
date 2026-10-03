@@ -1,5 +1,5 @@
 // offline support: app shell cached, data = network first (fresh every time), cached copy when offline
-const SHELL = "fawaz-shell-v7", DATA = "fawaz-data";
+const SHELL = "fawaz-shell-v8", DATA = "fawaz-data";
 const FILES = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/logo.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES))); self.skipWaiting(); });
 self.addEventListener("activate", e => {

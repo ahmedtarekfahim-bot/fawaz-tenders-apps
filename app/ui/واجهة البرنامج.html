@@ -159,6 +159,7 @@ function wireHits(){
   document.querySelectorAll('[data-prev]').forEach(a=>a.onclick=e=>{e.preventDefault();const h=currentHits[+a.dataset.prev];
     $('#mimg').src=`/api/page.png?file=${encodeURIComponent(h.file)}&page=${h.page}`;$('#modal').style.display='flex'});
 }
+function openOfficial(u){if(u)window.open(u,'_blank')}
 async function detail(row){
   $('#detail').innerHTML='<div class="empty">بجيب البيانات والمحاضر...</div>';
   try{
@@ -178,6 +179,11 @@ async function detail(row){
     if(d.history.length) h+=`<h4>ترسيات سابقة لنفس نوع الشغل (للتسعير)</h4><table><tr><th>التاريخ</th><th>الرقم</th><th>الجهة</th><th>الفائز</th><th>القيمة</th></tr>${
       d.history.map(x=>`<tr title="${esc(x.subject)}"><td>${dmy(x.date)}</td><td><span class="tno">${esc(x.tno)}</span></td><td>${esc(x.org)}</td><td class="${isFz(x.winner)?'fz':''}">${esc(x.winner)}</td><td>${esc(x.total)}</td></tr>`).join('')}</table>`;
     h+=`<h4>من محاضر الاجتماعات (${d.hits.length})</h4>`+(d.hits.length?hitsHtml(d.hits,false):'<p class="snip">ملقتش صفحات محاضر مطابقة بدرجة كافية.</p>')+'</div>';
+    h+=`<div class="card" style="margin:8px 0;border-color:#0e7c86"><b>📥 مستندات المناقصة</b>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="pri" onclick="openOfficial('https://capt.gov.kw/ar/tenders/opening-tenders/?tender_no='+encodeURIComponent(${esc(JSON.stringify(r.tno))}))">🌐 دوّر عليها في موقع الجهاز المركزي - سجّل دخولك وحمّل</button>
+      <button onclick="openOfficial('https://capt.gov.kw/ar/tenders/winning-bids/?meeting_date_from=${r.date}&meeting_date_to=${r.date}&form=date')">كشف ترسيات يوم ${dmy(r.date)} ↗</button></div>
+      <p class="snip" style="margin:6px 0 0">بعد ما المناقصة تترسى ممكن الجهاز يشيلها من المطروح - لو ما ظهرتش، "تسجيل الدخول" على الموقع وبعدها مناقصاتك / المحاضر.</p></div>`;
     h+=`<div class="actions"><button class="pri" onclick="makePdf()">اعمل PDF واحد (الترسية + المحاضر المختارة)</button><span class="snip" id="pdfmsg"></span></div>`;
     $('#detail').innerHTML=h; wireHits();
   }catch(e){$('#detail').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
