@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b2a4a">
+<title>GCC Tenders</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;
+  --bg:#f3f5f9;--card:#ffffff;--ink:#0f1b2d;--muted:#5d6878;--faint:#8a94a3;--line:#e2e7ef;
+  --brand:#0b2a4a;--brand-2:#123b63;--accent:#0e7c86;--accent-soft:#e3f2f3;--on-brand:#ffffff;
+  --fz:#fff1a8;--ok:#177245;--warn:#b42318;--link:#0b5cad;--unread:#fff6e0;--unreadb:#e8a317;--red:#e5484d;
+  --shadow:0 1px 2px rgba(15,27,45,.06),0 4px 14px rgba(15,27,45,.06);--r:14px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --bg:#0b1220;--card:#131c2b;--ink:#e8eef6;--muted:#9eaabb;--faint:#738097;--line:#24324a;
+  --brand:#0b2340;--brand-2:#123358;--accent:#2bb3bf;--accent-soft:#12303a;--fz:#5c5112;--ok:#4cc38a;--warn:#ff8a7a;
+  --link:#7ab8ff;--unread:#2e2510;--unreadb:#d4950f;--shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0b1220;--card:#131c2b;--ink:#e8eef6;--muted:#9eaabb;--faint:#738097;--line:#24324a;
+  --brand:#0b2340;--brand-2:#123358;--accent:#2bb3bf;--accent-soft:#12303a;--fz:#5c5112;--ok:#4cc38a;--warn:#ff8a7a;--link:#7ab8ff;--unread:#2e2510;--unreadb:#d4950f}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "IBM Plex Sans Arabic","Segoe UI",Tahoma,Roboto,"Noto Sans Arabic",Arial,sans-serif}
+button{font:inherit}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:var(--on-brand);padding:12px 14px 10px;padding-top:max(12px,env(safe-area-inset-top));box-shadow:0 2px 10px rgba(11,42,74,.25)}
+header .row{display:flex;align-items:center;gap:10px}
+.logo{width:40px;height:40px;border-radius:12px;background:#fff;display:grid;place-items:center;box-shadow:0 2px 8px rgba(0,0,0,.18)}.logo img{width:32px;height:32px;object-fit:contain}
+.brandname{flex:1;line-height:1.2}
+.brandname b{display:block;font-size:17px;letter-spacing:.3px}
+.brandname span{font-size:11.5px;opacity:.75}
+header .upd{font-size:10.5px;opacity:.75;text-align:end;line-height:1.3}
+#who{font-size:11px;text-align:end;cursor:pointer;background:rgba(255,255,255,.12);border-radius:20px;padding:3px 10px;line-height:1.3;direction:ltr}
+#who:empty{display:none}
+.ctry{display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+.ctry button{border:1px solid rgba(255,255,255,.28);border-radius:20px;background:transparent;color:var(--on-brand);padding:4px 13px;font-size:13px;white-space:nowrap}
+.ctry button.on{background:#fff;color:var(--brand);font-weight:600;border-color:#fff}
+/* bottom navigation */
+.tabs{position:fixed;bottom:0;left:0;right:0;z-index:15;display:flex;background:var(--card);border-top:1px solid var(--line);padding:6px 4px;padding-bottom:max(6px,env(safe-area-inset-bottom));box-shadow:0 -4px 16px rgba(15,27,45,.06)}
+.tabs button{flex:1;border:0;background:transparent;color:var(--faint);font-size:11px;padding:4px 2px;position:relative;display:flex;flex-direction:column;align-items:center;gap:2px}
+.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs button.on{color:var(--accent);font-weight:600}
+.tabs button.on::before{content:"";position:absolute;top:-7px;width:28px;height:3px;border-radius:3px;background:var(--accent)}
+.bdg{position:absolute;top:0;left:calc(50% - 22px);min-width:18px;height:18px;line-height:18px;padding:0 5px;border-radius:20px;background:var(--red);color:#fff;font-size:10.5px;font-weight:700;box-shadow:0 0 0 2px var(--card)}
+.bdg:empty{display:none}
+.search{padding:12px 12px 4px;position:sticky;top:var(--hh,118px);z-index:4;background:var(--bg)}
+.search input{width:100%;font:inherit;font-size:15.5px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);outline:none;box-shadow:var(--shadow)}
+.search input:focus{border-color:var(--accent)}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:6px 12px 10px;scrollbar-width:none}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:20px;padding:5px 12px;font-size:12.5px;white-space:nowrap}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip b{margin-inline-start:5px;font-weight:600;opacity:.8}
+.chip .nw{background:var(--red);color:#fff;border-radius:20px;padding:0 6px;margin-inline-start:5px;font-size:11px}
+.list{padding:0 12px 96px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.card.unread{background:var(--unread);border-color:var(--unreadb);border-inline-start:4px solid var(--unreadb)}
+.card .t{font-weight:600;font-size:14.5px;line-height:1.5}
+.m{color:var(--muted);font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 10px;margin-top:5px;align-items:center}
+.st{font-size:11.5px;padding:1px 9px;border-radius:20px;font-weight:600}
+.st-open{background:#dcf3e6;color:#11603a}.st-soon{background:#fdecd2;color:#8a4b00}.st-study{background:#e7ecf3;color:#34465c}
+.st-award{background:#e0e8fb;color:#1f3f8a}.st-cancel{background:#fbe0df;color:#8a1f1f}.st-run{background:#efe4fb;color:#5b2a86}
+.flag{font-size:11px;border-radius:20px;padding:0 8px;font-weight:600}.new{background:var(--link);color:#fff}.chg{background:#ffe2bd;color:#7a3e00}
+.wk{font-size:11px;border-radius:20px;padding:1px 9px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.tno{direction:ltr;unicode-bidi:isolate;background:rgba(127,127,127,.12);border-radius:6px;padding:0 6px;font-size:12px}
+.fz{background:var(--fz);border-radius:4px;padding:0 4px}
+.fzb{background:var(--fz);font-size:11px;border-radius:20px;padding:0 8px}
+.money{color:var(--ok);font-weight:600}
+.urgent{color:var(--warn);font-weight:600}
+a.off,button.off{color:var(--link);font-weight:600;text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:2px 10px;font-size:12.5px;background:var(--card)}
+.more{display:block;width:100%;padding:11px;border:1px dashed var(--line);border-radius:12px;background:transparent;color:var(--muted);font:inherit}
+.empty{text-align:center;color:var(--muted);padding:40px 10px}
+#sheet{position:fixed;inset:0;background:var(--bg);z-index:20;overflow:auto;display:none;padding-bottom:40px}
+#sheet .top{position:sticky;top:0;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;padding:12px 14px;padding-top:max(12px,env(safe-area-inset-top));display:flex;gap:10px;align-items:center}
+#sheet .top button{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:10px;padding:6px 14px}
+#sheet .body{padding:14px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:7px 10px;font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow)}
+.kv div:nth-child(odd){color:var(--muted)}
+h3{font-size:14px;color:var(--accent);margin:18px 0 8px;font-weight:600}
+.ev{border-inline-start:3px solid var(--accent-soft);padding:2px 10px;margin:8px 0;font-size:13px}
+.ev b{font-size:12.5px}
+.big{display:block;text-align:center;margin:12px 0;padding:12px;border-radius:12px;background:var(--accent);color:#fff!important;text-decoration:none;font-weight:600;border:0;width:100%;font:inherit}
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:var(--card)}
+td,th{border:1px solid var(--line);padding:5px 6px;text-align:start;vertical-align:top}
+th{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.note{font-size:12px;color:var(--muted)}
+.mail{white-space:pre-wrap;font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+#install,#bioOffer{display:none;margin:10px 12px 0;padding:10px 12px;border-radius:12px;background:var(--accent-soft);border:1px solid var(--line);font-size:13px}
+#login{position:fixed;inset:0;z-index:40;background:radial-gradient(1200px 600px at 80% -10%,#1c5d8f 0%,transparent 60%),linear-gradient(160deg,#0b2a4a,#071a2e);display:none;align-items:center;justify-content:center;padding:20px}
+#login .box{background:var(--card);color:var(--ink);border-radius:20px;padding:26px 20px 18px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center}
+#login .lg{width:96px;height:96px;object-fit:contain;display:block;margin:0 auto}
+#login h2{margin:10px 0 2px;font-size:21px;direction:ltr}
+#login .sub{color:var(--muted);font-size:13px;margin-bottom:14px}
+#login input{width:100%;font:inherit;font-size:16px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);margin:6px 0;direction:ltr;text-align:left;outline:none}
+#login input:focus{border-color:var(--accent)}
+#login .err{background:#fbe0df;color:#8a1f1f;border-radius:10px;padding:8px;margin-bottom:8px;font-size:13.5px}
+#login a{color:var(--link);text-decoration:none}
+#toast{position:fixed;bottom:84px;left:14px;right:14px;background:#0f1b2d;color:#fff;padding:11px 14px;border-radius:12px;display:none;z-index:30;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+/* dashboard */
+.hello{display:flex;justify-content:space-between;align-items:baseline;margin:4px 2px 10px}
+.hello b{font-size:16px}.hello span{color:var(--muted);font-size:12px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;text-align:start;box-shadow:var(--shadow);color:var(--ink);position:relative;overflow:hidden}
+.tile::after{content:"";position:absolute;top:0;inset-inline-start:0;width:4px;height:100%;background:var(--accent);opacity:.85}
+.tile .tv{font-size:26px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile .tl{font-size:12.5px;color:var(--muted);margin-top:4px}
+.tile .tg{font-size:11px;color:var(--accent);margin-top:6px;font-weight:600}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.panel h4{margin:0 0 10px;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.panel h4 a{font-size:12px;font-weight:500;color:var(--link);text-decoration:none}
+.bar{display:grid;grid-template-columns:72px 1fr 44px;gap:8px;align-items:center;margin:8px 0;font-size:13px}
+.bar .bt{height:10px;background:var(--accent-soft);border-radius:6px;overflow:hidden}
+.bar .bt i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.bar b{font-variant-numeric:tabular-nums;text-align:end}
+.mini{padding:9px 0;border-bottom:1px solid var(--line)}.mini:last-child{border-bottom:0}
+.mini .t{font-size:13.5px;font-weight:600;line-height:1.45}
+#lang{border:1px solid rgba(255,255,255,.3);background:transparent;color:#fff;border-radius:8px;padding:2px 8px;font-size:12px;font-weight:600}
+#login .lt{position:absolute;top:14px;inset-inline-end:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:2px 9px;font-size:12px}
+#login .box{position:relative}
+</style>
+</head>
+<body>
+<header id="hdr">
+  <div class="row"><div class="logo"><img src="icons/logo.png" alt=""></div><div class="brandname"><b>GCC Tenders</b><span>مناقصات ومشاريع الخليج</span></div>
+    <span class="upd" id="upd"></span><span id="who" title="خروج"></span><button id="lang" title="Language">EN</button></div>
+  <div class="ctry" id="ctry"><button data-c="" class="on">الكل</button><button data-c="KW">الكويت</button><button data-c="SA">السعودية</button><button data-c="AE">الإمارات</button></div>
+</header>
+<nav class="tabs" id="tabs"><button data-t="home" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>الرئيسية<span class="bdg"></span></button><button data-t="dir"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>الدليل<span class="bdg"></span></button><button data-t="news"><svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M7 9h7M7 13h7M7 16h4"/></svg>الأخبار<span class="bdg"></span></button><button data-t="awards"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5L7 21l5-3 5 3-1.5-7.5"/></svg>الترسيات<span class="bdg"></span></button><button data-t="watch"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>فواز<span class="bdg"></span></button></nav>
+<div id="bioOffer">👆 تدخل بالبصمة المرة الجاية بدل كلمة السر؟ <button class="off" id="bioYes">أيوه</button> <button class="off" id="bioNo">لا</button></div>
+<div id="install">ثبّت التطبيق على الشاشة الرئيسية: <button class="off" id="btnInstall">تثبيت</button></div>
+<div class="search"><input type="search" id="q" placeholder="ابحث بالعنوان أو الرقم أو الجهة..."></div>
+<div class="chips" id="chips"></div>
+<div class="list" id="list"><div class="empty">بحمّل الداتا...</div></div>
+<div id="sheet"><div class="top"><button id="back">رجوع</button><b id="stitle">التفاصيل</b></div><div class="body" id="sbody"></div></div>
+<div id="toast"></div>
+<div id="login"><div class="box"></div></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dmy=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const CN={KW:'الكويت',SA:'السعودية',AE:'الإمارات'};
+const today=new Date().toISOString().slice(0,10);
+const US=/فواز|fawaz|kjac|الكويتي[ةه] الياباني[ةه]|kuwait japan/i;
+const STATUSES=['مطروحة','اتوافق على طرحها','إعلان مسبق','مقفولة - تحت الدراسة','أسعار معلنة','مترسية','عقد جاري (قرار الجهاز)','ملغاة'];
+const STOP=new Set('في من علي الي عن مع او و ثم بشان لمده لصالح لزوم التابعه الخاصه وذلك ذلك هذه هذا التي الذي كافه جميع بعض عدد لسنه سنه رقم طرح مناقصه عامه الكويت دوله بدوله the of and for to in at'.split(' '));
+let D=[],N=[],A=[],MEET={},META={},P=null,tab='home',country='',status='',fz=false,soon=0,fresh=false,shown=150,wsec='feed';
+
+// ---------------------------------------------------------------- language (Arabic / English)
+// The interface is written in Arabic; in English every interface text is swapped through this table
+// (and a few patterns for texts with numbers / dates). Tender titles and agencies stay as published.
+let LANG=(()=>{try{return localStorage.getItem('lang')||'ar'}catch(e){return 'ar'}})();
+const EN={'الرئيسية':'Home','الدليل':'Directory','الأخبار':'News','الترسيات':'Awards','فواز':'Fawaz','الكل':'All','الكويت':'Kuwait','السعودية':'Saudi Arabia','الإمارات':'UAE',
+'مناقصات ومشاريع الخليج':'Gulf tenders & projects','آخر تحديث':'Updated','خروج':'Sign out','رجوع':'Back','التفاصيل':'Details','تثبيت':'Install',
+'ثبّت التطبيق على الشاشة الرئيسية:':'Install the app on your home screen:','ثبّت التطبيق على الشاشة الرئيسية':'Install the app on your home screen',
+'👆 تدخل بالبصمة المرة الجاية بدل كلمة السر؟':'👆 Use your fingerprint next time instead of the password?','أيوه':'Yes','لا':'No',
+'ابحث بالعنوان أو الرقم أو الجهة...':'Search by title, number or agency...','عنوان أو رقم المناقصة الكويتية القديمة...':'Title or number of a past Kuwaiti tender...',
+'ابحث في مناقصاتنا والتحديثات...':'Search our tenders and updates...','بحمّل الداتا...':'Loading...','بيفتح الداتا...':'Opening your data...',
+'المستجدات':'What\'s new','نطاق فواز':'Fawaz scope','بيقفل خلال أسبوع':'Closing within a week',
+'مطروحة':'Open','اتوافق على طرحها':'Approved for tender','إعلان مسبق':'Pre-announcement','مقفولة - تحت الدراسة':'Closed - under evaluation',
+'أسعار معلنة':'Prices announced','مترسية':'Awarded','عقد جاري (قرار الجهاز)':'Running contract (CAPT decision)','ملغاة':'Cancelled',
+'جديد':'New','اتغيّر':'Changed','الإعلان الرسمي ↗':'Official notice ↗','عرض المزيد':'Show more','مفيش نتائج':'No results','مفيش أخبار':'No news',
+'مفيش حاجة هنا':'Nothing here','بنود':'Items','الدولة':'Country','الرقم':'Number','الجهة':'Agency','الحالة':'Status','تاريخ الطرح':'Published',
+'آخر موعد':'Closing','سعر الوثائق':'Document fee','التأمين':'Bid bond','نوع الطرح':'Tender type','الفائز':'Winner','القيمة':'Value',
+'تاريخ الترسية':'Award date','نوع الشغل':'Work type','ملاحظات':'Notes','التغييرات اللي اترصدت':'Tracked changes','الوقت':'Time','البند':'Field',
+'كان':'Was','بقى':'Now','كل اللي اتنشر عنها':'Everything published about it','المصدر ↗':'Source ↗','ترسيات سابقة لنفس نوع الشغل':'Past awards for the same kind of work',
+'أخبار قريبة':'Related news','التاريخ':'Date','مناقصة':'Tender','ترسية':'Award','صفوف تانية لنفس الرقم':'Other rows with the same number',
+'صفحات المحاضر متعلّمة وملف PDF الكامل بيتعمل من برنامج الترسيات على الكمبيوتر.':'Highlighted minutes pages and the full PDF come from the awards program on the PC.',
+'اكتب عنوان أو رقم مناقصة كويتية قديمة':'Type the title or number of a past Kuwaiti tender','عشان تعرف اترسّت على مين وبكام':'to see who won it and for how much',
+'آخر التحديثات':'Latest updates','مناقصاتنا الشغالة':'Our live tenders','سجل 2022-2026':'History 2022-2026','إيميلات Sanjay':'Sanjay\'s e-mails',
+'أخبار فواز و KJAC':'Fawaz & KJAC news','ترسيات لينا':'Awarded to us','من أول تحميل':'From the first load','العميل':'Client','الإقفال':'Closing',
+'الأسعار':'Prices','الشركة':'Company','السعر':'Price','حالتها دلوقتي في الدليل':'Current status in the directory','كل اللي اترصد عنها':'Everything tracked about it',
+'مناقصة لينا':'Our tender','إيميل':'E-mail','📎 مرفق':'📎 Attachment','ملف الإكسيل المرفق بيتفتح من برنامج الكمبيوتر.':'The attached Excel opens from the PC program.',
+'لسه مفيش أخبار عن فواز أو KJAC - بتتجمع كل تحديث':'No Fawaz / KJAC news yet - collected with every update',
+'مطروح دلوقتي':'Open now','افتح المطروح ←':'Open tenders →','بالأقرب ←':'Soonest first →','جديد واتغيّر (3 أيام)':'New & changed (3 days)','المستجدات ←':'What\'s new →',
+'مطروح في نطاق فواز':'Open in Fawaz scope','نطاق فواز ←':'Fawaz scope →','ترسيات الكويت آخر 30 يوم':'Kuwait awards, last 30 days','الترسيات ←':'Awards →',
+'تحديثات فواز الجديدة':'New Fawaz updates','المتابعة ←':'Follow-up →','المطروح حسب الدولة':'Open tenders by country','أقرب مناقصات بتقفل':'Closing soonest',
+'آخر الأخبار':'Latest news','آخر ترسيات الجهاز المركزي':'Latest CAPT awards','مفيش أجزاء متاحة لحسابك - تواصل مع الأدمن':'Nothing is enabled for your account - contact the admin',
+'اسم المستخدم':'User name','كلمة السر':'Password','دخول':'Sign in','بيدخل...':'Signing in...','نسيت كلمة السر؟':'Forgot password?','حساب تاني':'Another account',
+'👆 ادخل بالبصمة':'👆 Sign in with fingerprint','أو بكلمة السر':'or with the password','الدخول للمشتركين بس - الحساب بيتعمل من الأدمن.':'Subscribers only - accounts are created by the admin.',
+'أهلاً':'Welcome','اكتب اسم المستخدم وكلمة السر':'Enter your user name and password','مفيش اتصال - جرّب تاني':'No connection - try again','اسم المستخدم مش موجود':'Unknown user name',
+'كلمة السر غلط':'Wrong password','الحساب ده متوقف - تواصل مع الأدمن':'This account is disabled - contact the admin','الحساب ده اتوقف - تواصل مع الأدمن':'This account was disabled - contact the admin',
+'ادخل بكلمة السر مرة':'Sign in once with the password','كلمة السر اتغيرت - ادخل بالجديدة':'The password changed - sign in with the new one',
+'البصمة ما اتعرفتش - جرّب تاني أو اكتب كلمة السر':'Fingerprint not recognised - try again or type the password','تمام - المرة الجاية ادخل بالبصمة':'Done - next time sign in with your fingerprint',
+'تخرج من الحساب؟':'Sign out?','اكتب اسم المستخدم الأول':'Enter the user name first','اتبعت الطلب':'Request sent','الداتا ما اتفتحتش - جرّب تاني':'Could not open the data - try again',
+'اتحدّثت الداتا':'Data updated','اتفتحت بيانات فواز':'Fawaz data opened','الطلب ما اتبعتش - جرّب تاني بعد شوية':'The request was not sent - try again later'};
+const EN_RX=[[/^إقفال (\S+) \(باقي (-?\d+) يوم\)$/,'Closes $1 ($2 days left)'],[/^إقفال (\S+) · باقي (-?\d+) يوم$/,'Closes $1 · $2 days left'],[/^إقفال (\S+)$/,'Closes $1'],
+ [/^(\d[\d,]*) نتيجة$/,'$1 results'],[/^ترتيبنا L(\d+)$/,'Our rank L$1'],[/^(\d+) ترسية جديدة من آخر مرة$/,'$1 new awards since your last visit'],
+ [/^(\d+) جديد\/اتغيّر من آخر مرة$/,'$1 new / changed since your last visit'],[/^صباح الخير(، (.+))?$/,'Good morning$1'],[/^مساء الخير(، (.+))?$/,'Good evening$1'],
+ [/^كشف ترسيات الجهاز يوم (\S+) ↗$/,'CAPT awards of $1 ↗'],[/^محضر اجتماع الجهاز (\S+) \(PDF\) ↗$/,'CAPT meeting minutes $1 (PDF) ↗'],[/^الإعلان الرسمي ↗ (.+)$/,'Official notice ↗ $1'],
+ [/^اشتراكك انتهى يوم (\S+) - تواصل مع الأدمن للتجديد$/,'Your subscription ended on $1 - contact the admin to renew'],
+ [/^اشتراكك بينتهي بعد (\d+) يوم \((\S+)\) - تواصل مع الأدمن للتجديد$/,'Your subscription ends in $1 days ($2) - contact the admin to renew'],
+ [/^البصمة ما اتسجلتش: (.+)$/,'Fingerprint not saved: $1'],[/^حسابك: (.+)$/,'Account: $1'],[/^(.+) · باقي (-?\d+) يوم$/,'$1 · $2 days left']];
+const EN_CONFIRM=[[/^هيتبعت طلب كلمة سر جديدة لحساب ([^.]+)\.[\s\S]*$/,'A new-password request for $1 will be sent to the admin, who will send you a new password.\nContinue?']];
+function tr(t){if(LANG!=='en'||!t)return t;const k=t.trim();if(EN[k]!==undefined)return t.replace(k,EN[k]);
+  for(const [r,v] of EN_RX)if(r.test(k))return t.replace(k,k.replace(r,v).replace(/^Good (morning|evening)، /,'Good $1, '));return t}
+function trNode(root){if(LANG!=='en')return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
+  while((n=w.nextNode())){const v=n.nodeValue;if(!/[\u0600-\u06FF]/.test(v))continue;const x=tr(v);if(x!==v){if(n.__ar===undefined)n.__ar=v;n.nodeValue=x}}
+  (root.querySelectorAll?root:document).querySelectorAll('[placeholder],[title]').forEach(e=>{for(const a of ['placeholder','title']){const v=e.getAttribute(a);if(v&&/[\u0600-\u06FF]/.test(v)){const x=tr(v);if(x!==v){e['__ar_'+a]=v;e.setAttribute(a,x)}}}})}
+const _obs=new MutationObserver(ms=>{if(LANG!=='en')return;_obs.disconnect();for(const m of ms)for(const nd of m.addedNodes)trNode(nd.nodeType===3?nd.parentNode||document.body:nd);_obs.observe(document.body,{childList:true,subtree:true})});
+const _confirm=window.confirm.bind(window);window.confirm=m=>{if(LANG==='en')for(const [r,v] of EN_CONFIRM)if(r.test(m))return _confirm(m.replace(r,v));return _confirm(tr(m))};
+function setLang(l){LANG=l;try{localStorage.setItem('lang',l)}catch(e){}
+  document.documentElement.lang=l;document.documentElement.dir=l==='en'?'ltr':'rtl';$('#lang').textContent=l==='en'?'ع':'EN';
+  if(l==='en'){trNode(document.body);_obs.observe(document.body,{childList:true,subtree:true})}
+  else{_obs.disconnect();const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;while((n=w.nextNode()))if(n.__ar!==undefined){n.nodeValue=n.__ar;delete n.__ar}
+    document.querySelectorAll('[placeholder],[title]').forEach(e=>{for(const a of ['placeholder','title'])if(e['__ar_'+a]){e.setAttribute(a,e['__ar_'+a]);delete e['__ar_'+a]}})}
+  if($('#login').style.display==='flex')showLogin();else{const b=document.querySelector('#tabs button.on');if(b)b.click();else render()}setH()}
+$('#lang').onclick=()=>setLang(LANG==='en'?'ar':'en');
+
+function toast(m,ms=3500){const t=$('#toast');t.textContent=tr(m);t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
+function norm(s){return String(s||'').normalize('NFKC').replace(/[ً-ٰٟـ]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).toLowerCase()}
+function stem(w){for(const p of ['وال','بال','كال','فال','لل','ال'])if(w.startsWith(p)&&w.length-p.length>=2)return w.slice(p.length);return w}
+function toks(s){return (norm(s).match(/[a-z0-9]+|[ء-ي]+/g)||[]).filter(w=>w.length>1&&!STOP.has(w)).map(stem)}
+function digits(s){return norm(s).match(/\d+/g)||[]}
+function tokset(o,f){if(!o._t)o._t=new Set(toks(f(o)));return o._t}
+function score(q,set,numsField){
+  const qt=toks(q).filter(t=>!/^\d+$/.test(t)),qd=digits(q);let sc=0;
+  if(qt.length){let g=0;for(const t of qt){if(set.has(t))g+=1;else if(t.length>=4){for(const h of set){if(h.length>=4&&(h.startsWith(t)||t.startsWith(h))){g+=.6;break}}}}sc=g/qt.length}
+  if(qd.length){const nd=digits(numsField);const ok=qd.every(x=>nd.includes(x));sc=qt.length?.65*sc+.35*(ok?1:0):(ok?1:0)}
+  return sc}
+function stClass(s,cl){if(s==='مطروحة'){return (new Date(cl)-new Date(today))/864e5<=7?'st-soon':'st-open'}return {'مترسية':'st-award','ملغاة':'st-cancel','عقد جاري (قرار الجهاز)':'st-run','اتوافق على طرحها':'st-soon','إعلان مسبق':'st-soon'}[s]||'st-study'}
+const recent=s=>s&&(Date.now()-new Date(s.replace(' ','T')))<3*864e5;
+
+// ---------------------------------------------------------------- read / unread
+// MK = what was read on each tab (saved on the phone); HL = the point the open tab is coloured from.
+const store={get(k,d){try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let MK=store.get('mk',{}),HL={};
+const maxTs=(arr,f)=>arr.reduce((m,x)=>{const v=f(x);return v&&v>m?v:m},'');
+function current(){return {dir:maxTs(D,r=>(r.ch||'')>(r.fs||'')?r.ch:r.fs),news:maxTs(N.filter(n=>!n.co),n=>n.fs),awards:A.length,
+  watchTs:maxTs(N.filter(n=>n.co),n=>n.fs),watchId:P?P.feed.reduce((m,f)=>Math.max(m,f[0]),0):(MK.watchId||0)}}
+function unread(mk){return {dir:D.filter(r=>(r.fs&&r.fs>mk.dir)||(r.ch&&r.ch>mk.dir)).length,news:N.filter(n=>!n.co&&n.fs&&n.fs>mk.news).length,
+  awards:Math.max(0,A.length-(mk.awards||0)),watch:N.filter(n=>n.co&&n.fs&&n.fs>mk.watchTs).length+(P?P.feed.filter(f=>f[0]>(mk.watchId||0)&&!f[1].startsWith('2000')).length:0)}}
+function markRead(t){const c=current();if(t==='watch'){MK.watchTs=c.watchTs;if(P)MK.watchId=c.watchId}else MK[t]=c[t];store.set('mk',MK)}
+function openTabMarks(t){HL[t]=t==='watch'?{ts:MK.watchTs,id:MK.watchId||0}:MK[t];markRead(t)}
+function badges(){
+  const c=current();for(const k of ['dir','news','awards','watchTs'])if(MK[k]===undefined)MK[k]=c[k];if(P&&MK.watchId===undefined)MK.watchId=c.watchId;store.set('mk',MK);
+  const u=unread(MK);let tot=0;
+  document.querySelectorAll('#tabs button').forEach(b=>{const n=b.dataset.t===tab?0:(u[b.dataset.t]||0);tot+=n;b.querySelector('.bdg').textContent=n?(n>999?'999+':n):''});
+  try{if(navigator.setAppBadge){tot?navigator.setAppBadge(tot):navigator.clearAppBadge()}}catch(e){}
+  document.title=(tot?`(${tot}) `:'')+'GCC Tenders';
+}
+const isNewDir=r=>HL.dir!==undefined&&((r.fs&&r.fs>HL.dir)||(r.ch&&r.ch>HL.dir));
+
+// ---------------------------------------------------------------- account + data
+// Everything on the site is encrypted. Each account has a private key (users.json, locked with its
+// password); keys.json holds the data key wrapped for every ACTIVE account. A stopped account finds no
+// key -> the app wipes its copy. The fingerprint is only another way in instead of typing the password.
+const b64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const b64u=buf=>btoa(String.fromCharCode(...new Uint8Array(buf)));
+const IDB={db:null,async open(){if(this.db)return this.db;this.db=await new Promise((ok,no)=>{const r=indexedDB.open('fawaz',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});return this.db},
+  async get(k){const db=await this.open();return new Promise(ok=>{const r=db.transaction('kv').objectStore('kv').get(k);r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(undefined)})},
+  async set(k,v){const db=await this.open();return new Promise(ok=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>ok()})},
+  async clear(){const db=await this.open();return new Promise(ok=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').clear();t.oncomplete=()=>ok()})}};
+let ACC=null,LOGIN_U='',NT=null,pinged=false,ME=null;
+async function uid(u){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('fawaz:'+u));return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,20)}
+const expiredMsg=d=>`اشتراكك انتهى يوم ${dmy(d)} - تواصل مع الأدمن للتجديد`;
+const getJ=async n=>{const r=await fetch('data/'+n+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(n+' '+r.status);return r.json()};
+async function aesOpen(key,enc){const raw=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(enc.iv)},key,b64(enc.data));
+  return JSON.parse(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).text())}
+async function privKeyFrom(e,pw){
+  const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  const k=await crypto.subtle.deriveKey({name:'PBKDF2',salt:b64(e.salt),iterations:e.iter,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['decrypt']);
+  const pk8=await crypto.subtle.decrypt({name:'AES-GCM',iv:b64(e.iv)},k,b64(e.data));
+  return crypto.subtle.importKey('pkcs8',pk8,{name:'RSA-OAEP',hash:'SHA-256'},false,['decrypt'])}
+async function unwrap(key,w){return crypto.subtle.importKey('raw',await crypto.subtle.decrypt({name:'RSA-OAEP'},key,b64(w)),'AES-GCM',false,['decrypt'])}
+const bioReady=()=>!!(LOGIN_U&&store.get('fzbio','')&&store.get('fzbio_u','')===LOGIN_U);
+function showLogin(msg){
+  const bio=bioReady();$('#login').style.display='flex';
+  $('#login .box').innerHTML=`<button class="lt" id="llang">${LANG==='en'?'عربي':'English'}</button><img class="lg" src="icons/logo.png" alt="GCC Tenders"><h2>GCC Tenders</h2><div class="sub">مناقصات ومشاريع الخليج</div>${msg?`<div class="err">${esc(msg)}</div>`:''}
+    ${LOGIN_U?`<div style="margin-bottom:6px">أهلاً <b dir="ltr">${esc(LOGIN_U)}</b></div>`:'<input id="lu" placeholder="اسم المستخدم" autocapitalize="none" autocomplete="username">'}
+    ${bio?'<button class="big" id="lbio">👆 ادخل بالبصمة</button><div class="note">أو بكلمة السر</div>':''}
+    <input id="lp" type="password" placeholder="كلمة السر" autocomplete="current-password"><button class="big" id="lgo">دخول</button>
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:4px"><a href="#" id="lforgot">نسيت كلمة السر؟</a>${LOGIN_U?'<a href="#" id="lother">حساب تاني</a>':''}</div>
+    <p class="note" style="margin-top:12px">الدخول للمشتركين بس - الحساب بيتعمل من الأدمن.</p>`;
+  $('#llang').onclick=()=>setLang(LANG==='en'?'ar':'en');
+  const go=()=>login(LOGIN_U||($('#lu')?$('#lu').value:''),$('#lp').value);
+  $('#lgo').onclick=go;$('#lp').onkeydown=e=>{if(e.key==='Enter')go()};
+  if($('#lbio'))$('#lbio').onclick=()=>bioLogin(false);
+  $('#lforgot').onclick=e=>{e.preventDefault();forgot()};
+  if($('#lother'))$('#lother').onclick=async e=>{e.preventDefault();await logout()};
+}
+async function login(u,pw){
+  u=String(u||'').trim().toLowerCase();if(!u||!pw)return showLogin('اكتب اسم المستخدم وكلمة السر');
+  $('#lgo').textContent='بيدخل...';
+  let users;try{users=await getJ('users.json')}catch(e){return showLogin('مفيش اتصال - جرّب تاني')}
+  const e=users.users&&users.users[await uid(u)];
+  if(!e)return showLogin('اسم المستخدم مش موجود');
+  if(e.expired)return wipe(expiredMsg(e.expired));
+  if(e.off)return wipe('الحساب ده متوقف - تواصل مع الأدمن');
+  let key;try{key=await privKeyFrom(e.priv,pw)}catch(x){return showLogin('كلمة السر غلط')}
+  try{await IDB.set('u',u);await IDB.set('key',key);await IDB.set('ver',e.priv.data.slice(0,32))}catch(x){}
+  if(LOGIN_U&&LOGIN_U!==u){MK={};store.set('mk',MK)}
+  LOGIN_U=u;ACC={u,key};enter(true)}
+async function bioLogin(silent){
+  try{await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{type:'public-key',id:b64(store.get('fzbio',''))}],userVerification:'required',timeout:60000}})}
+  catch(e){if(!silent)toast('البصمة ما اتعرفتش - جرّب تاني أو اكتب كلمة السر');return}
+  const key=await IDB.get('key').catch(()=>null);if(!key)return showLogin('ادخل بكلمة السر مرة');
+  const users=await getJ('users.json').catch(()=>null);
+  if(users){const e=users.users[await uid(LOGIN_U)];if(e&&e.expired)return wipe(expiredMsg(e.expired));if(!e||e.off)return wipe('الحساب ده متوقف - تواصل مع الأدمن');
+    if(e.priv.data.slice(0,32)!==await IDB.get('ver'))return showLogin('كلمة السر اتغيرت - ادخل بالجديدة')}
+  ACC={u:LOGIN_U,key};enter(false)}
+async function enter(fresh){
+  $('#login').style.display='none';$('#who').textContent=ACC.u;applyPerms.warned=0;
+  $('#list').innerHTML='<div class="empty">بيفتح الداتا...</div>';
+  await load(false);if(!ACC)return;
+  if(!pinged){pinged=true;ping('open')}
+  if(fresh&&!bioReady()&&window.PublicKeyCredential&&!store.get('bioNo',false))$('#bioOffer').style.display='block'}
+async function bioEnable(){
+  try{const c=await navigator.credentials.create({publicKey:{rp:{name:'GCC Tenders'},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:ACC.u,displayName:ACC.u},
+      challenge:crypto.getRandomValues(new Uint8Array(32)),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'discouraged'},timeout:60000}});
+    store.set('fzbio',b64u(c.rawId));store.set('fzbio_u',ACC.u);toast('تمام - المرة الجاية ادخل بالبصمة')}
+  catch(e){toast('البصمة ما اتسجلتش: '+(e.message||e.name))}
+  $('#bioOffer').style.display='none'}
+$('#bioYes').onclick=bioEnable;$('#bioNo').onclick=()=>{store.set('bioNo',true);$('#bioOffer').style.display='none'};
+async function logout(){try{await IDB.clear()}catch(e){}store.set('fzbio','');store.set('fzbio_u','');ACC=null;LOGIN_U='';P=null;D=[];N=[];A=[];showLogin()}
+$('#who').onclick=()=>{if(confirm('تخرج من الحساب؟'))logout()};
+async function wipe(msg){
+  try{await IDB.clear()}catch(e){}try{await caches.delete('fawaz-data')}catch(e){}
+  ['mk','fzbio','fzbio_u'].forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  ACC=null;LOGIN_U='';D=[];N=[];A=[];MEET={};P=null;$('#list').innerHTML='';showLogin(msg)}
+async function ntfy(){if(!NT)NT=await getJ('ntfy.json').catch(()=>null);return NT}
+async function ping(kind,u){const n=await ntfy();if(!n)return;try{await fetch('https://ntfy.sh/'+n.topic,{method:'POST',body:kind+'|'+(u||(ACC&&ACC.u)||'')})}catch(e){}}
+async function forgot(){
+  const u=LOGIN_U||($('#lu')?$('#lu').value.trim().toLowerCase():'');if(!u)return toast('اكتب اسم المستخدم الأول');
+  const n=await ntfy();if(!n)return toast('مفيش اتصال - جرّب تاني');
+  if(!confirm(`هيتبعت طلب كلمة سر جديدة لحساب ${u}.\nالطلب بيوصل للأدمن، وهو اللي بيبعتلك كلمة سر جديدة.\nتكمّل؟`))return;
+  await ping('forgot',u);toast('اتبعت الطلب',5000)}
+async function load(silent){
+  if(!ACC)return;
+  let meta,keys,users;try{[meta,keys,users]=await Promise.all([getJ('meta.json'),getJ('keys.json'),getJ('users.json')])}
+  catch(e){if(!silent)$('#list').innerHTML='<div class="empty">مفيش اتصال - جرّب تاني</div>';return}
+  const id=await uid(ACC.u),me=users.users&&users.users[id],mine=keys.keys&&keys.keys[id];
+  if(!me||me.off)return wipe('الحساب ده اتوقف - تواصل مع الأدمن');
+  if(me.expired)return wipe(expiredMsg(me.expired));
+  if(!mine)return;
+  const sig=JSON.stringify(mine).slice(0,200);
+  if(silent&&META.updated===meta.updated&&META._w===sig)return;
+  const open=async name=>mine[name]?aesOpen(await unwrap(ACC.key,mine[name]),await getJ(name+'.enc')):null;
+  try{const names=Object.keys(mine).filter(n=>n!=='private');
+    const got=Object.fromEntries(await Promise.all(names.map(async n=>[n,await open(n)])));
+    D=[].concat(...['KW','SA','AE'].map(c=>got['directory_'+c]||[]));
+    N=[].concat(...['KW','SA','AE'].map(c=>got['news_'+c]||[]),got.news_co||[]);
+    A=got.awards||[];MEET=got.meetings||{}}
+  catch(e){if(/OperationError|decrypt/i.test(String(e))){ACC=null;return showLogin('كلمة السر اتغيرت - ادخل بالجديدة')}
+    if(!silent)$('#list').innerHTML='<div class="empty">الداتا ما اتفتحتش - جرّب تاني</div>';return}
+  META=meta;META._w=sig;ME=me;
+  P=null;if(mine.private){try{P=await aesOpen(await unwrap(ACC.key,mine.private),await getJ('private.enc'))}catch(e){P=null}}
+  applyPerms();
+  $('#upd').innerHTML='آخر تحديث<br>'+(META.updated||'').replace('T',' ').slice(5,16);
+  if(HL[tab]===undefined)openTabMarks(tab);else markRead(tab);
+  badges();if(!silent||$('#sheet').style.display!=='block')render(silent);
+  if(silent)toast('اتحدّثت الداتا');
+}
+setInterval(()=>{if(!document.hidden&&ACC)load(true)},5*60e3);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ACC)load(true)});
+function visibleP(){return P}
+const TABP={home:'*',dir:'dir',news:'news',awards:'awards',watch:'watch'};
+function applyPerms(){
+  if(!ME)return;const pm=ME.perms||[],cs=ME.countries||['KW','SA','AE'];
+  document.querySelectorAll('#tabs button').forEach(b=>b.style.display=TABP[b.dataset.t]==='*'||pm.includes(TABP[b.dataset.t])?'':'none');
+  if(TABP[tab]!=='*'&&!pm.includes(TABP[tab])){const f=[...document.querySelectorAll('#tabs button')].find(b=>b.style.display!=='none');
+    if(f){document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===f));tab=f.dataset.t}}
+  document.querySelectorAll('#ctry button').forEach(b=>b.style.display=!b.dataset.c||cs.includes(b.dataset.c)?'':'none');
+  if(country&&!cs.includes(country))country='';
+  const left=ME.expires?Math.round((new Date(ME.expires)-new Date(today))/864e5):null;
+  $('#who').innerHTML=esc(ACC.u)+(ME.expires?`<br><span style="opacity:.8">${dmy(ME.expires)}</span>`:'');
+  if(left!==null&&left<=7&&!applyPerms.warned){applyPerms.warned=1;toast(`اشتراكك بينتهي بعد ${left} يوم (${dmy(ME.expires)}) - تواصل مع الأدمن للتجديد`,7000)}
+}
+
+// ---------------------------------------------------------------- lists
+function chips(){
+  if(tab==='home'){$('#chips').innerHTML='';return}
+  if(tab==='watch')return watchChips();
+  const base=D.filter(r=>!country||r.c===country);const cnt={};base.forEach(r=>cnt[r.st]=(cnt[r.st]||0)+1);
+  const fr=base.filter(r=>recent(r.fs)||recent(r.ch)).length;
+  let h=`<span class="chip ${fresh?'on':''}" data-f>المستجدات<b>${fr}</b></span><span class="chip ${fz?'on':''}" data-z>نطاق فواز</span><span class="chip ${soon?'on':''}" data-soon>بيقفل خلال أسبوع</span><span class="chip ${!status?'on':''}" data-s="">الكل<b>${base.length}</b></span>`;
+  h+=STATUSES.filter(s=>cnt[s]).map(s=>`<span class="chip ${status===s?'on':''}" data-s="${s}">${s}<b>${cnt[s]}</b></span>`).join('');
+  if(tab!=='dir')h=`<span class="chip ${fz?'on':''}" data-z>نطاق فواز</span>`;
+  if(tab==='awards')h='';
+  $('#chips').innerHTML=h;
+  document.querySelectorAll('[data-s]').forEach(c=>c.onclick=()=>{status=c.dataset.s;shown=150;render()});
+  document.querySelectorAll('[data-f]').forEach(c=>c.onclick=()=>{fresh=!fresh;render()});
+  document.querySelectorAll('[data-z]').forEach(c=>c.onclick=()=>{fz=!fz;render()});
+  document.querySelectorAll('[data-soon]').forEach(c=>c.onclick=()=>{soon=soon?0:7;render()});
+}
+function render(keep){const y=window.scrollY;$('.search').style.display=tab==='home'?'none':'';chips();const q=$('#q').value.trim();
+  if(tab==='home')renderHome();else if(tab==='news')renderNews(q);else if(tab==='awards')renderAwards(q);else if(tab==='watch')renderWatch(q);else renderDir(q);
+  if(keep)window.scrollTo(0,y)}
+function dirCard(r){const left=r.st==='مطروحة'&&r.cl?Math.round((new Date(r.cl)-new Date(today))/864e5):null;
+  return `<div class="card ${isNewDir(r)?'unread':''}" data-i="${r.i}"><div class="t">${esc(r.s)}</div>
+    <div class="m"><span class="st ${stClass(r.st,r.cl)}">${esc(r.st)}</span>${recent(r.fs)?'<span class="flag new">جديد</span>':recent(r.ch)?'<span class="flag chg">اتغيّر</span>':''}${country?'':`<span>${CN[r.c]}</span>`}${r.fz?'<span class="fzb">نطاق فواز</span>':''}</div>
+    <div class="m">${r.n?`<span class="tno">${esc(r.n)}</span>`:''}<span>${esc(r.o)}</span></div>
+    <div class="m">${r.cl?`<span class="${left!==null&&left<=7?'urgent':''}">إقفال ${dmy(r.cl)}${left!==null?` (باقي ${left} يوم)`:''}</span>`:''}${r.w?`<span class="${US.test(r.w)?'fz':''}">${esc(r.w.slice(0,60))}</span>`:''}${r.v?`<span class="money">${esc(r.v)}</span>`:''}
+    ${r.off?`<a class="off" href="${esc(r.off)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">الإعلان الرسمي ↗</a>`:''}</div></div>`}
+function renderDir(q){
+  const lim=new Date(Date.now()+soon*864e5).toISOString().slice(0,10);
+  let res=[];
+  for(const r of D){
+    if(country&&r.c!==country)continue;if(status&&r.st!==status)continue;if(fz&&!r.fz)continue;
+    if(fresh&&!(recent(r.fs)||recent(r.ch)))continue;
+    if(soon&&!(r.st==='مطروحة'&&r.cl&&r.cl>=today&&r.cl<=lim))continue;
+    let sc=1;if(q){sc=score(q,tokset(r,o=>o.s+' '+o.o+' '+(o.w||'')),r.n);if(sc<.4)continue}
+    res.push([sc,r])}
+  const rank={'مطروحة':0,'اتوافق على طرحها':1,'إعلان مسبق':1,'مقفولة - تحت الدراسة':2,'أسعار معلنة':3,'مترسية':4};
+  if(q)res.sort((a,b)=>b[0]-a[0]||(b[1].cl||'').localeCompare(a[1].cl||''));
+  else res.sort((a,b)=>(isNewDir(b[1])-isNewDir(a[1]))||(rank[a[1].st]??9)-(rank[b[1].st]??9)||(a[1].st==='مطروحة'?(a[1].cl||'9').localeCompare(b[1].cl||'9'):(b[1].a||b[1].p||'').localeCompare(a[1].a||a[1].p||'')));
+  const nNew=res.filter(x=>isNewDir(x[1])).length;
+  $('#list').innerHTML=(res.length?`<div class="note" style="margin:0 4px 6px">${res.length} نتيجة${nNew?` · <b style="color:var(--unreadb)">${nNew} جديد/اتغيّر من آخر مرة</b>`:''}</div>`+res.slice(0,shown).map(x=>dirCard(x[1])).join('')+(res.length>shown?'<button class="more" id="more">عرض المزيد</button>':''):'<div class="empty">مفيش نتائج</div>');
+  if($('#more'))$('#more').onclick=()=>{shown+=150;render()};
+  document.querySelectorAll('.card[data-i]').forEach(c=>c.onclick=()=>openItem(+c.dataset.i));
+}
+function renderNews(q){
+  let res=N.filter(n=>!n.co&&(!country||n.c===country)&&(!fz||n.fz));
+  if(q)res=res.map(n=>[score(q,tokset(n,o=>o.t),''),n]).filter(x=>x[0]>=.5).sort((a,b)=>b[0]-a[0]||b[1].d.localeCompare(a[1].d)).map(x=>x[1]);
+  const isN=n=>HL.news!==undefined&&n.fs&&n.fs>HL.news;
+  if(!q)res=res.slice().sort((a,b)=>isN(b)-isN(a));
+  $('#list').innerHTML=res.slice(0,shown).map(n=>newsCard(n,isN(n))).join('')+(res.length>shown?'<button class="more" id="more">عرض المزيد</button>':'')||'<div class="empty">مفيش أخبار</div>';
+  if($('#more'))$('#more').onclick=()=>{shown+=150;render()};
+}
+function newsCard(n,un){return `<div class="card ${un?'unread':''}"><div class="t"><a href="${esc(n.u)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(n.t)}</a></div>
+    <div class="m"><span>${dmy(n.d)}</span>${country||n.co?'':`<span>${CN[n.c]||''}</span>`}<span>${esc(n.src)}</span>${n.fz&&!n.co?'<span class="fzb">نطاق فواز</span>':''}</div></div>`}
+function wbUrl(d){return `https://capt.gov.kw/ar/tenders/winning-bids/?meeting_date_from=${d}&meeting_date_to=${d}&form=date`}
+function awCard(a,un){return `<div class="card ${un?'unread':''}" data-r="${a.r}"><div class="t">${esc(a.s)}</div>
+    <div class="m"><span class="tno">${esc(a.n)}</span><span>${esc(a.o)}</span><span>${dmy(a.d)}</span></div>
+    <div class="m"><span class="${US.test(a.w)?'fz':''}">${esc(a.w||'بنود')}</span><span class="money">${esc(a.v)}</span></div></div>`}
+function renderAwards(q){
+  const nNew=HL.awards!==undefined?Math.max(0,A.length-HL.awards):0;
+  if(!q){const top=nNew?[...A].sort((x,y)=>y.d.localeCompare(x.d)).slice(0,Math.min(nNew,200)):[];
+    $('#list').innerHTML=(top.length?`<div class="note" style="margin:0 4px 6px"><b style="color:var(--unreadb)">${nNew} ترسية جديدة من آخر مرة</b></div>`+top.map(a=>awCard(a,1)).join(''):'')+'<div class="empty">اكتب عنوان أو رقم مناقصة كويتية قديمة<br>عشان تعرف اترسّت على مين وبكام</div>';}
+  else{const res=A.map(a=>[score(q,tokset(a,o=>o.s+' '+o.o+' '+o.w),a.n),a]).filter(x=>x[0]>=.4).sort((x,y)=>y[0]-x[0]||y[1].d.localeCompare(x[1].d)).slice(0,120);
+    $('#list').innerHTML=res.map(([s,a])=>awCard(a,0)).join('')||'<div class="empty">مفيش نتائج</div>';}
+  document.querySelectorAll('.card[data-r]').forEach(c=>c.onclick=()=>openAward(+c.dataset.r));
+}
+
+// ---------------------------------------------------------------- dashboard (home)
+function goTab(t,set){if(set)set();const b=document.querySelector(`#tabs button[data-t="${t}"]`);if(b&&b.style.display!=='none')b.click()}
+function renderHome(){
+  const pm=(ME&&ME.perms)||[],base=D.filter(r=>!country||r.c===country);
+  const open=base.filter(r=>r.st==='مطروحة'),lim=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+  const closing=open.filter(r=>r.cl&&r.cl>=today&&r.cl<=lim).sort((a,b)=>a.cl.localeCompare(b.cl));
+  const fresh3=base.filter(r=>recent(r.fs)||recent(r.ch)),inScope=open.filter(r=>r.fz);
+  const m30=new Date(Date.now()-30*864e5).toISOString().slice(0,10),aw30=A.filter(a=>a.d>=m30);
+  const feedNew=P?P.feed.filter(f=>f[0]>(MK.watchId||0)&&!f[1].startsWith('2000')).length:0;
+  const T=[];
+  if(pm.includes('dir'))T.push([open.length,'مطروح دلوقتي','افتح المطروح',()=>goTab('dir',()=>{status='مطروحة';soon=0;fresh=false;fz=false})],
+    [closing.length,'بيقفل خلال أسبوع','بالأقرب',()=>goTab('dir',()=>{status='';soon=7;fresh=false;fz=false})],
+    [fresh3.length,'جديد واتغيّر (3 أيام)','المستجدات',()=>goTab('dir',()=>{status='';soon=0;fresh=true;fz=false})],
+    [inScope.length,'مطروح في نطاق فواز','نطاق فواز',()=>goTab('dir',()=>{status='مطروحة';soon=0;fresh=false;fz=true})]);
+  if(pm.includes('awards'))T.push([aw30.length,'ترسيات الكويت آخر 30 يوم','الترسيات',()=>goTab('awards')]);
+  if(pm.includes('watch'))T.push([P?feedNew:coNews().length,P?'تحديثات فواز الجديدة':'أخبار فواز و KJAC','المتابعة',()=>goTab('watch')]);
+  const cs=(ME&&ME.countries)||['KW','SA','AE'];
+  const byC=cs.map(c=>[c,D.filter(r=>r.c===c&&r.st==='مطروحة').length]),mx=Math.max(1,...byC.map(x=>x[1]));
+  const now=new Date();const greet=now.getHours()<12?'صباح الخير':'مساء الخير';
+  let h=`<div class="hello"><b>${greet}${ACC?'، '+esc(ACC.u):''}</b><span>${now.toLocaleDateString(LANG==='en'?'en-GB':'ar-EG',{weekday:'long',day:'numeric',month:'long'})}</span></div>`;
+  h+=`<div class="tiles">${T.map((t,i)=>`<button class="tile" data-tile="${i}"><div class="tv">${t[0].toLocaleString('en')}</div><div class="tl">${t[1]}</div><div class="tg">${t[2]} ←</div></button>`).join('')}</div>`;
+  if(pm.includes('dir')&&cs.length>1&&!country)h+=`<div class="panel"><h4>المطروح حسب الدولة</h4>${byC.map(([c,n])=>`<div class="bar"><span>${CN[c]}</span><span class="bt"><i style="width:${Math.max(2,Math.round(n/mx*100))}%"></i></span><b>${n.toLocaleString('en')}</b></div>`).join('')}</div>`;
+  if(pm.includes('dir')&&closing.length)h+=`<div class="panel"><h4>أقرب مناقصات بتقفل <a href="#" data-go="soon">الكل</a></h4>${closing.slice(0,5).map(r=>{const left=Math.round((new Date(r.cl)-new Date(today))/864e5);
+    return `<div class="mini" data-i="${r.i}"><div class="t">${esc(r.s)}</div><div class="m"><span class="${left<=3?'urgent':''}">إقفال ${dmy(r.cl)} · باقي ${left} يوم</span><span>${esc(r.o)}</span>${r.fz?'<span class="fzb">نطاق فواز</span>':''}</div></div>`}).join('')}</div>`;
+  if(pm.includes('news')){const nw=N.filter(n=>!n.co&&(!country||n.c===country)).slice(0,4);
+    if(nw.length)h+=`<div class="panel"><h4>آخر الأخبار <a href="#" data-go="news">الكل</a></h4>${nw.map(n=>`<div class="mini"><div class="t"><a href="${esc(n.u)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(n.t)}</a></div><div class="m"><span>${dmy(n.d)}</span><span>${esc(n.src)}</span></div></div>`).join('')}</div>`}
+  if(pm.includes('awards')&&aw30.length){const la=[...aw30].sort((x,y)=>y.d.localeCompare(x.d)).slice(0,4);
+    h+=`<div class="panel"><h4>آخر ترسيات الجهاز المركزي <a href="#" data-go="awards">الكل</a></h4>${la.map(a=>`<div class="mini" data-r="${a.r}"><div class="t">${esc(a.s)}</div><div class="m"><span>${dmy(a.d)}</span><span class="${US.test(a.w)?'fz':''}">${esc((a.w||'بنود').slice(0,50))}</span><span class="money">${esc(a.v)}</span></div></div>`).join('')}</div>`}
+  if(!T.length)h+='<div class="empty">مفيش أجزاء متاحة لحسابك - تواصل مع الأدمن</div>';
+  $('#list').innerHTML=h;
+  document.querySelectorAll('[data-tile]').forEach(b=>b.onclick=()=>T[+b.dataset.tile][3]());
+  document.querySelectorAll('.mini[data-i]').forEach(c=>c.onclick=()=>openItem(+c.dataset.i));
+  document.querySelectorAll('.mini[data-r]').forEach(c=>c.onclick=()=>openAward(+c.dataset.r));
+  document.querySelectorAll('[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();const g=a.dataset.go;
+    if(g==='soon')goTab('dir',()=>{status='';soon=7;fresh=false;fz=false});else goTab(g)});
+}
+
+// ---------------------------------------------------------------- Fawaz / KJAC tab
+const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار فواز و KJAC'],['won','ترسيات لينا']];
+const coNews=()=>N.filter(n=>n.co);
+function wonList(){return {a:A.filter(a=>US.test(a.w||'')).sort((x,y)=>y.d.localeCompare(x.d)),d:D.filter(r=>r.w&&US.test(r.w))}}
+function watchChips(){
+  const P=visibleP();
+  const hl=HL.watch||{ts:'~',id:1e12};const w=wonList();
+  const cnt={feed:P?P.feed.length:0,live:P?P.tenders.filter(t=>t.lv).length:0,hist:P?P.tenders.filter(t=>!t.lv).length:0,mails:P?P.emails.length:0,conews:coNews().length,won:w.a.length+w.d.length};
+  const nw={feed:P?P.feed.filter(f=>f[0]>hl.id&&!f[1].startsWith('2000')).length:0,conews:coNews().filter(n=>n.fs&&n.fs>hl.ts).length};
+  const secs=P?WSEC:WSEC.filter(x=>['conews','won'].includes(x[0]));if(!secs.find(x=>x[0]===wsec))wsec=secs[0][0];
+  $('#chips').innerHTML=secs.map(([k,l])=>`<span class="chip ${wsec===k?'on':''}" data-w="${k}">${l}<b>${cnt[k]}</b>${nw[k]?`<span class="nw">${nw[k]}</span>`:''}</span>`).join('');
+  document.querySelectorAll('[data-w]').forEach(c=>c.onclick=()=>{wsec=c.dataset.w;shown=150;render()});
+}
+function renderWatch(q){
+  const P=visibleP();
+  const hl=HL.watch||{ts:'~',id:1e12},qq=norm(q);
+  const m=s=>!qq||norm(s).includes(qq)||(digits(q).length&&digits(q).every(d=>digits(s).includes(d)));
+  let h='';
+  if(wsec==='feed'&&P)h+=P.feed.filter(f=>m(f[2]+' '+f[3]+' '+f[4])).slice(0,shown).map(f=>`<div class="card ${f[0]>hl.id&&!f[1].startsWith('2000')?'unread':''}" data-tk="${esc(f[6]||'')}" data-u="${esc(f[5]||'')}"><div class="m"><span class="wk">${esc(f[2])}</span><span>${f[1].startsWith('2000')?'من أول تحميل':esc(f[1].replace('T',' '))}</span></div><div class="t">${esc(f[3])}</div><div class="note">${esc(f[4])}</div></div>`).join('');
+  else if((wsec==='live'||wsec==='hist')&&P)h+=P.tenders.filter(t=>(wsec==='live')===!!t.lv&&m(t.t+' '+t.c+' '+t.n+' '+t.src)).slice(0,shown).map(t=>`<div class="card" data-tk="${esc(t.k)}"><div class="t">${esc(t.t)}</div><div class="m"><span class="wk">${esc(t.src)}</span><span>${esc(t.c)}</span>${t.n?`<span class="tno">${esc(t.n)}</span>`:''}${t.cl?`<span>إقفال ${dmy(t.cl)}</span>`:''}${t.rk?`<span class="fzb">ترتيبنا L${t.rk}</span>`:''}${liveStatus(t)}</div>${t.st||t.rm?`<div class="note">${esc([t.st,t.rm].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('');
+  else if(wsec==='mails'&&P)h+=P.emails.filter(e=>m(e.s+' '+e.b)).map((e,i)=>`<div class="card" data-mail="${P.emails.indexOf(e)}"><div class="t">${esc(e.s)}</div><div class="m"><span>${esc(e.d.replace('T',' '))}</span><span>${esc(e.f)}</span>${e.a?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('');
+  else if(wsec==='conews'){const l=coNews().filter(n=>m(n.t)).sort((a,b)=>((b.fs>hl.ts)-(a.fs>hl.ts))||b.d.localeCompare(a.d));h+=l.map(n=>newsCard(n,n.fs&&n.fs>hl.ts)).join('')||'<div class="empty">لسه مفيش أخبار عن فواز أو KJAC - بتتجمع كل تحديث</div>'}
+  else if(wsec==='won'){const w=wonList();h+=w.a.filter(a=>m(a.s+' '+a.n+' '+a.o)).slice(0,shown).map(a=>awCard(a,0)).join('')+w.d.filter(r=>m(r.s+' '+r.n+' '+r.o)).map(dirCard).join('')}
+  $('#list').innerHTML=h||'<div class="empty">مفيش حاجة هنا</div>';
+  document.querySelectorAll('.card[data-tk]').forEach(c=>c.onclick=()=>{if(c.dataset.tk)openTender(c.dataset.tk);else if(c.dataset.u)window.open(c.dataset.u,'_blank')});
+  document.querySelectorAll('.card[data-mail]').forEach(c=>c.onclick=()=>openMail(P.emails[+c.dataset.mail]));
+  document.querySelectorAll('.card[data-r]').forEach(c=>c.onclick=()=>openAward(+c.dataset.r));
+  document.querySelectorAll('.card[data-i]').forEach(c=>c.onclick=()=>openItem(+c.dataset.i));
+}
+// the same tender in today's public data (fresher than the PC's last report)
+function sameItems(t){if(!t.nk||t.nk.split('/').length<2)return[];const L=s=>norm(s).replace(/[^a-zء-ي]/g,'');
+  return D.filter(r=>digits(r.n).join('/')===t.nk&&(!L(t.n)||!L(r.n)||L(t.n)===L(r.n)))}
+function liveStatus(t){const s=sameItems(t)[0];return s?`<span class="st ${stClass(s.st,s.cl)}">${esc(s.st)}</span>`:''}
+function openTender(k){const t=P&&P.tenders.find(x=>x.k===k);if(!t)return;
+  let h=`<div style="font-weight:700;font-size:16px;margin-bottom:10px">${esc(t.t)}</div><div class="kv"><div>العميل</div><div>${esc(t.c)}</div>${t.n?`<div>الرقم</div><div><span class="tno">${esc(t.n)}</span></div>`:''}${t.cl?`<div>الإقفال</div><div>${dmy(t.cl)}</div>`:''}<div>المصدر</div><div>${esc(t.src)}</div>${t.st?`<div>الحالة</div><div>${esc(t.st)}</div>`:''}${t.rm?`<div>ملاحظات</div><div>${esc(t.rm)}</div>`:''}${t.rk?`<div>ترتيبنا</div><div><span class="fzb">L${t.rk}</span></div>`:''}</div>`;
+  if(t.b.length)h+=`<h3>الأسعار</h3><table><tr><th>#</th><th>الشركة</th><th>السعر</th></tr>${t.b.map((b,i)=>`<tr><td>L${i+1}</td><td class="${US.test(b[0])?'fz':''}">${esc(b[0])}</td><td>${esc(b[1])}</td></tr>`).join('')}</table>`;
+  const same=sameItems(t);if(same.length)h+=`<h3>حالتها دلوقتي في الدليل</h3>`+same.map(dirCard).join('');
+  const fd=P.feed.filter(f=>f[6]===k);if(fd.length)h+=`<h3>كل اللي اترصد عنها</h3>`+fd.map(f=>`<div class="ev"><b>${f[1].startsWith('2000')?'':esc(f[1].replace('T',' '))+' · '}${esc(f[2])}</b><div>${esc(f[4])}${f[5]?` <a class="off" href="${esc(f[5])}" target="_blank" rel="noopener">↗</a>`:''}</div></div>`).join('');
+  showSheet('مناقصة لينا',h);document.querySelectorAll('#sbody .card[data-i]').forEach(c=>c.onclick=()=>openItem(+c.dataset.i))}
+function openMail(e){showSheet('إيميل',`<div style="font-weight:700;font-size:15px">${esc(e.s)}</div><div class="m" style="margin-bottom:8px"><span>${esc(e.f)}</span><span>${esc(e.d.replace('T',' '))}</span>${e.a?`<span>📎 ${esc(e.a)}</span>`:''}</div><div class="mail">${esc(e.b)}</div><p class="note">ملف الإكسيل المرفق بيتفتح من برنامج الكمبيوتر.</p>`)}
+
+// ---------------------------------------------------------------- details
+function similarAwards(subject,skipRow){const set=new Set(toks(subject));if(!set.size)return[];
+  return A.filter(a=>a.r!==skipRow).map(a=>{const t=tokset(a,o=>o.s);let g=0;for(const x of set)if(t.has(x))g++;return [g/set.size,a]}).filter(x=>x[0]>=.55).sort((x,y)=>(Math.round(y[0]*10)-Math.round(x[0]*10))||y[1].d.localeCompare(x[1].d)).slice(0,10).map(x=>x[1])}
+function awTable(list){return list.length?`<table><tr><th>التاريخ</th><th>الجهة</th><th>الفائز</th><th>القيمة</th></tr>${list.map(a=>`<tr><td>${dmy(a.d)}</td><td>${esc(a.o)}</td><td class="${US.test(a.w)?'fz':''}">${esc((a.w||'').slice(0,60))}</td><td>${esc(a.v)}</td></tr>`).join('')}</table>`:''}
+function showSheet(title,html){$('#stitle').textContent=title;$('#sbody').innerHTML=html;if($('#sheet').style.display!=='block'){history.pushState({sheet:1},'')}$('#sheet').style.display='block';$('#sheet').scrollTop=0}
+function closeSheet(){$('#sheet').style.display='none'}
+$('#back').onclick=()=>history.back();window.addEventListener('popstate',closeSheet);
+function openItem(i){const r=D.find(x=>x.i===i);if(!r)return;
+  const F=[['الدولة',CN[r.c]],['الرقم',r.n?`<span class="tno">${esc(r.n)}</span>`:''],['الجهة',esc(r.o)],['الحالة',`<span class="st ${stClass(r.st,r.cl)}">${esc(r.st)}</span>`],
+    ['تاريخ الطرح',dmy(r.p)],['آخر موعد',dmy(r.cl)],['سعر الوثائق',esc(r.f)],['التأمين',esc(r.b)],['نوع الطرح',esc(r.t)],
+    ['الفائز',r.w?`<span class="${US.test(r.w)?'fz':''}">${esc(r.w)}</span>`:''],['القيمة',r.v?`<span class="money">${esc(r.v)}</span>`:''],['تاريخ الترسية',dmy(r.a)],['نوع الشغل',esc(r.cat)]];
+  let h=`<div style="font-weight:700;font-size:16px;margin-bottom:10px">${esc(r.s)}</div><div class="kv">${F.filter(x=>x[1]).map(x=>`<div>${x[0]}</div><div>${x[1]}</div>`).join('')}</div>`;
+  if(r.off)h+=`<a class="big" href="${esc(r.off)}" target="_blank" rel="noopener">الإعلان الرسمي ↗ ${esc(r.ol||'')}</a>`;
+  if(r.chg.length)h+=`<h3>التغييرات اللي اترصدت</h3><table><tr><th>الوقت</th><th>البند</th><th>كان</th><th>بقى</th></tr>${r.chg.map(c=>`<tr><td>${esc(c[0].replace('T',' '))}</td><td>${esc(c[1])}</td><td>${esc(c[2])}</td><td><b>${esc(c[3])}</b></td></tr>`).join('')}</table>`;
+  if(r.ev.length)h+=`<h3>كل اللي اتنشر عنها</h3>`+r.ev.map(e=>`<div class="ev"><b>${dmy(e[0])} · ${esc(e[1])} · ${esc(e[2])}</b><div>${esc(e[3])}${e[4]?` <a class="off" href="${esc(e[4])}" target="_blank" rel="noopener">المصدر ↗</a>`:''}</div></div>`).join('');
+  if(r.c==='KW'){const sim=similarAwards(r.s,-1);if(sim.length)h+=`<h3>ترسيات سابقة لنفس نوع الشغل</h3>`+awTable(sim)}
+  const nw=N.filter(n=>n.c===r.c).map(n=>[score(r.s,tokset(n,o=>o.t),''),n]).filter(x=>x[0]>=.5).sort((a,b)=>b[0]-a[0]).slice(0,6);
+  if(nw.length)h+=`<h3>أخبار قريبة</h3>`+nw.map(([s,n])=>`<div class="ev"><b>${dmy(n.d)} · ${esc(n.src)}</b><div><a href="${esc(n.u)}" target="_blank" rel="noopener">${esc(n.t)}</a></div></div>`).join('');
+  showSheet(r.k||'مناقصة',h)}
+function openAward(row){const a=A.find(x=>x.r===row);if(!a)return;const m=MEET[a.d];
+  let h=`<div style="font-weight:700;font-size:16px;margin-bottom:10px">${esc(a.s)}</div><div class="kv">
+  <div>الرقم</div><div><span class="tno">${esc(a.n)}</span></div><div>الجهة</div><div>${esc(a.o)}</div>
+  <div>الفائز</div><div><span class="${US.test(a.w)?'fz':''}">${esc(a.w||'-')}</span></div><div>القيمة</div><div class="money">${esc(a.v||'-')}</div>
+  <div>تاريخ الترسية</div><div>${dmy(a.d)}</div>${a.x?`<div>ملاحظات</div><div>${esc(a.x)}</div>`:''}</div>
+  <a class="big" href="${wbUrl(a.d)}" target="_blank" rel="noopener">كشف ترسيات الجهاز يوم ${dmy(a.d)} ↗</a>
+  ${m?`<a class="big" style="background:#1F4E78" href="${esc(m.url)}" target="_blank" rel="noopener">محضر اجتماع الجهاز ${esc(m.no)} (PDF) ↗</a>`:''}
+  <p class="note">صفحات المحاضر متعلّمة وملف PDF الكامل بيتعمل من برنامج الترسيات على الكمبيوتر.</p>`;
+  const same=A.filter(x=>x.r!==a.r&&norm(x.n).replace(/\s/g,'')===norm(a.n).replace(/\s/g,'')&&norm(a.n).length>=4);
+  if(same.length)h+=`<h3>صفوف تانية لنفس الرقم</h3>`+awTable(same);
+  const sim=similarAwards(a.s,a.r);if(sim.length)h+=`<h3>ترسيات سابقة لنفس نوع الشغل</h3>`+awTable(sim);
+  showSheet('ترسية',h)}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));tab=b.dataset.t;shown=150;
+  openTabMarks(tab);badges();
+  $('#q').placeholder=tr(tab==='awards'?'عنوان أو رقم المناقصة الكويتية القديمة...':tab==='watch'?'ابحث في مناقصاتنا والتحديثات...':'ابحث بالعنوان أو الرقم أو الجهة...');$('#ctry').style.display=tab==='awards'||tab==='watch'?'none':'flex';$('.search').style.display=tab==='home'?'none':'';window.scrollTo(0,0);setH();render()});
+document.querySelectorAll('#ctry button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ctry button').forEach(x=>x.classList.toggle('on',x===b));country=b.dataset.c;status='';shown=150;render()});
+let deb;$('#q').addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(()=>{shown=150;render()},300)});
+function setH(){document.documentElement.style.setProperty('--hh',$('#hdr').offsetHeight+'px')}
+window.addEventListener('resize',setH);setH();
+let deferred;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('#install').style.display='block'});
+$('#btnInstall').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('#install').style.display='none'};
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+(async()=>{try{LOGIN_U=(await IDB.get('u'))||''}catch(e){LOGIN_U=''}showLogin();if(LANG==='en')setLang('en');if(bioReady())bioLogin(true)})();
+</script>
+</body>
+</html>
