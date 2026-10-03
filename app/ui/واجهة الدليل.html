@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>دليل مناقصات الخليج</title>
+<title>GCC Tenders</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f4f6f9;--panel:#fff;--ink:#1d2733;--muted:#66727f;--line:#e1e6ec;--brand:#0f5c4d;--brand2:#16806b;--soft:#e7f4f0;--fz:#fff36b;--ok:#1d7a46;--warn:#b3261e;--new:#e8f0ff}
+:root{--bg:#f3f5f9;--panel:#fff;--ink:#0f1b2d;--muted:#5d6878;--line:#e2e7ef;--brand:#0b2a4a;--brand2:#0e7c86;--soft:#e3f2f3;--fz:#fff36b;--ok:#1d7a46;--warn:#b3261e;--new:#e8f0ff}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "Segoe UI",Tahoma,Arial,sans-serif}
-header{background:var(--brand);color:#fff;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif}
+header{background:linear-gradient(135deg,#0b2a4a,#123b63);color:#fff;padding:10px 20px;box-shadow:0 2px 10px rgba(11,42,74,.25);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 header h1{font-size:18px;margin:0}
 header .stat{font-size:12.5px;opacity:.92}
 header .sp{flex:1}
@@ -33,7 +34,7 @@ select,.bar input[list]{font:inherit;padding:7px;border:1px solid var(--line);bo
 .chip.fresh.on{background:#2e6aa3;color:#fff}
 .chip b{margin-inline-start:4px}
 main{display:grid;grid-template-columns:minmax(360px,44%) 1fr;gap:14px;padding:12px 20px;height:calc(100vh - 170px)}
-.col{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:auto}
+.col{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:auto;box-shadow:0 1px 2px rgba(15,27,45,.06),0 4px 14px rgba(15,27,45,.06)}
 .col h3{margin:0;padding:10px 14px;font-size:14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:1}
 .res{padding:9px 14px;border-bottom:1px solid var(--line);cursor:pointer}
 .res:hover{background:#f7fafd}
@@ -84,7 +85,7 @@ a{color:#0b5aa5}
 </head>
 <body>
 <header>
-  <h1>دليل مناقصات الخليج</h1>
+  <h1 style="direction:ltr">GCC Tenders</h1><span class="stat" style="opacity:.75">مناقصات ومشاريع الخليج</span>
   <div class="ctry" id="ctry"><button data-c="" class="on">الكل</button><button data-c="KW">الكويت</button><button data-c="SA">السعودية</button><button data-c="AE">الإمارات</button></div>
   <span class="stat" id="stat">...</span>
   <span class="sp"></span>
@@ -286,7 +287,7 @@ function openTab(tab,noSearch){
 }
 // ---------------------------------------------------------------- متابعة فواز و KJAC
 let W=null,wsec='feed';
-const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار فواز و KJAC'],['won','ترسيات لفواز / KJAC'],['phone','🔑 كلمة سر الموبايل']];
+const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار فواز و KJAC'],['won','ترسيات لفواز / KJAC'],['phone','👥 حسابات الموبايل']];
 async function searchWatch(q,keep){
   try{W=await get('/api/watch')}catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
   const hl=+HL.watch||0,newFeed=W.feed.filter(f=>f.id>hl&&!f.at.startsWith('2000')).length;
@@ -301,7 +302,7 @@ async function searchWatch(q,keep){
     h=list.slice(0,400).map(t=>`<div class="res" data-tk="${esc(t.key)}"><div class="t">${esc(t.title)}</div><div class="m"><span class="cc">${esc(t.src)}</span><span>${esc(t.client)}</span>${t.number?`<span class="tno">${esc(t.number)}</span>`:''}${t.closing?`<span>إقفال ${dmy(t.closing)}</span>`:''}${t.fawaz_rank?`<span class="fzb">ترتيبنا L${t.fawaz_rank}</span>`:''}${t.links.length?`<span class="wk">${t.links.length} متابعة</span>`:''}</div>${t.status||t.remarks?`<div class="snip">${esc([t.status,t.remarks].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')}
   else if(wsec==='mails'){L=W.emails.length;h=W.emails.filter(e=>m(e.subject+' '+e.body)).map((e,i)=>`<div class="res" data-mail="${i}"><div class="t">${esc(e.subject)}</div><div class="m"><span>${esc(e.received.replace('T',' '))}</span><span>${esc(e.sender)}</span>${e.attachment?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('')}
   else if(wsec==='conews'){const list=W.company_news.filter(n=>m(n.title));L=list.length;h=list.map(n=>`<div class="res"><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div><div class="m"><span>${dmy(n.date)}</span><span>${esc(n.source)}</span></div></div>`).join('')}
-  else if(wsec==='phone'){L=1;h='<div class="empty">كلمة سر الموبايل في التفاصيل ←</div>';setTimeout(phoneBox,0)}
+  else if(wsec==='phone'){L=1;h='<div class="empty">حسابات تطبيق الموبايل في التفاصيل ←<br>مين يقدر يدخل، ومين اتوقف، وآخر مرة فتح</div>';setTimeout(accountsBox,0)}
   else{const a=W.awards.filter(x=>m(x.subject+' '+x.tno+' '+x.org)),it=W.won_items.filter(x=>m(x.subject+' '+x.number+' '+x.org));L=a.length+it.length;
     h=a.map(x=>`<div class="res"><div class="t">${esc(x.subject)}</div><div class="m"><span>${dmy(x.date)}</span><span class="tno">${esc(x.tno)}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.total)}</span><a class="off" href="#" data-off="https://capt.gov.kw/ar/tenders/winning-bids/?meeting_date_from=${x.date}&meeting_date_to=${x.date}&form=date">الإعلان الرسمي ↗</a></div></div>`).join('')+
       it.map(x=>`<div class="res" data-id="${x.id}"><div class="t">${esc(x.subject)}</div><div class="m"><span class="cc">${CN[x.country]||''}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.value)}</span></div></div>`).join('')}
@@ -315,15 +316,52 @@ async function searchWatch(q,keep){
   document.querySelectorAll('#results .res[data-id]').forEach(el=>el.onclick=()=>{sel(el);detail(+el.dataset.id)});
   if(!keep)$('#detail').innerHTML='<div class="empty">اختار حاجة من القايمة</div>';
 }
-async function phoneBox(action){
-  let d;try{d=await post('/api/phone',{action:action||''})}catch(e){$('#detail').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
-  if(action)toast(action==='reset'?'كلمة سر جديدة: '+(d.msg||''):'الإيميل: '+(d.msg||''),6000);
-  $('#detail').innerHTML=`<div class="pad"><div class="card"><div class="kv"><div>كلمة السر</div><div><b style="font-size:20px;direction:ltr;unicode-bidi:isolate;letter-spacing:1px">${esc(d.passphrase)}</b></div>
-    <div>بتتبعت على</div><div>${esc(d.email)}</div></div></div>
-    <p class="snip">دي اللي بتكتبها مرة واحدة في تبويب "فواز و KJAC" على الموبايل (وبعدها تقدر تفعّل البصمة). لو نسيتها على الموبايل دوس "نسيت كلمة السر" هناك - الكمبيوتر ده (وهو شغال) هيعمل واحدة جديدة ويبعتها على الجيميل خلال دقيقة.</p></div>
-    <div class="actions"><button class="pri" id="ph-send">ابعتها على الجيميل</button><button id="ph-reset">اعمل كلمة سر جديدة</button></div>`;
-  $('#ph-send').onclick=()=>phoneBox('send');
-  $('#ph-reset').onclick=()=>{if(confirm('كلمة السر القديمة هتبطل تشتغل على الموبايل. تكمّل؟'))phoneBox('reset')};
+const DUR=[[1,'شهر'],[3,'3 شهور'],[6,'6 شهور'],[12,'سنة'],[0,'من غير مدة']];
+function permBoxes(d,cur,cc,pre){return `<div style="display:flex;gap:10px;flex-wrap:wrap;margin:6px 0">${Object.entries(d.features).map(([k,l])=>`<label><input type="checkbox" class="${pre}-p" value="${k}" ${cur.includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">${Object.entries(d.countries).map(([k,l])=>`<label><input type="checkbox" class="${pre}-c" value="${k}" ${cc.includes(k)?'checked':''}> ${l}</label>`).join('')}</div>`}
+const checked=sel=>[...document.querySelectorAll(sel+':checked')].map(x=>x.value);
+async function accountsBox(body){
+  let d;try{d=await post('/api/accounts',body||{action:'list'})}catch(e){$('#detail').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
+  if(d.msg)toast(d.msg,6000);
+  const ago=s=>s?s.replace('T',' '):'لسه مفتحش';
+  const left=x=>{if(!x.expires)return 'من غير مدة';const n=Math.round((new Date(x.expires)-new Date(d.today))/864e5);return `${dmy(x.expires)}${n<0?' (انتهى)':n<=7?` (باقي ${n} يوم)`:''}`};
+  const state=x=>!x.active?'<span class="st st-cancel">متوقف</span>':!x.live?'<span class="st st-cancel">الاشتراك انتهى</span>':'<span class="st st-open">شغال</span>';
+  const short={dir:'الدليل',news:'الأخبار',awards:'الترسيات',watch:'فواز',fawaz:'السرية'};
+  let h=`<div class="pad">`;
+  if(d.new)h+=`<div class="card" style="border-color:#16806b;background:#e7f4f0"><b>بيانات الدخول (بتظهر مرة واحدة - ابعتها للمشترك):</b>
+    <div class="kv" style="margin-top:6px"><div>اسم المستخدم</div><div><b style="direction:ltr;unicode-bidi:isolate">${esc(d.new.u)}</b></div><div>كلمة السر</div><div><b style="direction:ltr;unicode-bidi:isolate;font-size:17px">${esc(d.new.pw)}</b></div>
+    <div>رابط التطبيق</div><div><a href="#" data-off="${esc(d.site)}">${esc(d.site)}</a></div></div>
+    <button id="ac-mail" style="margin-top:8px">ابعتها على الجيميل بتاعي</button></div>`;
+  h+=`<div class="card"><b>حسابك</b><div class="kv" style="margin-top:6px"><div>اسم المستخدم</div><div><b style="direction:ltr;unicode-bidi:isolate">${esc(d.owner)}</b></div>
+    <div>كلمة السر</div><div><b style="direction:ltr;unicode-bidi:isolate;font-size:17px">${esc(d.owner_password)}</b></div></div>
+    <p class="snip">على الموبايل ادخل بيهم مرة، وبعد كده تقدر تدخل بالبصمة. لو نسيتها هناك، دوس "نسيت كلمة السر" وهتوصلك واحدة جديدة على ${esc(d.email)} (والكمبيوتر شغال).</p></div>
+  <div class="card"><b>مشترك جديد</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">
+    <input id="ac-name" placeholder="اسم المستخدم (إنجليزي) مثلاً mohamed" style="direction:ltr;font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;min-width:220px">
+    <label>المدة <select id="ac-dur">${DUR.map(([m,l])=>`<option value="${m}" ${m===1?'selected':''}>${l}</option>`).join('')}</select></label></div>
+    ${permBoxes(d,['dir','news','awards','watch'],Object.keys(d.countries),'ac')}
+    <button class="pri" id="ac-add" style="margin-top:8px">اعمل الحساب</button></div>
+  <h4>المشتركين (${d.users.length})</h4><table><tr><th>المستخدم</th><th>الحالة</th><th>لحد</th><th>يستخدم</th><th>آخر فتح</th><th>مرات</th><th></th></tr>
+  ${d.users.map(x=>`<tr><td><b style="direction:ltr;unicode-bidi:isolate">${esc(x.u)}</b>${x.admin?' <span class="badge">إنت</span>':''}${x.forgot?` <span class="badge" style="background:#fde8c8">نسي كلمة السر ${esc(x.forgot.replace('T',' '))}</span>`:''}</td>
+    <td>${state(x)}</td><td>${esc(left(x))}</td><td style="font-size:12px">${x.perms.map(p=>short[p]||p).join('، ')}<br>${x.countries.map(c=>d.countries[c]).join('، ')}</td>
+    <td>${esc(ago(x.last_seen))}</td><td>${x.opens||0}</td>
+    <td style="white-space:nowrap">${x.admin?'':`<select data-ext="${esc(x.u)}"><option value="">تمديد...</option>${DUR.map(([m,l])=>`<option value="${m}">${m?'+ '+l:'من غير مدة'}</option>`).join('')}</select>
+      <button data-perm="${esc(x.u)}">الصلاحيات</button>
+      <button data-ac="active" data-u="${esc(x.u)}" data-v="${x.active?0:1}">${x.active?'إيقاف':'تفعيل'}</button>`}
+      <button data-ac="reset" data-u="${esc(x.u)}">كلمة سر جديدة</button>${x.admin?'':` <button data-ac="delete" data-u="${esc(x.u)}">مسح</button>`}</td></tr>
+    <tr id="pe-${esc(x.u)}" style="display:none"><td colspan="7">${permBoxes(d,x.perms,x.countries,'pe-'+x.u)}<button class="pri" data-psave="${esc(x.u)}" style="margin-top:6px">احفظ الصلاحيات</button></td></tr>`).join('')}</table>
+  <p class="snip">أي تغيير بيتنشر على الموبايل خلال دقيقة. اللي اشتراكه انتهى أو اتوقف مش بيقدر يفتح أي داتا جديدة، والتطبيق بيمسح اللي عنده (الانتهاء بيتطبّق لوحده حتى لو الكمبيوتر مقفول). اللي مش مسموحله بجزء، الجزء ده بيتشفّر بمفتاح مبيوصلوش.</p></div>`;
+  $('#detail').innerHTML=h;wireOff($('#detail'));
+  if($('#ac-mail'))$('#ac-mail').onclick=()=>accountsBox({action:'mail',u:d.new.u,pw:d.new.pw});
+  $('#ac-add').onclick=()=>{const n=$('#ac-name').value.trim();if(!n)return toast('اكتب اسم المستخدم');
+    accountsBox({action:'add',name:n,months:+$('#ac-dur').value,perms:checked('.ac-p'),countries:checked('.ac-c')})};
+  document.querySelectorAll('[data-ext]').forEach(s=>s.onchange=()=>{if(s.value==='')return;accountsBox({action:'extend',u:s.dataset.ext,months:+s.value})});
+  document.querySelectorAll('[data-perm]').forEach(b=>b.onclick=()=>{const r=document.getElementById('pe-'+b.dataset.perm);r.style.display=r.style.display==='none'?'':'none'});
+  document.querySelectorAll('[data-psave]').forEach(b=>b.onclick=()=>{const u=b.dataset.psave;
+    accountsBox({action:'perms',u,perms:checked('.pe-'+CSS.escape(u)+'-p'),countries:checked('.pe-'+CSS.escape(u)+'-c')})});
+  document.querySelectorAll('[data-ac]').forEach(b=>b.onclick=()=>{const a=b.dataset.ac,u=b.dataset.u;
+    if(a==='delete'&&!confirm(`تمسح حساب ${u} نهائي؟`))return;
+    if(a==='reset'&&!confirm(`كلمة السر القديمة لـ ${u} هتبطل تشتغل. تكمّل؟`))return;
+    accountsBox({action:a,u,value:b.dataset.v==='1'})});
 }
 function sel(el){document.querySelectorAll('.res').forEach(x=>x.classList.remove('sel'));el.classList.add('sel')}
 function norm(s){return String(s||'').normalize('NFKC').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).toLowerCase()}

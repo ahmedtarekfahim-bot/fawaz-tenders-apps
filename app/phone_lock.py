@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""The phone passphrase (it unlocks the encrypted Fawaz part of the phone app).
+"""Messages from the phone app to this PC, through a private ntfy.sh topic (polled about once a minute):
 
-- shown in the directory window (tab متابعة فواز و KJAC -> كلمة سر الموبايل), with "send it to my Gmail"
-  and "make a new one"
-- "forgot the passphrase" on the phone: the phone posts a request to a private ntfy.sh topic; this PC
-  (while the directory runs) picks it up within a minute, makes a NEW passphrase, e-mails it to the
-  owner's Gmail through the local Outlook and republishes the phone data with it. The request carries
-  no data - the worst a stranger can do with the topic name is trigger a reset that mails the owner.
+  open|<user>     - the user opened the app            -> "last seen" + number of opens in the accounts list
+  forgot|<user>   - "forgot my password" on the login  -> the owner: new password mailed to his Gmail;
+                                                          anybody else: the owner gets a mail + a mark in
+                                                          the accounts list, and resets it from the window
+The messages carry only a user name; the worst a stranger can do with the topic is cause a reset mail
+to the owner (at most one every 10 minutes per user).
 """
 import json, time, secrets, threading, urllib.request, datetime
 import fawaz_config as cfg
@@ -27,8 +27,8 @@ def owner_email():
     return cfg.S.get("reset_email", "ahmedtarekfahim@gmail.com")
 
 
-def send_mail(pw, why):
-    """mail the passphrase to the owner's Gmail through the local Outlook -> '' or the error"""
+def send_mail(subject, body):
+    """mail the owner's Gmail through the local Outlook -> '' or the error"""
     try:
         import pythoncom
         import win32com.client.dynamic
@@ -36,13 +36,9 @@ def send_mail(pw, why):
         return f"pywin32: {e}"
     pythoncom.CoInitialize()
     try:
-        ol = win32com.client.dynamic.Dispatch("Outlook.Application")
-        m = ol.CreateItem(0)
-        m.To = owner_email()
-        m.Subject = "كلمة سر تطبيق مناقصات فواز على الموبايل"
-        m.Body = (f"{why}\n\nكلمة السر: {pw}\n\nاكتبها في تبويب \"فواز و KJAC\" على الموبايل. "
-                  f"بعدها تقدر تفعّل الفتح بالبصمة من نفس التبويب.\n\n"
-                  f"{datetime.datetime.now():%Y-%m-%d %H:%M} - برنامج دليل مناقصات الخليج")
+        m = win32com.client.dynamic.Dispatch("Outlook.Application").CreateItem(0)
+        m.To, m.Subject = owner_email(), subject
+        m.Body = body + f"\n\n{datetime.datetime.now():%Y-%m-%d %H:%M} - برنامج دليل مناقصات الخليج"
         m.Send()
         return ""
     except Exception as e:                      # noqa: BLE001
@@ -51,22 +47,28 @@ def send_mail(pw, why):
         pythoncom.CoUninitialize()
 
 
-def reset(why, log=print):
-    """new passphrase -> settings, phone data republished with it, mailed to the owner"""
-    import mobile_export as me
+def mail_password(user, pw, why):
+    return send_mail("حساب تطبيق مناقصات فواز على الموبايل",
+                     f"{why}\n\nاسم المستخدم: {user}\nكلمة السر: {pw}\n\n"
+                     "ادخل بيهم في تطبيق الموبايل. بعد أول دخول تقدر تستخدم البصمة بدل كلمة السر.")
+
+
+def reset_owner(why, log=print):
+    """new password for the owner's account -> phone data republished with it, mailed to his Gmail"""
+    import accounts, mobile_export as me
     with _lock:
-        pw = me.new_passphrase()
+        owner = accounts.ensure_owner()
+        pw = accounts.set_password(owner)
         try:
             me.publish(log, force=True)
         except Exception as e:                  # noqa: BLE001
             log(f"نشر نسخة التليفون بعد تغيير كلمة السر: {e}")
-        err = send_mail(pw, why)
-        log("كلمة سر الموبايل اتغيرت" + (f" - الإيميل ما اتبعتش: {err}" if err else f" واتبعتت على {owner_email()}"))
+        err = mail_password(owner, pw, why)
+        log("كلمة سر حسابك على الموبايل اتغيرت" + (f" - الإيميل ما اتبعتش: {err}" if err else f" واتبعتت على {owner_email()}"))
         return pw, err
 
 
 def poll(log=print):
-    """check the phone's 'forgot the passphrase' requests (called about once a minute)"""
     since = int(cfg.S.get("reset_since") or time.time() - 600)
     try:
         with urllib.request.urlopen(f"{NTFY}{topic()}/json?poll=1&since={since}", timeout=20) as r:
@@ -78,9 +80,24 @@ def poll(log=print):
     if not msgs:
         return
     cfg.save_setting("reset_since", max(int(m["time"]) for m in msgs))
-    last = float(cfg.S.get("reset_last") or 0)
-    if time.time() - last < 600:                # at most one reset every 10 minutes
-        log("طلب تغيير كلمة سر الموبايل اتجاهل (اتعمل تغيير من أقل من 10 دقايق)")
-        return
-    cfg.save_setting("reset_last", time.time())
-    reset("طلبت كلمة سر جديدة من الموبايل (نسيت كلمة السر).", log)
+    import accounts
+    owner = accounts.ensure_owner()
+    for m in msgs:
+        kind, _, user = str(m.get("message", "")).partition("|")
+        user = accounts.norm_name(user) or owner
+        when = datetime.datetime.fromtimestamp(int(m["time"])).isoformat(timespec="minutes")
+        if kind == "open":
+            accounts.seen(user, when)
+        elif kind in ("forgot", "reset"):
+            last = float(cfg.S.get(f"forgot_last_{user}") or 0)
+            if time.time() - last < 600:
+                continue
+            cfg.save_setting(f"forgot_last_{user}", time.time())
+            if user == owner:
+                reset_owner("طلبت كلمة سر جديدة من الموبايل (نسيت كلمة السر).", log)
+            elif user in accounts.load()["users"]:
+                accounts.seen(user, when, "forgot")
+                send_mail(f"{user} نسي كلمة سر تطبيق الموبايل",
+                          f"المستخدم {user} داس \"نسيت كلمة السر\" على الموبايل.\n"
+                          "لو موافق: افتح دليل مناقصات الخليج ← متابعة فواز و KJAC ← 👥 حسابات الموبايل ← كلمة سر جديدة، وابعتهاله.")
+                log(f"{user} طلب كلمة سر جديدة - مستني موافقتك من حسابات الموبايل")

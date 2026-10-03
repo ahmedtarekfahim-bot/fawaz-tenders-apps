@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install --quiet openpyxl
+      - run: pip install --quiet openpyxl cryptography
       - name: Collect + build the phone data
         timeout-minutes: 30
         run: |
@@ -55,6 +55,7 @@ jobs:
           key: state-${{ github.run_id }}
       - name: Publish gh-pages
         run: |
+          [ -d site ] || { echo 'nothing to publish'; exit 0; }
           cd site
           git init -q -b gh-pages
           git config user.name "FAWAZ Tenders (cloud)"

@@ -1,7 +1,7 @@
 {
-  "name": "مناقصات فواز - دليل الخليج وترسيات الكويت",
-  "short_name": "مناقصات فواز",
-  "description": "دليل مناقصات الكويت والسعودية والإمارات + ترسيات الجهاز المركزي للمناقصات",
+  "name": "GCC Tenders - مناقصات ومشاريع الخليج",
+  "short_name": "GCC Tenders",
+  "description": "Tenders, projects and awards in Kuwait, Saudi Arabia and the UAE - مناقصات الكويت والسعودية والإمارات وترسيات الجهاز المركزي",
   "id": "fawaz-tenders",
   "start_url": "./",
   "scope": "./",
@@ -9,8 +9,8 @@
   "orientation": "portrait",
   "dir": "rtl",
   "lang": "ar",
-  "background_color": "#0f5c4d",
-  "theme_color": "#0f5c4d",
+  "background_color": "#0b2a4a",
+  "theme_color": "#0b2a4a",
   "icons": [
     {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
     {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},

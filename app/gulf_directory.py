@@ -1094,6 +1094,71 @@ def watch_view():
     return d
 
 
+def accounts_api(body, log):
+    """add / reset / (de)activate / Fawaz permission / delete / mail -> the list; any change republishes"""
+    import accounts, phone_lock, mobile_export as me
+    owner = accounts.ensure_owner()
+    act, user, out, changed = body.get("action", "list"), body.get("u", ""), {"msg": ""}, False
+    try:
+        if act == "add":
+            u, pw = accounts.add_user(body.get("name", ""), note=body.get("note", ""), perms=body.get("perms"),
+                                      countries=body.get("countries"), expires=_until(body.get("months")))
+            out.update(new={"u": u, "pw": pw}, msg=f"اتعمل حساب {u}")
+            changed = True
+        elif act == "extend":                       # +N months from today or from the current end, whichever is later
+            d = accounts.load()["users"][accounts.norm_name(user)]
+            months = int(body.get("months") or 0)
+            if months <= 0:
+                accounts.update(user, expires="")
+                out["msg"] = "بقى من غير مدة"
+            else:
+                base = max(datetime.date.today(), datetime.date.fromisoformat(d["expires"])) if d.get("expires") else datetime.date.today()
+                accounts.update(user, expires=_until(months, base), active=True)
+                out["msg"] = f"الاشتراك بقى لحد {_until(months, base)}"
+            changed = True
+        elif act == "perms":
+            accounts.update(user, perms=body.get("perms") or [], countries=body.get("countries") or [])
+            out["msg"], changed = "الصلاحيات اتحفظت", True
+        elif act == "reset":
+            pw = accounts.set_password(user)
+            out.update(new={"u": accounts.norm_name(user), "pw": pw}, msg="اتعملت كلمة سر جديدة")
+            changed = True
+        elif act in ("active", "fawaz"):
+            if act == "active" and accounts.norm_name(user) == owner and not body.get("value"):
+                raise ValueError("ده حسابك - مينفعش يتوقف")
+            accounts.update(user, **{act: bool(body.get("value"))})
+            out["msg"] = {("active", True): "اتفعّل", ("active", False): "اتوقف - مش هيقدر يفتح من أول تحديث",
+                          ("fawaz", True): "بقى يشوف بيانات فواز السرية", ("fawaz", False): "مبقاش يشوف بيانات فواز السرية"
+                          }[(act, bool(body.get("value")))]
+            changed = True
+        elif act == "delete":
+            accounts.delete(user)
+            out["msg"], changed = "اتمسح", True
+        elif act == "mail":                         # send a new user's login to the owner's Gmail
+            err = phone_lock.mail_password(accounts.norm_name(user), body.get("pw", ""), "بيانات دخول تطبيق الموبايل:")
+            out["msg"] = err or f"اتبعتت على {phone_lock.owner_email()}"
+    except (ValueError, KeyError) as e:
+        out["msg"] = f"خطأ: {e}"
+    if changed:                                     # the phone site is re-encrypted for the new list right away
+        threading.Thread(target=me.publish, args=(log, True), daemon=True).start()
+    out.update(users=accounts.listing(), owner=owner, owner_password=cfg.S.get("phone_owner_password", ""),
+               email=phone_lock.owner_email(), site=me.PAGES, features=accounts.FEATURES, countries=accounts.COUNTRIES,
+               today=datetime.date.today().isoformat())
+    return out
+
+
+def _until(months, base=None):
+    """end date N months after base (today) - '' = no end"""
+    months = int(months or 0)
+    if months <= 0:
+        return ""
+    base = base or datetime.date.today()
+    y, m = divmod(base.month - 1 + months, 12)
+    import calendar
+    day = min(base.day, calendar.monthrange(base.year + y, m + 1)[1])
+    return datetime.date(base.year + y, m + 1, day).isoformat()
+
+
 def detail(iid):
     con = db()
     it = dict(con.execute("SELECT * FROM items WHERE id=?", (iid,)).fetchone())
@@ -1381,15 +1446,8 @@ def serve(open_browser=True):
                 if u.path == "/api/update":
                     start_update("تحديث يدوي")
                     return self.send({"status": "running"})
-                if u.path == "/api/phone":                # phone passphrase: show / mail it / make a new one
-                    import phone_lock, mobile_export
-                    act, msg = body.get("action", ""), ""
-                    if act == "send":
-                        msg = phone_lock.send_mail(mobile_export.passphrase(), "طلبت كلمة السر من برنامج الكمبيوتر.") or "اتبعتت"
-                    elif act == "reset":
-                        _pw, err = phone_lock.reset("عملت كلمة سر جديدة من برنامج الكمبيوتر.", lambda m: state["log"].append(m))
-                        msg = err or "اتعملت واتبعتت"
-                    return self.send({"passphrase": mobile_export.passphrase(), "email": phone_lock.owner_email(), "msg": msg})
+                if u.path == "/api/accounts":             # phone app accounts (admin)
+                    return self.send(accounts_api(body, lambda m: state["log"].append(m)))
                 if u.path == "/api/seen":
                     mark_seen(body.get("tab", ""))
                     return self.send({"ok": True})
@@ -1450,6 +1508,18 @@ def main(argv):
             print(build_pdf(res[min(int(opt.get("pick", 0)), len(res) - 1)]["id"]))
     elif cmd == "serve":
         serve(open_browser="nobrowser" not in opt)
+    elif cmd == "crypto-test":                    # the accounts' encryption works inside the installed program
+        import accounts, tempfile
+        res = {}
+        try:
+            pub, priv = accounts.new_keypair("x")
+            d = Path(tempfile.mkdtemp())
+            (d / "a.json").write_text("[1,2,3]", encoding="utf-8")
+            n = accounts.seal_dir(d, {"users": {"t": {"active": True, "pub": pub, "priv": priv}}})
+            res = {"ok": True, "accounts": n, "files": sorted(p.name for p in d.iterdir())}
+        except Exception as e:      # noqa: BLE001
+            res = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+        Path(args[0] if args else "crypto test.json").write_text(json.dumps(res), encoding="utf-8")
     elif cmd == "outlook-test":                   # diagnostics for the installed program (it has no console)
         import fawaz_watch
         m = fawaz_watch.outlook_items()

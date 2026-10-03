@@ -10,7 +10,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if not args:
         import window_launcher
-        window_launcher.open_window("دليل مناقصات الخليج", 8766, ["--background"])
+        window_launcher.open_window("GCC Tenders - دليل مناقصات الخليج", 8766, ["--background"])
     else:
         import gulf_directory
         if args[0] == "--background":

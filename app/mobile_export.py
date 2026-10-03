@@ -8,9 +8,12 @@ every 15 minutes - the phone stays fresh with this PC switched off.
 This PC adds what only it has, on the branch pc-feed:
   - the public part of its directory (gazette reports etc.) - Adham's report codes, notes and local
     paths are left out
-  - private.enc: our own tenders, Sanjay's e-mails and the Fawaz / KJAC follow-up, encrypted with
-    AES-GCM (key = PBKDF2 of the phone passphrase in settings.json); the phone asks for it once
-If the cloud copy is more than an hour old this PC also publishes gh-pages itself (fallback).
+  - users_pub.json: the phone accounts' public login material (accounts.py) - only active accounts
+  - private.enc + fkeys.json: our own tenders, Sanjay's e-mails and the Fawaz / KJAC follow-up,
+    sealed for the accounts allowed to see them
+Everything published on gh-pages is encrypted per account (accounts.seal_dir); nobody without an
+active account can read the phone data. If the cloud copy is more than an hour old, or the accounts
+changed, this PC also publishes gh-pages itself.
 Each publish force-pushes one fresh commit, so the repo does not grow with every update.
 """
 import json, shutil, subprocess, datetime, re, os, stat, base64, gzip, hashlib, secrets, time, urllib.request
@@ -79,29 +82,7 @@ def export(out_dir, award_rows=None, meetings=None):
     return meta
 
 
-# ----------------------------------------------------------------- private part (encrypted)
-def new_passphrase():
-    abc = "abcdefghjkmnpqrstuvwxyz23456789"
-    p = "-".join("".join(secrets.choice(abc) for _ in range(4)) for _ in range(3))
-    cfg.save_setting("mobile_passphrase", p)
-    return p
-
-
-def passphrase():
-    """the phone passphrase - created once, kept in settings.json on this PC (shown in the directory window)"""
-    return cfg.S.get("mobile_passphrase") or new_passphrase()
-
-
-def encrypt(obj, pw):
-    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-    salt, iv = os.urandom(16), os.urandom(12)
-    key = hashlib.pbkdf2_hmac("sha256", pw.encode(), salt, 200_000, 32)
-    raw = gzip.compress(json.dumps(obj, ensure_ascii=False, separators=(",", ":")).encode())
-    ct = AESGCM(key).encrypt(iv, raw, None)
-    b = lambda x: base64.b64encode(x).decode()
-    return {"v": 1, "kdf": "PBKDF2-SHA256", "iter": 200_000, "salt": b(salt), "iv": b(iv), "data": b(ct)}
-
-
+# ----------------------------------------------------------------- private part (sealed per account, see accounts.py)
 def private_bundle():
     import fawaz_watch as fw
     d = fw.data(limit_feed=600)
@@ -151,9 +132,51 @@ def cloud_age_minutes():
 
 
 def publish(log=print, force=False):
-    """force=True (new passphrase): push pc-feed and the phone site right away"""
-    with _PUB:                                          # an update and a passphrase reset may meet here
+    """force=True (accounts changed): push pc-feed and the phone site right away"""
+    with _PUB:                                          # an update and an accounts change may meet here
         return _publish(log, force)
+
+
+def ntfy_info():
+    import phone_lock
+    mail = phone_lock.owner_email()
+    return {"topic": phone_lock.topic(), "mail": mail[:3] + "***" + mail[mail.find("@"):]}
+
+
+def build_feed(log=print):
+    """pc-feed folder: the PC's public extras (plain - the cloud merges them), the active users' public
+    login material, and the Fawaz-confidential part sealed for the users allowed to see it"""
+    import accounts
+    _rmtree(FEED)
+    meta = export(FEED)
+    accounts.ensure_owner()
+    users = accounts.public_users()
+    data = FEED / "data"
+    (data / "users_pub.json").write_text(json.dumps(users), encoding="utf-8")
+    (data / "ntfy.json").write_text(json.dumps(ntfy_info()), encoding="utf-8")
+    try:
+        raw = json.dumps(private_bundle(), ensure_ascii=False, separators=(",", ":")).encode()
+        enc, fkeys = accounts.seal_private(raw, users)
+        (data / "private.enc").write_text(json.dumps(enc), encoding="utf-8")
+        (data / "fkeys.json").write_text(json.dumps(fkeys), encoding="utf-8")
+    except Exception as e:                              # noqa: BLE001
+        log(f"بيانات فواز المشفرة: {e}")
+    return meta
+
+
+def build_site(feed_data, site, log=print):
+    """the phone site from a feed folder: app files + every data file encrypted for the active users"""
+    import accounts
+    _rmtree(site)
+    shutil.copytree(cfg.res_dir() / "mobile", site)
+    shutil.copytree(feed_data, site / "data", dirs_exist_ok=True)
+    d = site / "data"
+    users = json.loads((d / "users_pub.json").read_text(encoding="utf-8"))
+    fkeys = json.loads((d / "fkeys.json").read_text(encoding="utf-8")) if (d / "fkeys.json").exists() else {}
+    (d / "users_pub.json").unlink()
+    n = accounts.seal_dir(d, users, fkeys)
+    (site / ".nojekyll").write_text("", encoding="utf-8")
+    return n
 
 
 def _publish(log, force):
@@ -162,34 +185,21 @@ def _publish(log, force):
     url = repo_url()
     if not url:
         return None
-    # 1) pc-feed: our public extras + the encrypted private part, for the cloud job
-    _rmtree(FEED)
-    meta = export(FEED)
-    try:
-        (FEED / "data" / "private.enc").write_text(json.dumps(encrypt(private_bundle(), passphrase())), encoding="utf-8")
-    except Exception as e:                              # noqa: BLE001
-        log(f"بيانات فواز المشفرة: {e}")
-    try:                                                # where the phone's "forgot the passphrase" goes
-        import phone_lock
-        mail = phone_lock.owner_email()
-        (FEED / "data" / "reset.json").write_text(json.dumps(
-            {"topic": phone_lock.topic(), "mail": mail[:3] + "***" + mail[mail.find("@"):]}), encoding="utf-8")
-    except Exception as e:                              # noqa: BLE001
-        log(f"reset.json: {e}")
-    sig = hashlib.sha256(b"".join((FEED / "data" / n).read_bytes() for n in ("directory.json", "news.json", "awards.json"))
-                         ).hexdigest()
-    # the private file changes every time (new salt) - push when the data changed or every 30 minutes
+    # 1) pc-feed: our extras + accounts + the sealed Fawaz part, for the cloud job
+    meta = build_feed(log)
+    sig = hashlib.sha256(b"".join((FEED / "data" / n).read_bytes() for n in
+                                  ("directory.json", "news.json", "awards.json", "users_pub.json"))).hexdigest()
     if force or sig != _last_feed.get("sig") or time.time() - _last_feed.get("at", 0) > 1800:
         if push_dir(FEED, "pc-feed", url, f"pc feed {meta['updated']}", log):
             _last_feed.update(sig=sig, at=time.time())
-    # 2) fallback: cloud copy stale -> publish the phone site from here too
-    if force or cloud_age_minutes() > 60:
-        _rmtree(SITE)
-        shutil.copytree(cfg.res_dir() / "mobile", SITE)
-        shutil.copytree(FEED / "data", SITE / "data", dirs_exist_ok=True)
-        (SITE / ".nojekyll").write_text("", encoding="utf-8")
+    # 2) accounts changed, first sealed publish, or the cloud copy is stale -> publish the phone site from here too
+    first_sealed = not cfg.S.get("sealed_published")
+    if force or first_sealed or cloud_age_minutes() > 60:
+        n = build_site(FEED / "data", SITE, log)
         if push_dir(SITE, "gh-pages", url, f"data {meta['updated']} (pc)", log):
-            log(f"نسخة التليفون اتحدثت من الكمبيوتر ({meta['items']} مناقصة)")
+            log(f"نسخة التليفون اتحدثت من الكمبيوتر ({meta['items']} مناقصة، {n} حساب متفعّل)")
+            if first_sealed:
+                cfg.save_setting("sealed_published", True)
     else:
         log("نسخة التليفون بتتحدث من السحابة - الكمبيوتر بعت إضافاته بس")
     return meta

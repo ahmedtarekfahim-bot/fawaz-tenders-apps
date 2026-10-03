@@ -212,23 +212,23 @@ gd.collect_news = collect_news
 def main():
     t0 = time.time()
     summary = gd.run_update(progress=lambda m: print(m, flush=True))
+    if not (FEED / "users_pub.json").exists():          # no accounts from the PC yet: never publish open data
+        print("مفيش حسابات من الكمبيوتر لسه (users_pub.json) - النشر اتلغى")
+        return
     meets = load(FEED / "meetings.json", {})
     meetings = {v["no"]: {"date": d, "url": v["url"]} for d, v in meets.items()}
     meetings.update(ct.load_meetings())
-    shutil.rmtree(SITE, ignore_errors=True)
-    shutil.copytree(ROOT / "app" / "mobile", SITE)
-    meta = me.export(SITE, award_rows=AW["rows"], meetings=meetings)
-    meta["by"] = "cloud"
-    for extra in ("private.enc", "reset.json"):             # encrypted Fawaz part + "forgot the passphrase" topic
+    build = STATE / "build"
+    shutil.rmtree(build, ignore_errors=True)
+    meta = me.export(build, award_rows=AW["rows"], meetings=meetings)
+    for extra in ("users_pub.json", "fkeys.json", "private.enc", "ntfy.json"):   # from the PC
         if (FEED / extra).exists():
-            shutil.copy2(FEED / extra, SITE / "data" / extra)
-    pc_meta = load(FEED / "meta.json", {})
-    meta["pc_updated"] = pc_meta.get("updated", "")
-    meta["sources"] = {k: v for k, v in summary.items() if k != "متابعة فواز"}
-    meta["seconds"] = round(time.time() - t0)
-    (SITE / "data" / "meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
-    (SITE / ".nojekyll").write_text("", encoding="utf-8")
-    print(json.dumps(meta, ensure_ascii=False, indent=1))
+            shutil.copy2(FEED / extra, build / "data" / extra)
+    meta.update(by="cloud", pc_updated=load(FEED / "meta.json", {}).get("updated", ""),
+                sources={k: v for k, v in summary.items() if k != "متابعة فواز"}, seconds=round(time.time() - t0))
+    (build / "data" / "meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
+    n = me.build_site(build / "data", SITE, print)
+    print(json.dumps(dict(meta, accounts=n), ensure_ascii=False, indent=1))
 
 
 if __name__ == "__main__":
