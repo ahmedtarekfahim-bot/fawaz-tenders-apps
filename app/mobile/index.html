@@ -168,7 +168,7 @@ const EN={'الرئيسية':'Home','الدليل':'Directory','الأخبار':
 'صفحات المحاضر متعلّمة وملف PDF الكامل بيتعمل من برنامج الترسيات على الكمبيوتر.':'Highlighted minutes pages and the full PDF come from the awards program on the PC.',
 'اكتب عنوان أو رقم مناقصة كويتية قديمة':'Type the title or number of a past Kuwaiti tender','عشان تعرف اترسّت على مين وبكام':'to see who won it and for how much',
 'آخر التحديثات':'Latest updates','مناقصاتنا الشغالة':'Our live tenders','سجل 2022-2026':'History 2022-2026','إيميلات Sanjay':'Sanjay\'s e-mails',
-'أخبار فواز و KJAC':'Fawaz & KJAC news','أخبار وذِكر فواز والملاك':'Fawaz, KJAC & owners mentions','ترسيات لينا':'Awarded to us','من أول تحميل':'From the first load','العميل':'Client','الإقفال':'Closing',
+'أخبار فواز و KJAC':'Fawaz & KJAC news','أخبار وذِكر فواز والملاك':'Fawaz, KJAC & owners mentions','أخبار فواز ومناقصاتنا':'Fawaz news & our tenders','مناقصتنا:':'Our tender:','📋 تفاصيلها وأسعارها':'📋 Details & prices','ترسيات لينا':'Awarded to us','من أول تحميل':'From the first load','العميل':'Client','الإقفال':'Closing',
 'الأسعار':'Prices','الشركة':'Company','السعر':'Price','حالتها دلوقتي في الدليل':'Current status in the directory','كل اللي اترصد عنها':'Everything tracked about it',
 'مناقصة لينا':'Our tender','إيميل':'E-mail','📎 مرفق':'📎 Attachment','ملف الإكسيل المرفق بيتفتح من برنامج الكمبيوتر.':'The attached Excel opens from the PC program.',
 'لسه مفيش أخبار عن فواز أو KJAC - بتتجمع كل تحديث':'No Fawaz / KJAC news yet - collected with every update',
@@ -473,7 +473,7 @@ function renderHome(){
 }
 
 // ---------------------------------------------------------------- Fawaz / KJAC tab
-const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار وذِكر فواز والملاك'],['won','ترسيات لينا']];
+const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار فواز ومناقصاتنا'],['won','ترسيات لينا']];
 const coNews=()=>N.filter(n=>n.co);
 function wonList(){return {a:A.filter(a=>US.test(a.w||'')).sort((x,y)=>y.d.localeCompare(x.d)),d:D.filter(r=>r.w&&US.test(r.w))}}
 function watchChips(){
@@ -490,16 +490,17 @@ function renderWatch(q){
   const hl=HL.watch||{ts:'~',id:1e12},qq=norm(q);
   const m=s=>!qq||norm(s).includes(qq)||(digits(q).length&&digits(q).every(d=>digits(s).includes(d)));
   let h='';
-  if(wsec==='feed'&&P)h+=P.feed.filter(f=>m(f[2]+' '+f[3]+' '+f[4])).slice(0,shown).map(f=>`<div class="card ${f[0]>hl.id&&!f[1].startsWith('2000')?'unread':''}" data-tk="${esc(f[6]||'')}" data-u="${esc(f[5]||'')}"><div class="m"><span class="wk">${esc(f[2])}</span><span>${f[1].startsWith('2000')?'من أول تحميل':esc(f[1].replace('T',' '))}</span></div><div class="t">${esc(f[3])}</div><div class="note">${esc(f[4])}</div></div>`).join('');
+  if(wsec==='feed'&&P)h+=P.feed.filter(f=>m(f[2]+' '+f[3]+' '+f[4])).slice(0,shown).map(f=>`<div class="card ${f[0]>hl.id&&!f[1].startsWith('2000')?'unread':''}" data-tk="${esc(f[6]||'')}" data-u="${esc(f[5]||'')}"><div class="m"><span class="wk">${esc(f[2])}</span><span>${f[1].startsWith('2000')?'من أول تحميل':esc(f[1].replace('T',' '))}</span></div><div class="t">${esc(f[3])}</div>${f[6]&&f[7]?`<div class="m"><span class="fzb">${esc(f[7])}</span></div>`:''}<div class="note">${esc(f[4])}</div></div>`).join('');
   else if((wsec==='live'||wsec==='hist')&&P)h+=P.tenders.filter(t=>(wsec==='live')===!!t.lv&&m(t.t+' '+t.c+' '+t.n+' '+t.src)).slice(0,shown).map(t=>`<div class="card" data-tk="${esc(t.k)}"><div class="t">${esc(t.t)}</div><div class="m"><span class="wk">${esc(t.src)}</span><span>${esc(t.c)}</span>${t.n?`<span class="tno">${esc(t.n)}</span>`:''}${t.cl?`<span>إقفال ${dmy(t.cl)}</span>`:''}${t.rk?`<span class="fzb">ترتيبنا L${t.rk}</span>`:''}${liveStatus(t)}</div>${t.st||t.rm?`<div class="note">${esc([t.st,t.rm].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('');
   else if(wsec==='mails'&&P)h+=P.emails.filter(e=>m(e.s+' '+e.b)).map((e,i)=>`<div class="card" data-mail="${P.emails.indexOf(e)}"><div class="t">${esc(e.s)}</div><div class="m"><span>${esc(e.d.replace('T',' '))}</span><span>${esc(e.f)}</span>${e.a?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('');
   else if(wsec==='conews'){
     const it=coNews().filter(n=>m(n.t)).map(n=>({d:n.d||'',h:newsCard(n,n.fs&&n.fs>hl.ts)}))
-      .concat((P&&P.mn?P.mn:[]).filter(f=>m(f[2]+' '+f[3]+' '+f[4])).map(f=>({d:f[6]||'',h:`<div class="card ${f[0]>hl.id&&!f[1].startsWith('2000')?'unread':''}" ${f[5]?`data-u="${esc(f[5])}" data-tk=""`:''}><div class="m"><span class="wk">${esc(f[2])}</span>${f[6]&&!f[6].startsWith('9999')&&f[6]!=='0000'?`<span>${dmy(f[6])}</span>`:''}</div><div class="t">${esc(f[3])}</div><div class="note">${esc(f[4])}</div>${/kuwaitalyawm/.test(f[5])?'<div class="note" style="color:var(--link)">↗ بتفتح الصفحة على موقع الكويت اليوم (ادخل باشتراكك)</div>':''}</div>`})));
+      .concat((P&&P.mn?P.mn:[]).filter(f=>m(f[2]+' '+f[3]+' '+f[4]+' '+(f[8]||''))).map(f=>({d:f[6]||'',h:`<div class="card ${f[0]>hl.id&&!f[1].startsWith('2000')?'unread':''}" ${f[5]?`data-u="${esc(f[5])}" data-tk=""`:''}><div class="m"><span class="wk">${esc(f[2])}</span>${f[6]&&!f[6].startsWith('9999')&&f[6]!=='0000'?`<span>${dmy(f[6])}</span>`:''}${f[9]&&f[7]?`<span class="fzb">${esc(f[7])}</span>`:''}</div><div class="t">${esc(f[3])}</div>${f[8]?`<div class="note"><b>مناقصتنا:</b> ${esc(f[8])} <a href="#" data-tko="${esc(f[9])}">📋 تفاصيلها وأسعارها</a></div>`:''}<div class="note">${esc(f[4])}</div>${/kuwaitalyawm/.test(f[5])?'<div class="note" style="color:var(--link)">↗ بتفتح الصفحة على موقع الكويت اليوم (ادخل باشتراكك)</div>':''}</div>`})));
     it.sort((a,b)=>b.d.localeCompare(a.d));h+=it.slice(0,shown).map(x=>x.h).join('')||'<div class="empty">لسه مفيش أخبار عن فواز أو KJAC - بتتجمع كل تحديث</div>'}
   else if(wsec==='won'){const w=wonList();h+=w.a.filter(a=>m(a.s+' '+a.n+' '+a.o)).slice(0,shown).map(a=>awCard(a,0)).join('')+w.d.filter(r=>m(r.s+' '+r.n+' '+r.o)).map(dirCard).join('')}
   $('#list').innerHTML=h||'<div class="empty">مفيش حاجة هنا</div>';
   document.querySelectorAll('.card[data-tk]').forEach(c=>c.onclick=()=>{if(c.dataset.tk)openTender(c.dataset.tk);else if(c.dataset.u)window.open(c.dataset.u,'_blank')});
+  document.querySelectorAll('[data-tko]').forEach(a=>a.onclick=e=>{e.preventDefault();e.stopPropagation();openTender(a.dataset.tko)});
   document.querySelectorAll('.card[data-mail]').forEach(c=>c.onclick=()=>openMail(P.emails[+c.dataset.mail]));
   document.querySelectorAll('.card[data-r]').forEach(c=>c.onclick=()=>openAward(+c.dataset.r));
   document.querySelectorAll('.card[data-i]').forEach(c=>c.onclick=()=>openItem(+c.dataset.i));
@@ -512,7 +513,9 @@ function openTender(k){const t=P&&P.tenders.find(x=>x.k===k);if(!t)return;
   let h=`<div style="font-weight:700;font-size:16px;margin-bottom:10px">${esc(t.t)}</div><div class="kv"><div>العميل</div><div>${esc(t.c)}</div>${t.n?`<div>الرقم</div><div><span class="tno">${esc(t.n)}</span></div>`:''}${t.cl?`<div>الإقفال</div><div>${dmy(t.cl)}</div>`:''}<div>المصدر</div><div>${esc(t.src)}</div>${t.st?`<div>الحالة</div><div>${esc(t.st)}</div>`:''}${t.rm?`<div>ملاحظات</div><div>${esc(t.rm)}</div>`:''}${t.rk?`<div>ترتيبنا</div><div><span class="fzb">L${t.rk}</span></div>`:''}</div>`;
   if(t.b.length)h+=`<h3>الأسعار</h3><table><tr><th>#</th><th>الشركة</th><th>السعر</th></tr>${t.b.map((b,i)=>`<tr><td>L${i+1}</td><td class="${US.test(b[0])?'fz':''}">${esc(b[0])}</td><td>${esc(b[1])}</td></tr>`).join('')}</table>`;
   const same=sameItems(t);if(same.length)h+=`<h3>حالتها دلوقتي في الدليل</h3>`+same.map(dirCard).join('');
-  const fd=P.feed.filter(f=>f[6]===k);if(fd.length)h+=`<h3>كل اللي اترصد عنها</h3>`+fd.map(f=>`<div class="ev"><b>${f[1].startsWith('2000')?'':esc(f[1].replace('T',' '))+' · '}${esc(f[2])}</b><div>${esc(f[4])}${f[5]?` <a class="off" href="${esc(f[5])}" target="_blank" rel="noopener">↗</a>`:''}</div></div>`).join('');
+  const fd=[...new Map(P.feed.filter(f=>f[6]===k).map(f=>[f[0],[f[0],f[1],f[2],f[3],f[4],f[5]]])).values()];
+  (P.mn||[]).filter(f=>f[9]===k&&!fd.some(x=>x[0]===f[0])).forEach(f=>fd.push([f[0],f[1],f[2],f[3],f[4],f[5]]));
+  if(fd.length)h+=`<h3>كل اللي اترصد عنها (${fd.length})</h3>`+fd.map(f=>`<div class="ev"><b>${f[1].startsWith('2000')?'':esc(f[1].replace('T',' '))+' · '}${esc(f[2])}</b><div>${/^(الكويت اليوم|محضر)/.test(f[3])?esc(f[3])+' · ':''}${esc(f[4])}${f[5]?` <a class="off" href="${esc(f[5])}" target="_blank" rel="noopener">↗</a>`:''}</div></div>`).join('');
   showSheet('مناقصة لينا',h);document.querySelectorAll('#sbody .card[data-i]').forEach(c=>c.onclick=()=>openItem(+c.dataset.i))}
 function openMail(e){showSheet('إيميل',`<div style="font-weight:700;font-size:15px">${esc(e.s)}</div><div class="m" style="margin-bottom:8px"><span>${esc(e.f)}</span><span>${esc(e.d.replace('T',' '))}</span>${e.a?`<span>📎 ${esc(e.a)}</span>`:''}</div><div class="mail">${esc(e.b)}</div><p class="note">ملف الإكسيل المرفق بيتفتح من برنامج الكمبيوتر.</p>`)}
 

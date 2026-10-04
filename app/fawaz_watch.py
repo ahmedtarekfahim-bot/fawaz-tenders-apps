@@ -288,6 +288,17 @@ CLIENTS_AR = {"MEW": "وزارة الكهرباء", "MOH": "وزارة الصح�
               "MOE": "وزارة التربية", "KPC": "مؤسسة البترول الكويتية", "KIPIC": "للصناعات البترولية المتكاملة",
               "PADA": "لشؤون ذوي الإعاقة", "KAC": "الخطوط الجوية الكويتية", "DGCA": "الطيران المدني",
               "MOD": "وزارة الدفاع", "KISR": "معهد الكويت للأبحاث"}
+# the rest of the bodies in our tender file - used to confirm that a number in the gazette / minutes is ours
+CLIENTS_MORE = {"PAS": "للرياضة", "PIC": "صناعة الكيماويات البترولية", "JO": "العمليات المشتركة", "WJO": "العمليات المشتركة",
+                "AWQAF": "وزارة الأوقاف", "AWKAF": "وزارة الأوقاف", "GACA": "الطيران المدني", "KCB": "بنك الكويت المركزي",
+                "ABSU": "جامعة عبدالله السالم", "PAI": "للصناعة", "MOSA": "الشؤون الاجتماعية", "KOTC": "ناقلات النفط",
+                "MOINFO": "وزارة الإعلام", "PAY": "للشباب", "MOF": "وزارة المالية", "PAMA": "شؤون القصر",
+                "MOFA": "وزارة الخارجية", "MOJ": "وزارة العدل", "PACI": "المعلومات المدنية", "KFAED": "الصندوق الكويتي للتنمية",
+                "KFAS": "مؤسسة الكويت للتقدم العلمي", "KPA": "الموانئ", "MOT": "وزارة المواصلات", "KFH": "بيت التمويل",
+                "KOC": "نفط الكويت", "KNPC": "البترول الوطنية", "PAAET": "التعليم التطبيقي", "PAHW": "الرعاية السكنية",
+                "MOSAL": "الشؤون الاجتماعية", "KM": "بلدية الكويت", "KNA": "مجلس الأمة", "KPC": "مؤسسة البترول"}
+CLIENTS_WORDS = {"AUDIT": "ديوان المحاسبة", "ZAKAT": "بيت الزكاة", "HIGHER EDUCATION": "التعليم العالي",
+                 "CYBER": "الأمن السيبراني", "EQUATE": "ايكويت"}
 
 
 def _letters(tno, norm):
@@ -370,9 +381,9 @@ def match_public(con, gd, ct, first, progress=print):
 def match_news(con, gd, first):
     """news that names one of our live / recent tenders by number, or the client + our kind of work"""
     recent = (datetime.date.today() - datetime.timedelta(days=400)).isoformat()
-    tenders = [dict(r) for r in con.execute("SELECT * FROM tenders WHERE live=1 OR closing>=?", (recent,))]
+    tenders = [dict(r) for r in con.execute("SELECT * FROM tenders")]           # every tender we bid for since 2022
     dcon = gd.db()
-    news = [dict(r) for r in dcon.execute("SELECT id, date, source, title, summary, url FROM news WHERE date>=? AND country='KW'", (recent,))]
+    news = [dict(r) for r in dcon.execute("SELECT id, date, source, title, summary, url FROM news WHERE country='KW'")]
     dcon.close()
     live_by_client = {}
     for t in tenders:
@@ -385,13 +396,14 @@ def match_news(con, gd, first):
         digits = set(re.findall(r"\d+(?:/\d+)+", text.replace(" ", "")))
         for t in tenders:                               # the tender number itself is in the news
             if t["numkey"] and strong_numkey(t["numkey"]) and t["numkey"] in digits and \
+                    our_tender_here(t, text, gd.norm) and \
                     con.execute("INSERT OR IGNORE INTO links VALUES(?,?,?,?,?,?,?)",
                                 (t["key"], "news", str(nw["id"]), nw["title"], "", nw["url"], now())).rowcount:
-                add_feed(con, "خبر يخص مناقصة لينا", t["title"], f"{nw['date']} · {nw['source']} · {nw['title']}",
-                         nw["url"], t["key"], at=BASELINE if first else None)
+                add_feed(con, "خبر يخص مناقصة شاركنا فيها", nw["title"], f"{nw['date']} · {nw['source']}",
+                         nw["url"], t["key"], at=BASELINE if first or is_old(nw["date"]) else None)
                 n += 1
         # maintenance / HVAC news about a client we are bidding with right now - once per news item
-        if re.search(r"صيان|تشغيل|تكييف|تبريد|مناقص|ترسي", text):
+        if (nw["date"] or "") >= recent and re.search(r"صيان|تشغيل|تكييف|تبريد|مناقص|ترسي", text):
             for ar, lst in live_by_client.items():
                 if ar in text:
                     n += add_feed(con, "خبر عن عميل عندنا معاه مناقصة شغالة", nw["title"],
@@ -498,6 +510,170 @@ def official_mentions(con, gd, ct, first):
     return n
 
 
+def client_name(client):
+    """our short client code (MEW, KOC, Abdallah Salem Univ (ABSU) ...) -> its Arabic name"""
+    c = (client or "").upper().strip()
+    for code in [c] + re.findall(r"[A-Z]{2,6}", c):
+        if code in CLIENTS_MORE or code in CLIENTS_AR:
+            return CLIENTS_MORE.get(code) or CLIENTS_AR[code]
+    return next((v for k, v in CLIENTS_WORDS.items() if k in c), "")
+
+
+def fold(s, norm):
+    """the gazette / minutes PDFs lose and swap their lam / alif letters (املياه, الكهرابء, االعاقه):
+    compare names without them"""
+    return re.sub(r"[\sاأإآلـ]", "", norm(s)).replace("ؤ", "ي").replace("ئ", "ي")
+
+
+def code_before(text, start):
+    """the letters of a tender number written before its digits: رقم و ك م / 53 -> وكم"""
+    toks = re.findall(r"[a-zء-ي]+", text[max(0, start - 30):start])
+    out = []
+    for tk in reversed(toks):
+        if len(tk) > 3 or tk in ("رقم", "no", "رقمه", "مع", "في", "من", "عن", "علي", "الي", "او", "ثم", "قد", "تم"):
+            break
+        out.append(tk)
+    return "".join(reversed(out))
+
+
+def subseq(a, b):
+    """the letters agree: one is the other with letters lost by the PDF (وم / وكم)"""
+    a, b = sorted((a, b), key=len)
+    it = iter(b)
+    return all(ch in it for ch in a)
+
+
+def our_tender_here(t, text, norm):
+    """where our tender's number is in this text, when the text really is about it (every ministry restarts
+    at 1/2025/2026: the letters of the number or the client's name have to agree) -> match or None"""
+    parts = t["numkey"].split("/")
+    sep = r"\s*[/\\-]?\s*"
+    ours = _letters(t["number"], norm)
+    ar = client_name(t["client"])
+    car = fold(ar, norm) if ar else ""
+    for seq in ((parts, parts[::-1]) if len(parts) > 1 else (parts,)):
+        for m in re.finditer(r"(?<![\d.,])" + sep.join(seq) + r"(?![\d.,])", text):
+            if "اجتماع" in text[m.end():m.end() + 18] or re.search(r"(?:م|قرار)\s*\(\s*$", text[max(0, m.start() - 8):m.start()]):
+                continue                                # a meeting number "م ( 2022/29 ) ( لاجتماع ..." - not a tender
+            near = text[max(0, m.start() - 350):m.end() + 350]
+            named = bool(car and len(car) >= 4 and car in fold(near, norm))
+            theirs = code_before(text, m.start())
+            if len(ours) >= 2 and len(theirs) >= 2:
+                if subseq(ours, theirs) and (min(len(ours), len(theirs)) >= 3 or named):
+                    return m
+                continue
+            if len(parts) == 2:                         # 16/2025: too common without the letters of the number
+                continue
+            if named:
+                return m
+            if len(parts) == 1 and re.search(r"rf[pq]|مناقص|عطاء", text[max(0, m.start() - 60):m.start()]):
+                return m
+    return None
+
+
+def rank_text(t):
+    """Fawaz's place in this tender as our records have it: فواز L2 من 7 · L1 ... / awarded / not submitted"""
+    if not t:
+        return ""
+    st = (t.get("status") or "").lower()
+    b = t.get("bidders") or []
+    if isinstance(b, str):
+        b = json.loads(b or "[]")
+    rk, n, out = t.get("fawaz_rank") or 0, len(b), []
+
+    def kd(p):                                      # 1374931 -> 1,374,931
+        try:
+            v = float(str(p).replace(",", ""))
+            return f"{v:,.3f}".rstrip("0").rstrip(".")
+        except ValueError:
+            return str(p)
+    if t.get("live"):
+        out.append("لسه بنجهزها")
+    if "award" in st and "fawaz" in st:
+        out.append("🏆 اترسّت على فواز")
+    if rk and n > 1:
+        s = f"فواز L{rk} من {n}"
+        if b[rk - 1][1]:
+            s += f" · سعرنا {kd(b[rk - 1][1])}"
+        if rk > 1:
+            s += f" · L1 {b[0][0][:45]} {kd(b[0][1]) if b[0][1] else ''}".rstrip()
+        out.append(s)
+    elif rk == 1 and n == 1:
+        out.append("فواز قدّم" + (" L1" if "l1" in st else " (أسعار المنافسين مش متسجّلة)"))
+    elif n and not rk:
+        out.append("فواز مش في كشف الأسعار")
+    for k, v in (("did not participate", "ماقدّمناش"), ("cancel", "اتلغت"), ("evaluation", "تحت الدراسة"),
+                 ("not declared", "الأسعار مش معلنة"), ("not published", "النتيجة لسه ما اتنشرتش"), ("unofficial", "نتيجة مش رسمية")):
+        if k in st and v not in out:
+            out.append(v)
+    return " · ".join(out) or "مفيش ترتيب متسجّل لينا في الملف"
+
+
+def tender_mentions(con, gd, ct, first):
+    """any page of the Kuwait Al-Youm issues or of the CAPT minutes about one of the tenders we bid for
+    (our 2022-2026 file + Sanjay's tenders on hand) - even when Fawaz is not named on it"""
+    tenders = [dict(r) for r in con.execute("SELECT * FROM tenders WHERE numkey<>''") if strong_numkey(r["numkey"])]
+    # the richest record first (the same tender is in the file and in Sanjay's report)
+    tenders.sort(key=lambda t: (bool(t["fawaz_rank"]), len(t["bidders"] or ""), t["src"].startswith("سجل")), reverse=True)
+    n = 0
+    today = datetime.date.today()
+    try:
+        g = gd.gz_db()
+        cur = int(gd.gazette_status().get("current") or 0)
+    except Exception:                               # noqa: BLE001
+        g, cur = None, 0
+    try:
+        c = ct.db()
+        meets = ct.load_meetings()
+    except Exception:                               # noqa: BLE001
+        c, meets = None, {}
+    done = set()
+    for t in tenders:
+        parts = t["numkey"].split("/")
+        q = " OR ".join('"' + " ".join(s) + '"' for s in {tuple(parts), tuple(parts[::-1])})
+        if g is not None:
+            for r in g.execute("SELECT issue, page, path, text FROM pages WHERE pages MATCH ?", (q,)).fetchall():
+                ref = ("gz", r["issue"], r["page"], t["numkey"])
+                if ref in done:
+                    continue
+                m = our_tender_here(t, r["text"], gd.norm)
+                if not m:
+                    continue
+                done.add(ref)
+                snip = re.sub(r"\s+", " ", r["text"][max(0, m.start() - 200):m.end() + 260])
+                old = first or not cur or int(r["issue"]) < cur - 1
+                con.execute("INSERT OR IGNORE INTO links VALUES(?,?,?,?,?,?,?)",
+                            (t["key"], "gazette", f"{r['issue']}|{r['page']}", f"الكويت اليوم {r['issue']} - صفحة {r['page']}", "", "", now()))
+                n += add_feed(con, "الكويت اليوم - مناقصة شاركنا فيها", f"الكويت اليوم {r['issue']} - صفحة {r['page']}", snip,
+                              f"/api/file?path={urllib.parse.quote(r['path'])}#page={r['page']}",
+                              t["key"], uniq=f"gzt|{t['key']}|{r['issue']}|{r['page']}", at=BASELINE if old else None)
+        if c is not None:
+            for text, file, page, year, meeting, mdate in c.execute(
+                    "SELECT text, file, page, year, meeting, mdate FROM pages WHERE pages MATCH ?", (q,)).fetchall():
+                ref = ("min", file, page, t["numkey"])
+                if ref in done:
+                    continue
+                tx = gd.norm(text or "")
+                m = our_tender_here(t, tx, gd.norm)
+                if not m:
+                    continue
+                done.add(ref)
+                snip = re.sub(r"\s+", " ", tx[max(0, m.start() - 200):m.end() + 260])
+                try:
+                    old = first or (today - datetime.date.fromisoformat(mdate)).days > 21
+                except (TypeError, ValueError):
+                    old = True
+                con.execute("INSERT OR IGNORE INTO links VALUES(?,?,?,?,?,?,?)",
+                            (t["key"], "minutes", f"{file}|{page}", f"محضر الجهاز {meeting}/{year} - صفحة {page}", "", "", now()))
+                n += add_feed(con, "محضر الجهاز - مناقصة شاركنا فيها", f"محضر الجهاز {meeting}/{year} ({mdate or '-'}) - صفحة {page}", snip,
+                              meets.get(f"{year}/{meeting}", {}).get("url", ""), t["key"],
+                              uniq=f"mint|{t['key']}|{file}|{page}", at=BASELINE if old else None)
+    for x in (g, c):
+        if x is not None:
+            x.close()
+    return n
+
+
 def is_old(d, days=14):
     """older than two weeks = not "new" for the unread counts (it still shows in the list)"""
     try:
@@ -557,6 +733,10 @@ def run(gd, ct, progress=print):
     summary["أخبار الشركة"] = company_news_feed(con, gd, first)
     summary["الجريدة والمحاضر"] = official_mentions(con, gd, ct, first)
     try:
+        summary["الجريدة والمحاضر عن مناقصاتنا"] = tender_mentions(con, gd, ct, first)
+    except Exception as e:                          # noqa: BLE001
+        progress(f"متابعة فواز - مناقصاتنا في الجريدة والمحاضر: {e}")
+    try:
         st = gd.gazette_status()
         if st.get("current"):
             if not st.get("have"):
@@ -581,10 +761,23 @@ def data(limit_feed=400):
         return {"feed": [], "tenders": [], "emails": [], "seen": {}}
     con = db()
     # newest real updates first; what the first load found (BASELINE) goes after them
-    feed = [dict(r) for r in con.execute("SELECT id, at, kind, title, text, url, tender_key FROM feed "
-                                         "ORDER BY (at='{BASELINE}') , at DESC, id DESC LIMIT ?".replace("{BASELINE}", BASELINE), (limit_feed,))]
-    # everything that names the companies / the owners, newest by its own date (meeting / issue / news date)
-    ment = [dict(r) for r in con.execute("SELECT id, at, kind, title, text, url FROM feed WHERE kind LIKE '%يذكر%' OR kind LIKE '%تذكر%' OR kind LIKE 'خبر عن فواز%'")]
+    tk = {r["key"]: dict(r) for r in con.execute("SELECT key, title, client, number, status, bidders, fawaz_rank, live FROM tenders")}
+
+    def our(f):                                     # Fawaz's place + which tender, for anything about one of ours
+        t = tk.get(f.get("tender_key") or "")
+        f["rank"] = rank_text(t)
+        f["tender"] = " · ".join(x for x in (t["title"][:110], t["client"], t["number"]) if x) if t else ""
+        return f
+    feed = [our(dict(r)) for r in con.execute("SELECT id, at, kind, title, text, url, tender_key FROM feed "
+                                              "ORDER BY (at='{BASELINE}') , at DESC, id DESC LIMIT ?".replace("{BASELINE}", BASELINE), (limit_feed,))]
+    # everything that names the companies / the owners, and any news / notice / minutes / award about one of the
+    # tenders we bid for - newest by its own date (meeting / issue / news date)
+    ment = [our(dict(r)) for r in con.execute(
+        "SELECT id, at, kind, title, text, url, tender_key FROM feed WHERE kind LIKE '%يذكر%' OR kind LIKE '%تذكر%' OR kind LIKE 'خبر عن فواز%' "
+        "OR (tender_key<>'' AND kind NOT IN ('مناقصة بنجهزها', 'تحديث من تقرير Sanjay', 'إيميل Sanjay'))")]
+    # a page that names Fawaz and is also about one of our tenders: keep the one that says which tender
+    withkey = {f["title"] for f in ment if f["tender_key"]}
+    ment = [f for f in ment if f["tender_key"] or f["title"] not in withkey or not f["title"].startswith(("الكويت اليوم", "محضر"))]
     def mdate(f):
         m = re.search(r"(20\d\d-\d\d-\d\d)", f["title"] + " " + f["text"])
         g = re.search(r"الكويت اليوم (\d{4})", f["title"])
@@ -601,7 +794,7 @@ def data(limit_feed=400):
     emails = [dict(r) for r in con.execute("SELECT id, received, sender, subject, body, attachment FROM emails ORDER BY received DESC LIMIT 40")]
     seen = dict(con.execute("SELECT tab, marker FROM seen").fetchall())
     con.close()
-    return {"feed": feed, "tenders": tenders, "emails": emails, "seen": seen, "mentions": ment[:800]}
+    return {"feed": feed, "tenders": tenders, "emails": emails, "seen": seen, "mentions": ment[:3000]}
 
 
 def get_seen():

@@ -338,7 +338,7 @@ function openTab(tab,noSearch){
 }
 // ---------------------------------------------------------------- متابعة فواز و KJAC
 let W=null,wsec='feed';
-const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','📰 أخبار وذِكر فواز و KJAC والملاك'],['won','ترسيات لفواز / KJAC'],['phone','👥 حسابات الموبايل']];
+const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','📰 أخبار فواز و KJAC ومناقصاتنا والملاك'],['won','ترسيات لفواز / KJAC'],['phone','👥 حسابات الموبايل']];
 async function searchWatch(q,keep){
   try{W=await get('/api/watch')}catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
   const hl=+HL.watch||0,newFeed=W.feed.filter(f=>f.id>hl&&!f.at.startsWith('2000')).length;
@@ -357,13 +357,13 @@ async function searchWatch(q,keep){
     <p class="snip">${gz.has_account?'أول ما يتجاب بيتفهرس ويتدوّر فيه على فواز و KJAC والملاك لوحده.':'يا تسجّل الاشتراك تحت والبرنامج يجيبه لوحده، يا تنزّله إنت (PDF) في التنزيلات أو '+esc(gz.folder)+' والبرنامج يلاقيه خلال دقايق.'}</p>
     <button class="pri" onclick="openOfficial('${esc(gz.site)}')">🌐 افتح موقع الكويت اليوم</button>${gzForm}</div>`:(gz.has_account?'':`<div class="card" style="margin:8px">${gzForm}</div>`);
   if(wsec==='feed'){const list=W.feed.filter(f=>m(f.title+' '+f.text+' '+f.kind));L=list.length;
-    h=list.map(f=>`<div class="res ${f.id>hl&&!f.at.startsWith('2000')?'unread':''}" data-tk="${esc(f.tender_key||'')}" data-url="${esc(f.url||'')}"><div class="m"><span class="wk ${/فواز|KJAC/.test(f.kind)?'us':''}">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div class="t">${esc(f.title)}</div><div class="snip">${esc(f.text)}</div></div>`).join('')}
+    h=list.map(f=>`<div class="res ${f.id>hl&&!f.at.startsWith('2000')?'unread':''}" data-tk="${esc(f.tender_key||'')}" data-url="${esc(f.url||'')}"><div class="m"><span class="wk ${/فواز|KJAC/.test(f.kind)?'us':''}">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div class="t">${esc(f.title)}</div>${f.tender_key&&f.rank?`<div class="m"><span class="fzb">${esc(f.rank)}</span></div>`:''}<div class="snip">${esc(f.text)}</div></div>`).join('')}
   else if(wsec==='live'||wsec==='hist'){const list=W.tenders.filter(t=>(wsec==='live')===!!t.live&&m(t.title+' '+t.client+' '+t.number+' '+t.src));L=list.length;
     h=list.slice(0,400).map(t=>`<div class="res" data-tk="${esc(t.key)}"><div class="t">${esc(t.title)}</div><div class="m"><span class="cc">${esc(t.src)}</span><span>${esc(t.client)}</span>${t.number?`<span class="tno">${esc(t.number)}</span>`:''}${t.closing?`<span>إقفال ${dmy(t.closing)}</span>`:''}${t.fawaz_rank?`<span class="fzb">ترتيبنا L${t.fawaz_rank}</span>`:''}${t.links.length?`<span class="wk">${t.links.length} متابعة</span>`:''}</div>${t.status||t.remarks?`<div class="snip">${esc([t.status,t.remarks].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')}
   else if(wsec==='mails'){L=W.emails.length;h=W.emails.filter(e=>m(e.subject+' '+e.body)).map((e,i)=>`<div class="res" data-mail="${i}"><div class="t">${esc(e.subject)}</div><div class="m"><span>${esc(e.received.replace('T',' '))}</span><span>${esc(e.sender)}</span>${e.attachment?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('')}
   else if(wsec==='conews'){
     const items=W.company_news.filter(n=>m(n.title)).map(n=>({d:n.date||'',html:`<div class="res"><div class="m"><span class="wk us">خبر</span><span>${dmy(n.date)}</span><span>${esc(n.source)}</span></div><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div></div>`}))
-      .concat((W.mentions||[]).filter(f=>m(f.kind+' '+f.title+' '+f.text)).map(f=>({d:f.d||'',html:`<div class="res ${f.id>hl&&!f.at.startsWith('2000')?'unread':''}" ${f.url?`data-ment="${esc(f.url)}"`:''}><div class="m"><span class="wk us">${esc(f.kind)}</span>${f.d&&!f.d.startsWith('9999')&&f.d!=='0000'?`<span>${dmy(f.d)}</span>`:''}</div><div class="t">${esc(f.title)}</div><div class="snip">${esc(f.text)}</div></div>`})));
+      .concat((W.mentions||[]).filter(f=>m(f.kind+' '+f.title+' '+f.text+' '+(f.tender||''))).map(f=>({d:f.d||'',html:`<div class="res ${f.id>hl&&!f.at.startsWith('2000')?'unread':''}" ${f.url?`data-ment="${esc(f.url)}"`:''}><div class="m"><span class="wk us">${esc(f.kind)}</span>${f.d&&!f.d.startsWith('9999')&&f.d!=='0000'?`<span>${dmy(f.d)}</span>`:''}${f.tender_key&&f.rank?`<span class="fzb">${esc(f.rank)}</span>`:''}</div><div class="t">${esc(f.title)}</div>${f.tender?`<div class="snip"><b>مناقصتنا:</b> ${esc(f.tender)} <a href="#" data-tkd="${esc(f.tender_key)}">📋 تفاصيلها وأسعارها</a></div>`:''}<div class="snip">${esc(f.text)}</div></div>`})));
     items.sort((a,b)=>b.d.localeCompare(a.d));L=items.length;h=items.slice(0,400).map(x=>x.html).join('')}
   else if(wsec==='phone'){L=1;h='<div class="empty">حسابات تطبيق الموبايل في التفاصيل ←<br>مين يقدر يدخل، ومين اتوقف، وآخر مرة فتح</div>';setTimeout(accountsBox,0)}
   else{const a=W.awards.filter(x=>m(x.subject+' '+x.tno+' '+x.org)),it=W.won_items.filter(x=>m(x.subject+' '+x.number+' '+x.org));L=a.length+it.length;
@@ -379,6 +379,7 @@ async function searchWatch(q,keep){
   document.querySelectorAll('#results .res[data-tk]').forEach(el=>el.onclick=()=>{sel(el);if(el.dataset.tk)tenderDetail(el.dataset.tk);else if(el.dataset.url)openOfficial(el.dataset.url)});
   document.querySelectorAll('#results .res[data-mail]').forEach(el=>el.onclick=()=>{sel(el);mailDetail(W.emails[+el.dataset.mail])});
   document.querySelectorAll('#results .res[data-ment]').forEach(el=>el.onclick=()=>{sel(el);const u=el.dataset.ment;u.startsWith('http')?openOfficial(u):window.open(u,'_blank')});
+  document.querySelectorAll('#results [data-tkd]').forEach(a=>a.onclick=e=>{e.preventDefault();e.stopPropagation();sel(a.closest('.res'));tenderDetail(a.dataset.tkd)});
   document.querySelectorAll('#results .res[data-id]').forEach(el=>el.onclick=()=>{sel(el);detail(+el.dataset.id)});
   if(!keep)$('#detail').innerHTML='<div class="empty">اختار حاجة من القايمة</div>';
 }
@@ -434,7 +435,7 @@ function norm(s){return String(s||'').normalize('NFKC').replace(/[أإآ]/g,'ا'
 function digits(s){return norm(s).match(/\d+/g)||[]}
 function tenderDetail(key){
   const t=W.tenders.find(x=>x.key===key);if(!t){$('#detail').innerHTML='<div class="empty">مش لاقيها</div>';return}
-  const feed=W.feed.filter(f=>f.tender_key===key);
+  const feed=[...new Map(W.feed.concat(W.mentions||[]).filter(f=>f.tender_key===key).map(f=>[f.id,f])).values()].sort((a,b)=>(b.d||b.at).localeCompare(a.d||a.at));
   let h=`<div class="pad"><div class="card"><div class="kv"><div>المناقصة</div><div><b>${esc(t.title)}</b></div><div>العميل</div><div>${esc(t.client)}</div>
     ${t.number?`<div>الرقم</div><div><span class="tno">${esc(t.number)}</span></div>`:''}${t.closing?`<div>الإقفال</div><div>${dmy(t.closing)}</div>`:''}
     <div>المصدر</div><div>${esc(t.src)}</div>${t.status?`<div>الحالة</div><div>${esc(t.status)}</div>`:''}${t.remarks?`<div>ملاحظات</div><div>${esc(t.remarks)}</div>`:''}
@@ -442,7 +443,7 @@ function tenderDetail(key){
   if(t.bidders.length)h+=`<h4>الأسعار (L1 ...)</h4><table><tr><th>#</th><th>الشركة</th><th>السعر</th></tr>${t.bidders.map((b,i)=>`<tr><td>L${i+1}</td><td class="${isFz(b[0])?'fz':''}">${esc(b[0])}</td><td>${esc(b[1])}</td></tr>`).join('')}</table>`;
   const items=t.links.filter(l=>l.kind==='item');
   if(items.length)h+=`<h4>نفس المناقصة في الدليل</h4>${items.map(l=>`<div class="m"><a href="#" data-item="${esc(l.ref)}">${esc(l.title)}</a>${l.url?`<a class="off" href="#" data-off="${esc(l.url)}">الإعلان الرسمي ↗</a>`:''}</div>`).join('')}`;
-  if(feed.length)h+=`<h4>كل اللي اترصد عنها (${feed.length})</h4>${feed.map(f=>`<div class="hit"><div style="flex:1"><div class="m"><span class="wk">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div>${esc(f.text)}${f.url?` <a href="#" data-off="${esc(f.url)}">↗</a>`:''}</div></div></div>`).join('')}`;
+  if(feed.length)h+=`<h4>كل اللي اترصد عنها (${feed.length})</h4>${feed.map(f=>`<div class="hit"><div style="flex:1"><div class="m"><span class="wk">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div>${/^(الكويت اليوم|محضر)/.test(f.title)?`<b>${esc(f.title)}</b> · `:''}${esc(f.text)}${f.url?` <a href="#" data-off="${esc(f.url)}">↗</a>`:''}</div></div></div>`).join('')}`;
   h+='</div>';$('#detail').innerHTML=h;wireOff($('#detail'));
   document.querySelectorAll('[data-item]').forEach(a=>a.onclick=e=>{e.preventDefault();detail(+a.dataset.item)});
 }

@@ -126,13 +126,14 @@ def private_bundle():
     import fawaz_watch as fw
     d = fw.data(limit_feed=600)
     return {"updated": datetime.datetime.now().isoformat(timespec="minutes"),
-            "feed": [[f["id"], f["at"][:16], f["kind"], f["title"], f["text"], phone_url(f), f["tender_key"]] for f in d["feed"]],
+            "feed": [[f["id"], f["at"][:16], f["kind"], f["title"], f["text"], phone_url(f), f["tender_key"], f.get("rank", "")]
+                     for f in d["feed"]],
             "tenders": [{"k": t["key"], "src": t["src"], "t": t["title"], "c": t["client"], "n": t["number"], "nk": t["numkey"],
                          "cl": t["closing"], "st": t["status"], "rm": t["remarks"], "lv": t["live"], "rk": t["fawaz_rank"],
                          "b": t["bidders"], "ln": [[l["kind"], l["title"], l["url"]] for l in t["links"]]} for t in d["tenders"]],
             "cd": capt_docs_map(),
-            "mn": [[f["id"], f["at"][:16], f["kind"], f["title"], f["text"][:400], phone_url(f), f["d"]]
-                   for f in d.get("mentions", [])[:400]],
+            "mn": [[f["id"], f["at"][:16], f["kind"], f["title"], f["text"][:400], phone_url(f), f["d"], f.get("rank", ""),
+                    f.get("tender", ""), f.get("tender_key") or ""] for f in d.get("mentions", [])[:700]],
             "emails": [{"d": e["received"], "f": e["sender"], "s": e["subject"], "b": e["body"][:1800],
                         "a": Path(e["attachment"]).name if e["attachment"] else ""} for e in d["emails"]]}
 
