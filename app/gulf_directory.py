@@ -657,11 +657,154 @@ def refresh_awards(store, progress):
     """new CAPT awards into the awards Excel + the minutes list, so the directory is fresh on its own
     (the awards program does the same; the Excel is only rewritten when something new came)"""
     new, _last = ct.update_excel(progress)
+    try:                                # new CAPT minutes: download + index (the awards program may be closed)
+        got = ct.download_new_minutes(progress)
+        if got:
+            ct.index_minutes(progress)
+            progress(f"محاضر الجهاز الجديدة: {got}")
+    except Exception as e:              # noqa: BLE001 - the minutes are a bonus
+        progress(f"المحاضر: {e}")
     try:
-        ct.fetch_meetings()
-    except Exception as e:              # noqa: BLE001 - the minutes list is a bonus
-        progress(f"قائمة المحاضر: {e}")
+        gazette_watch(progress)
+        index_gazette(progress)
+    except Exception as e:              # noqa: BLE001
+        progress(f"فهرسة الكويت اليوم: {e}")
     return len(new)
+
+
+# ----------------------------------------------------------------- full text of the Kuwait Al-Youm issues
+def gazette_pdfs():
+    """issue -> best PDF in the gazette folder ("1811.pdf", "1811 نظيف.pdf" ...)"""
+    best = {}
+    if not GAZETTE_PDF_DIR.is_dir():
+        return best
+    rank = lambda f: (0 if "نظيف" in f.stem else 1 if f.stem.strip().isdigit() else 2, -f.stat().st_size)
+    for f in GAZETTE_PDF_DIR.glob("*.pdf"):
+        m = re.match(r"\s*(1[5-9]\d\d)\b", f.stem)
+        if m and (m.group(1) not in best or rank(f) < rank(best[m.group(1)])):
+            best[m.group(1)] = f
+    return best
+
+
+GZ_SITE = "https://kuwaitalyawm.media.gov.kw/online/MainEditions"
+GZ_STATUS = BASE / "gazette status.json"
+
+
+def gazette_status():
+    try:
+        return json.loads(GZ_STATUS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def gazette_watch(progress):
+    """every Sunday a new Kuwait Al-Youm issue: notice it on the official site (public number + date),
+    pick its PDF up as soon as it is saved (the download needs the owner's login on the site) and index it"""
+    if not GAZETTE_PDF_DIR.is_dir():
+        return {}
+    st = gazette_status()
+    now = datetime.datetime.now()
+    if not st.get("checked") or (now - datetime.datetime.fromisoformat(st["checked"])).total_seconds() > 1800:
+        try:
+            h = ct.http_get(GZ_SITE, tries=2)
+            m = re.search(r"رقم الإصدار الحالي.*?(\d{4})", re.sub(r"<[^>]+>", " ", h), re.S)
+            d = re.search(r"تاريخ الإصدار.*?(\d{1,2}/\d{1,2}/\d{4})", re.sub(r"<[^>]+>", " ", h), re.S)
+            if m:
+                st.update(current=m.group(1), date=d.group(1) if d else "")
+        except Exception as e:                      # noqa: BLE001
+            progress(f"موقع الكويت اليوم: {e}")
+        st["checked"] = now.isoformat(timespec="seconds")
+    pick_up_gazette_downloads(progress)
+    st["have"] = bool(st.get("current") and st["current"] in gazette_pdfs())
+    if st.get("current") and not st["have"]:        # with the subscription: the program gets the issue itself
+        import gazette_online as go
+        if all(go.account()) and (not st.get("tried") or (now - datetime.datetime.fromisoformat(st["tried"])).total_seconds() > 900):
+            st["tried"] = now.isoformat(timespec="seconds")
+            try:
+                f = go.fetch_issue_pdf(st["current"], GAZETTE_PDF_DIR)
+                st["have"], st["error"] = True, ""
+                progress(f"اتجاب عدد الكويت اليوم {st['current']} بالاشتراك ({f.name})")
+            except Exception as e:                  # noqa: BLE001
+                st["error"] = str(e)[:200]
+                progress(f"الكويت اليوم بالاشتراك: {e}")
+    GZ_STATUS.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+    return st
+
+
+def pick_up_gazette_downloads(progress):
+    """a Kuwait Al-Youm PDF saved in the gazette folder or in Downloads under any name -> <issue>.pdf"""
+    import pymupdf, shutil
+    have = gazette_pdfs()
+    recent = time.time() - 14 * 86400
+    for folder in (GAZETTE_PDF_DIR, Path.home() / "Downloads"):
+        if not folder.is_dir():
+            continue
+        for f in folder.glob("*.pdf"):
+            try:
+                if f.stat().st_mtime < recent or f.stat().st_size < 1_500_000 or re.match(r"\s*1[5-9]\d\d\b", f.stem):
+                    continue
+                d = pymupdf.open(f)
+                txt = " ".join(d[i].get_text() for i in range(min(3, d.page_count)))
+                d.close()
+            except Exception:                       # noqa: BLE001
+                continue
+            m = re.search(r"العدد\s*(1[5-9]\d\d)", txt)
+            if m and "الكويت اليوم" in txt and m.group(1) not in have:
+                dst = GAZETTE_PDF_DIR / f"{m.group(1)}.pdf"
+                shutil.copy2(f, dst)
+                have[m.group(1)] = dst
+                progress(f"لقيت عدد الكويت اليوم {m.group(1)} في {f.parent.name} واتنقل لفولدر الجريدة")
+
+
+def gz_db():
+    con = sqlite3.connect(BASE / "gazette index.sqlite", timeout=30)
+    con.row_factory = sqlite3.Row
+    con.execute("CREATE TABLE IF NOT EXISTS files(issue TEXT PRIMARY KEY, path TEXT, sig TEXT, pages INT)")
+    con.execute("CREATE VIRTUAL TABLE IF NOT EXISTS pages USING fts5(text, issue UNINDEXED, page UNINDEXED, path UNINDEXED, tokenize='unicode61')")
+    return con
+
+
+def index_gazette(progress, keep=40):
+    """index the text of the latest issues (one-off per issue, a few seconds each)"""
+    import pymupdf
+    pdfs = gazette_pdfs()
+    con = gz_db()
+    known = {r["issue"]: r["sig"] for r in con.execute("SELECT issue, sig FROM files")}
+    n = 0
+    for issue in sorted(pdfs, key=int)[-keep:]:
+        f = pdfs[issue]
+        sig = f"{f.name}|{f.stat().st_size}|{int(f.stat().st_mtime)}"
+        if known.get(issue) == sig:
+            continue
+        d = pymupdf.open(f)
+        con.execute("DELETE FROM pages WHERE issue=?", (issue,))
+        con.executemany("INSERT INTO pages(text, issue, page, path) VALUES(?,?,?,?)",
+                        [(norm(d[i].get_text()), issue, i + 1, str(f)) for i in range(d.page_count)])
+        con.execute("INSERT OR REPLACE INTO files VALUES(?,?,?,?)", (issue, str(f), sig, d.page_count))
+        con.commit()
+        d.close()
+        n += 1
+        progress(f"اتفهرس عدد الكويت اليوم {issue}")
+    con.close()
+    return n
+
+
+def gazette_search(q, limit=60, issue=""):
+    words = [w for w in words_of(q)]
+    if not words:
+        return []
+    con = gz_db()
+    match = " AND ".join('"' + w.replace('"', "") + '"' + ("*" if len(w) >= 4 else "") for w in words)
+    rows = con.execute("SELECT issue, page, path, snippet(pages, 0, '[', ']', ' … ', 18) AS snip, bm25(pages) AS sc FROM pages "
+                       "WHERE pages MATCH ?" + (" AND issue=?" if issue else "") + " ORDER BY CAST(issue AS INT) DESC, sc LIMIT ?",
+                       (match, issue, limit) if issue else (match, limit)).fetchall()
+    con.close()
+    return [{"issue": r["issue"], "page": r["page"], "file": r["path"], "snippet": r["snip"],
+             "url": f"/api/file?path={urllib.parse.quote(r['path'])}#page={r['page']}"} for r in rows]
+
+
+def words_of(q):
+    return [w for w in re.findall(r"[0-9a-z\u0621-\u064a]+", norm(q)) if len(w) > 1]
 
 
 def collect_awards(store, progress, days=365):
@@ -835,10 +978,10 @@ NEWS = {
 COMPANY_NEWS = {"gl": "KW", "days": 365, "queries": [
     '"فواز للتجارة والخدمات الهندسية"', '"شركة فواز للتجارة"', '"فواز للتبريد"', '"شركة فواز" مناقصة',
     '"الكويتية اليابانية للتكييف"', '"الكويتية اليابانية" تكييف', '"Fawaz Trading" Kuwait', '"Fawaz Refrigeration"',
-    '"KJAC" Kuwait', '"Kuwait Japan Air Conditioning"'],
+    '"KJAC" Kuwait', '"Kuwait Japan Air Conditioning"', '"الحساوي" الكويت', '"عائلة الحساوي"', '"Al-Hasawi" Kuwait'],
     # the full company name in quotes is precise enough even when the name is only inside the article
-    "trust": {'"فواز للتجارة والخدمات الهندسية"', '"شركة فواز للتجارة"', '"الكويتية اليابانية للتكييف"'},
-    "rx": r"فواز|fawaz|kjac|الكويتي[ةه] الياباني[ةه]|kuwait japan", "outlets": r"(?!)"}
+    "trust": {'"فواز للتجارة والخدمات الهندسية"', '"شركة فواز للتجارة"', '"الكويتية اليابانية للتكييف"', '"عائلة الحساوي"'},
+    "rx": r"فواز|fawaz|kjac|الكويتي[ةه] الياباني[ةه]|kuwait japan|الحساوي|hasawi", "outlets": r"(?!)"}
 
 
 def news_country_ok(country, title, summary, source):
@@ -1196,6 +1339,8 @@ def watch_view():
         "WHERE winner<>'' ORDER BY award_date DESC")]
     con.close()
     d["won_items"] = [r for r in d["won_items"] if re.search(US_RX, r["winner"], re.I)][:150]
+    import gazette_online as go
+    d["gazette"] = dict(gazette_status(), site=GZ_SITE, folder=str(GAZETTE_PDF_DIR), account=go.account()[0], has_account=all(go.account()))
     try:
         d["awards"] = [r for r in ct.read_excel_rows() if re.search(US_RX, r["winner"] or "", re.I)][:200]
     except Exception:                   # noqa: BLE001
@@ -1651,6 +1796,13 @@ def serve(open_browser=True):
                                           unread=un, seen=seen))
                 if u.path == "/api/watch":
                     return self.send(watch_view())
+                if u.path == "/api/gazette-account":
+                    import gazette_online as go
+                    if q.get("explore"):
+                        return self.send(go.explore())
+                    return self.send({"user": go.account()[0], "has_password": go.account()[1], "status": gazette_status()})
+                if u.path == "/api/gazette/search":
+                    return self.send(gazette_search(q.get("q", ""), issue=q.get("issue", "")))
                 if u.path == "/api/docs":
                     return self.send(item_docs(int(q["id"])))
                 if u.path == "/api/capt-account":
@@ -1726,6 +1878,16 @@ def serve(open_browser=True):
                     r = download_docs(int(body["id"]))
                     if any(ok for _n, ok, _x in r["files"]):
                         os.startfile(r["folder"])
+                    return self.send(r)
+                if u.path == "/api/gazette-account":      # Kuwait Al-Youm subscription (DPAPI-encrypted)
+                    import gazette_online as go
+                    go.set_account(body.get("user", ""), body.get("password", ""))
+                    r = go.test_login() if body.get("password") else {"ok": True, "msg": "اتمسح الاشتراك"}
+                    if r.get("ok"):
+                        st = gazette_status()
+                        st.pop("tried", None)
+                        GZ_STATUS.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
+                        threading.Thread(target=gazette_watch, args=(lambda m: state["log"].append(m),), daemon=True).start()
                     return self.send(r)
                 if u.path == "/api/capt-account":         # the owner types it in the window; kept DPAPI-encrypted
                     import tender_docs as td

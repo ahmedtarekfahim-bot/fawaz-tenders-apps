@@ -103,7 +103,7 @@ a{color:#0b5aa5}
     <select id="days"><option value="0">أي موعد إقفال</option><option value="7">بيقفل خلال أسبوع</option><option value="14">خلال أسبوعين</option><option value="30">خلال شهر</option></select>
     <label><input type="checkbox" id="fawaz"> نطاق فواز</label>
   </span>
-  <span class="only-awards" style="display:none"><select id="ayear"><option value="">كل السنين</option></select><label><input type="checkbox" id="amin"> بحث مباشر في المحاضر</label><button onclick="post('/api/open-excel')">افتح إكسيل الترسيات</button></span>
+  <span class="only-awards" style="display:none"><select id="ayear"><option value="">كل السنين</option></select><label><input type="checkbox" id="amin"> بحث مباشر في المحاضر</label><label><input type="checkbox" id="agz"> بحث في أعداد الكويت اليوم</label><button onclick="post('/api/open-excel')">افتح إكسيل الترسيات</button></span>
   <button class="pri" id="go">بحث</button>
 </div>
 <div class="chips" id="chips"></div>
@@ -174,7 +174,7 @@ document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{document.que
   $('.only-items').style.display=mode==='awards'||mode==='watch'?'none':'contents';$('.only-awards').style.display=mode==='awards'?'contents':'none';status_();search()});
 let deb;$('#q').addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(search,450)});
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
-$('#go').onclick=search;['#cat','#days','#fawaz','#org','#ayear','#amin'].forEach(s=>$(s).onchange=search);
+$('#go').onclick=search;['#cat','#days','#fawaz','#org','#ayear','#amin','#agz'].forEach(s=>$(s).onchange=search);
 
 async function search(keep){
   // keep=true: silent refresh after an automatic update - same list place, same selection
@@ -214,6 +214,16 @@ function hitsHtml(list,checkAll){return list.map((x,i)=>`<label class="hit"><inp
   <div class="m">${esc(x.file.split('\\').pop())} · صفحة ${x.page} · <a href="#" data-prev="${i}">معاينة</a></div><div class="snip">${esc(x.snippet)}</div></div></label>`).join('')}
 function wirePrev(){document.querySelectorAll('[data-prev]').forEach(a=>a.onclick=e=>{e.preventDefault();const x=hits[+a.dataset.prev];$('#mimg').src=`/api/page.png?file=${encodeURIComponent(x.file)}&page=${x.page}`;$('#modal').style.display='flex'})}
 async function searchAwards(q){
+  if($('#agz').checked){
+    if(!q){$('#results').innerHTML='<div class="empty">اكتب كلمة أو اسم شركة أو رقم مناقصة - البحث في نص أعداد الكويت اليوم كلها</div>';return}
+    const gz=await get('/api/gazette/search?q='+encodeURIComponent(q));if(q!==lastQ)return;
+    $('#lh').textContent=`صفحات الكويت اليوم (${gz.length})`;
+    $('#results').innerHTML=gz.length?gz.map((x,i)=>`<div class="res" data-gz="${i}"><div class="t">الكويت اليوم ${esc(x.issue)} - صفحة ${x.page}</div><div class="snip">${esc(x.snippet)}</div></div>`).join(''):'<div class="empty">ملقتش صفحات</div>';
+    document.querySelectorAll('.res[data-gz]').forEach(el=>el.onclick=()=>{document.querySelectorAll('.res').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');const x=gz[+el.dataset.gz];
+      $('#detail').innerHTML=`<div class="pad"><div class="card"><b>الكويت اليوم ${esc(x.issue)} - صفحة ${x.page}</b><p class="snip">${esc(x.snippet)}</p></div>
+        <img src="/api/page.png?file=${encodeURIComponent(x.file)}&page=${x.page}" style="width:100%;border:1px solid var(--line);border-radius:8px"></div>
+        <div class="actions"><button class="pri" onclick="window.open('${x.url}','_blank')">افتح العدد على الصفحة دي</button></div>`});
+    const f=document.querySelector('.res[data-gz]');if(f)f.click();return}
   if(!q){$('#results').innerHTML='<div class="empty">اكتب عنوان أو رقم مناقصة كويتية قديمة عشان تعرف اترسّت على مين وبكام</div>';return}
   if($('#amin').checked){hits=await get('/api/awards/minutes?q='+encodeURIComponent(q));current=null;
     $('#lh').textContent=`صفحات المحاضر (${hits.length})`;$('#results').innerHTML=hits.length?`<div class="pad">${hitsHtml(hits,true)}</div>`:'<div class="empty">ملقتش صفحات</div>';wirePrev();
@@ -328,32 +338,47 @@ function openTab(tab,noSearch){
 }
 // ---------------------------------------------------------------- متابعة فواز و KJAC
 let W=null,wsec='feed';
-const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار فواز و KJAC'],['won','ترسيات لفواز / KJAC'],['phone','👥 حسابات الموبايل']];
+const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','📰 أخبار وذِكر فواز و KJAC والملاك'],['won','ترسيات لفواز / KJAC'],['phone','👥 حسابات الموبايل']];
 async function searchWatch(q,keep){
   try{W=await get('/api/watch')}catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
   const hl=+HL.watch||0,newFeed=W.feed.filter(f=>f.id>hl&&!f.at.startsWith('2000')).length;
-  const cnt={feed:W.feed.length,live:W.tenders.filter(t=>t.live).length,hist:W.tenders.filter(t=>!t.live).length,mails:W.emails.length,conews:W.company_news.length,won:W.awards.length+W.won_items.length,phone:''};
+  const cnt={feed:W.feed.length,live:W.tenders.filter(t=>t.live).length,hist:W.tenders.filter(t=>!t.live).length,mails:W.emails.length,conews:W.company_news.length+(W.mentions||[]).length,won:W.awards.length+W.won_items.length,phone:''};
   $('#chips').innerHTML=WSEC.map(([k,l])=>`<span class="chip ${wsec===k?'on':''}" data-w="${k}">${l}<b>${cnt[k]}</b>${k==='feed'&&newFeed?`<span class="bdg">${newFeed} جديد</span>`:''}</span>`).join('');
   document.querySelectorAll('[data-w]').forEach(c=>c.onclick=()=>{wsec=c.dataset.w;searchWatch($('#q').value.trim())});
   const qq=norm(q);const m=s=>!qq||norm(s).includes(qq)||(digits(q).length&&digits(q).every(d=>digits(s).includes(d)));
   let h='',L=0;
+  const gz=W.gazette||{};
+  const gzForm=`<details style="margin-top:6px" ${gz.has_account?'':'open'}><summary class="snip" style="cursor:pointer">اشتراك الكويت اليوم ${gz.has_account?'(متسجّل: '+esc(gz.account)+')':'- سجّله والبرنامج يجيب كل عدد لوحده'}</summary>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><input id="gz-u" placeholder="اسم المستخدم" value="${esc(gz.account||'')}" style="direction:ltr;padding:6px;border:1px solid var(--line);border-radius:8px;min-width:180px">
+    <input id="gz-p" type="password" placeholder="كلمة السر" style="direction:ltr;padding:6px;border:1px solid var(--line);border-radius:8px;min-width:150px">
+    <button id="gz-save">احفظ وادخل</button></div><p class="snip">بيتحفظوا متشفّرين على الجهاز ده بس (Windows).</p></details>`;
+  const banner=gz.current&&!gz.have?`<div class="card" style="margin:8px;border-color:#e8a317;background:#fff6e0"><b>📰 العدد ${esc(gz.current)} من الكويت اليوم نزل (${esc(gz.date||'')})${gz.has_account?' - البرنامج بيجيبه بالاشتراك':' ولسه ما اتجابش'}</b>
+    ${gz.error?`<p class="snip" style="color:#8a1f1f">${esc(gz.error)}</p>`:''}
+    <p class="snip">${gz.has_account?'أول ما يتجاب بيتفهرس ويتدوّر فيه على فواز و KJAC والملاك لوحده.':'يا تسجّل الاشتراك تحت والبرنامج يجيبه لوحده، يا تنزّله إنت (PDF) في التنزيلات أو '+esc(gz.folder)+' والبرنامج يلاقيه خلال دقايق.'}</p>
+    <button class="pri" onclick="openOfficial('${esc(gz.site)}')">🌐 افتح موقع الكويت اليوم</button>${gzForm}</div>`:(gz.has_account?'':`<div class="card" style="margin:8px">${gzForm}</div>`);
   if(wsec==='feed'){const list=W.feed.filter(f=>m(f.title+' '+f.text+' '+f.kind));L=list.length;
     h=list.map(f=>`<div class="res ${f.id>hl&&!f.at.startsWith('2000')?'unread':''}" data-tk="${esc(f.tender_key||'')}" data-url="${esc(f.url||'')}"><div class="m"><span class="wk ${/فواز|KJAC/.test(f.kind)?'us':''}">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div class="t">${esc(f.title)}</div><div class="snip">${esc(f.text)}</div></div>`).join('')}
   else if(wsec==='live'||wsec==='hist'){const list=W.tenders.filter(t=>(wsec==='live')===!!t.live&&m(t.title+' '+t.client+' '+t.number+' '+t.src));L=list.length;
     h=list.slice(0,400).map(t=>`<div class="res" data-tk="${esc(t.key)}"><div class="t">${esc(t.title)}</div><div class="m"><span class="cc">${esc(t.src)}</span><span>${esc(t.client)}</span>${t.number?`<span class="tno">${esc(t.number)}</span>`:''}${t.closing?`<span>إقفال ${dmy(t.closing)}</span>`:''}${t.fawaz_rank?`<span class="fzb">ترتيبنا L${t.fawaz_rank}</span>`:''}${t.links.length?`<span class="wk">${t.links.length} متابعة</span>`:''}</div>${t.status||t.remarks?`<div class="snip">${esc([t.status,t.remarks].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')}
   else if(wsec==='mails'){L=W.emails.length;h=W.emails.filter(e=>m(e.subject+' '+e.body)).map((e,i)=>`<div class="res" data-mail="${i}"><div class="t">${esc(e.subject)}</div><div class="m"><span>${esc(e.received.replace('T',' '))}</span><span>${esc(e.sender)}</span>${e.attachment?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('')}
-  else if(wsec==='conews'){const list=W.company_news.filter(n=>m(n.title));L=list.length;h=list.map(n=>`<div class="res"><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div><div class="m"><span>${dmy(n.date)}</span><span>${esc(n.source)}</span></div></div>`).join('')}
+  else if(wsec==='conews'){
+    const items=W.company_news.filter(n=>m(n.title)).map(n=>({d:n.date||'',html:`<div class="res"><div class="m"><span class="wk us">خبر</span><span>${dmy(n.date)}</span><span>${esc(n.source)}</span></div><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div></div>`}))
+      .concat((W.mentions||[]).filter(f=>m(f.kind+' '+f.title+' '+f.text)).map(f=>({d:f.d||'',html:`<div class="res ${f.id>hl&&!f.at.startsWith('2000')?'unread':''}" ${f.url?`data-ment="${esc(f.url)}"`:''}><div class="m"><span class="wk us">${esc(f.kind)}</span>${f.d&&!f.d.startsWith('9999')&&f.d!=='0000'?`<span>${dmy(f.d)}</span>`:''}</div><div class="t">${esc(f.title)}</div><div class="snip">${esc(f.text)}</div></div>`})));
+    items.sort((a,b)=>b.d.localeCompare(a.d));L=items.length;h=items.slice(0,400).map(x=>x.html).join('')}
   else if(wsec==='phone'){L=1;h='<div class="empty">حسابات تطبيق الموبايل في التفاصيل ←<br>مين يقدر يدخل، ومين اتوقف، وآخر مرة فتح</div>';setTimeout(accountsBox,0)}
   else{const a=W.awards.filter(x=>m(x.subject+' '+x.tno+' '+x.org)),it=W.won_items.filter(x=>m(x.subject+' '+x.number+' '+x.org));L=a.length+it.length;
     h=a.map(x=>`<div class="res"><div class="t">${esc(x.subject)}</div><div class="m"><span>${dmy(x.date)}</span><span class="tno">${esc(x.tno)}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.total)}</span><a class="off" href="#" data-off="https://capt.gov.kw/ar/tenders/winning-bids/?meeting_date_from=${x.date}&meeting_date_to=${x.date}&form=date">الإعلان الرسمي ↗</a></div></div>`).join('')+
       it.map(x=>`<div class="res" data-id="${x.id}"><div class="t">${esc(x.subject)}</div><div class="m"><span class="cc">${CN[x.country]||''}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.value)}</span></div></div>`).join('')}
   $('#lh').textContent=`${WSEC.find(x=>x[0]===wsec)[1]} (${L})`;
   const top=$('#results').parentElement.scrollTop;
-  $('#results').innerHTML=h||'<div class="empty">مفيش حاجة هنا لسه - بتتملي مع أول تحديث</div>';
+  $('#results').innerHTML=banner+(h||'<div class="empty">مفيش حاجة هنا لسه - بتتملي مع أول تحديث</div>');
+  if($('#gz-save'))$('#gz-save').onclick=async()=>{const u=$('#gz-u').value.trim(),pw=$('#gz-p').value;if(!u||!pw)return toast('اكتب اسم المستخدم وكلمة السر');
+    toast('بيدخل على الكويت اليوم...');const r=await post('/api/gazette-account',{user:u,password:pw});toast(r.msg,8000);if(r.ok)setTimeout(()=>searchWatch($('#q').value.trim()),4000)};
   if(keep)$('#results').parentElement.scrollTop=top;
   wireOff($('#results'));
   document.querySelectorAll('#results .res[data-tk]').forEach(el=>el.onclick=()=>{sel(el);if(el.dataset.tk)tenderDetail(el.dataset.tk);else if(el.dataset.url)openOfficial(el.dataset.url)});
   document.querySelectorAll('#results .res[data-mail]').forEach(el=>el.onclick=()=>{sel(el);mailDetail(W.emails[+el.dataset.mail])});
+  document.querySelectorAll('#results .res[data-ment]').forEach(el=>el.onclick=()=>{sel(el);const u=el.dataset.ment;u.startsWith('http')?openOfficial(u):window.open(u,'_blank')});
   document.querySelectorAll('#results .res[data-id]').forEach(el=>el.onclick=()=>{sel(el);detail(+el.dataset.id)});
   if(!keep)$('#detail').innerHTML='<div class="empty">اختار حاجة من القايمة</div>';
 }

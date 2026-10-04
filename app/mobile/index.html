@@ -168,7 +168,7 @@ const EN={'الرئيسية':'Home','الدليل':'Directory','الأخبار':
 'صفحات المحاضر متعلّمة وملف PDF الكامل بيتعمل من برنامج الترسيات على الكمبيوتر.':'Highlighted minutes pages and the full PDF come from the awards program on the PC.',
 'اكتب عنوان أو رقم مناقصة كويتية قديمة':'Type the title or number of a past Kuwaiti tender','عشان تعرف اترسّت على مين وبكام':'to see who won it and for how much',
 'آخر التحديثات':'Latest updates','مناقصاتنا الشغالة':'Our live tenders','سجل 2022-2026':'History 2022-2026','إيميلات Sanjay':'Sanjay\'s e-mails',
-'أخبار فواز و KJAC':'Fawaz & KJAC news','ترسيات لينا':'Awarded to us','من أول تحميل':'From the first load','العميل':'Client','الإقفال':'Closing',
+'أخبار فواز و KJAC':'Fawaz & KJAC news','أخبار وذِكر فواز والملاك':'Fawaz, KJAC & owners mentions','ترسيات لينا':'Awarded to us','من أول تحميل':'From the first load','العميل':'Client','الإقفال':'Closing',
 'الأسعار':'Prices','الشركة':'Company','السعر':'Price','حالتها دلوقتي في الدليل':'Current status in the directory','كل اللي اترصد عنها':'Everything tracked about it',
 'مناقصة لينا':'Our tender','إيميل':'E-mail','📎 مرفق':'📎 Attachment','ملف الإكسيل المرفق بيتفتح من برنامج الكمبيوتر.':'The attached Excel opens from the PC program.',
 'لسه مفيش أخبار عن فواز أو KJAC - بتتجمع كل تحديث':'No Fawaz / KJAC news yet - collected with every update',
@@ -473,13 +473,13 @@ function renderHome(){
 }
 
 // ---------------------------------------------------------------- Fawaz / KJAC tab
-const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار فواز و KJAC'],['won','ترسيات لينا']];
+const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل 2022-2026'],['mails','إيميلات Sanjay'],['conews','أخبار وذِكر فواز والملاك'],['won','ترسيات لينا']];
 const coNews=()=>N.filter(n=>n.co);
 function wonList(){return {a:A.filter(a=>US.test(a.w||'')).sort((x,y)=>y.d.localeCompare(x.d)),d:D.filter(r=>r.w&&US.test(r.w))}}
 function watchChips(){
   const P=visibleP();
   const hl=HL.watch||{ts:'~',id:1e12};const w=wonList();
-  const cnt={feed:P?P.feed.length:0,live:P?P.tenders.filter(t=>t.lv).length:0,hist:P?P.tenders.filter(t=>!t.lv).length:0,mails:P?P.emails.length:0,conews:coNews().length,won:w.a.length+w.d.length};
+  const cnt={feed:P?P.feed.length:0,live:P?P.tenders.filter(t=>t.lv).length:0,hist:P?P.tenders.filter(t=>!t.lv).length:0,mails:P?P.emails.length:0,conews:coNews().length+(P&&P.mn?P.mn.length:0),won:w.a.length+w.d.length};
   const nw={feed:P?P.feed.filter(f=>f[0]>hl.id&&!f[1].startsWith('2000')).length:0,conews:coNews().filter(n=>n.fs&&n.fs>hl.ts).length};
   const secs=P?WSEC:WSEC.filter(x=>['conews','won'].includes(x[0]));if(!secs.find(x=>x[0]===wsec))wsec=secs[0][0];
   $('#chips').innerHTML=secs.map(([k,l])=>`<span class="chip ${wsec===k?'on':''}" data-w="${k}">${l}<b>${cnt[k]}</b>${nw[k]?`<span class="nw">${nw[k]}</span>`:''}</span>`).join('');
@@ -493,7 +493,10 @@ function renderWatch(q){
   if(wsec==='feed'&&P)h+=P.feed.filter(f=>m(f[2]+' '+f[3]+' '+f[4])).slice(0,shown).map(f=>`<div class="card ${f[0]>hl.id&&!f[1].startsWith('2000')?'unread':''}" data-tk="${esc(f[6]||'')}" data-u="${esc(f[5]||'')}"><div class="m"><span class="wk">${esc(f[2])}</span><span>${f[1].startsWith('2000')?'من أول تحميل':esc(f[1].replace('T',' '))}</span></div><div class="t">${esc(f[3])}</div><div class="note">${esc(f[4])}</div></div>`).join('');
   else if((wsec==='live'||wsec==='hist')&&P)h+=P.tenders.filter(t=>(wsec==='live')===!!t.lv&&m(t.t+' '+t.c+' '+t.n+' '+t.src)).slice(0,shown).map(t=>`<div class="card" data-tk="${esc(t.k)}"><div class="t">${esc(t.t)}</div><div class="m"><span class="wk">${esc(t.src)}</span><span>${esc(t.c)}</span>${t.n?`<span class="tno">${esc(t.n)}</span>`:''}${t.cl?`<span>إقفال ${dmy(t.cl)}</span>`:''}${t.rk?`<span class="fzb">ترتيبنا L${t.rk}</span>`:''}${liveStatus(t)}</div>${t.st||t.rm?`<div class="note">${esc([t.st,t.rm].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('');
   else if(wsec==='mails'&&P)h+=P.emails.filter(e=>m(e.s+' '+e.b)).map((e,i)=>`<div class="card" data-mail="${P.emails.indexOf(e)}"><div class="t">${esc(e.s)}</div><div class="m"><span>${esc(e.d.replace('T',' '))}</span><span>${esc(e.f)}</span>${e.a?'<span class="wk">📎 مرفق</span>':''}</div></div>`).join('');
-  else if(wsec==='conews'){const l=coNews().filter(n=>m(n.t)).sort((a,b)=>((b.fs>hl.ts)-(a.fs>hl.ts))||b.d.localeCompare(a.d));h+=l.map(n=>newsCard(n,n.fs&&n.fs>hl.ts)).join('')||'<div class="empty">لسه مفيش أخبار عن فواز أو KJAC - بتتجمع كل تحديث</div>'}
+  else if(wsec==='conews'){
+    const it=coNews().filter(n=>m(n.t)).map(n=>({d:n.d||'',h:newsCard(n,n.fs&&n.fs>hl.ts)}))
+      .concat((P&&P.mn?P.mn:[]).filter(f=>m(f[2]+' '+f[3]+' '+f[4])).map(f=>({d:f[6]||'',h:`<div class="card ${f[0]>hl.id&&!f[1].startsWith('2000')?'unread':''}" ${f[5]?`data-u="${esc(f[5])}" data-tk=""`:''}><div class="m"><span class="wk">${esc(f[2])}</span>${f[6]&&!f[6].startsWith('9999')&&f[6]!=='0000'?`<span>${dmy(f[6])}</span>`:''}</div><div class="t">${esc(f[3])}</div><div class="note">${esc(f[4])}</div></div>`})));
+    it.sort((a,b)=>b.d.localeCompare(a.d));h+=it.slice(0,shown).map(x=>x.h).join('')||'<div class="empty">لسه مفيش أخبار عن فواز أو KJAC - بتتجمع كل تحديث</div>'}
   else if(wsec==='won'){const w=wonList();h+=w.a.filter(a=>m(a.s+' '+a.n+' '+a.o)).slice(0,shown).map(a=>awCard(a,0)).join('')+w.d.filter(r=>m(r.s+' '+r.n+' '+r.o)).map(dirCard).join('')}
   $('#list').innerHTML=h||'<div class="empty">مفيش حاجة هنا</div>';
   document.querySelectorAll('.card[data-tk]').forEach(c=>c.onclick=()=>{if(c.dataset.tk)openTender(c.dataset.tk);else if(c.dataset.u)window.open(c.dataset.u,'_blank')});

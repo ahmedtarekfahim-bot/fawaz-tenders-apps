@@ -11,7 +11,7 @@ number), the CAPT awards list, the news, plus Google News about Fawaz and KJAC t
 
 Every new thing becomes a row in `feed`; the programs show unread counts from it.
 """
-import re, json, sqlite3, datetime, shutil
+import re, json, sqlite3, datetime, shutil, urllib.parse
 from pathlib import Path
 
 import fawaz_config as cfg
@@ -20,7 +20,7 @@ WATCH_DIR = cfg.ARCHIVE / "متابعة فواز"
 ONHAND_DIR = WATCH_DIR / "tenders on hand"
 DB = WATCH_DIR / "watch.sqlite"
 BASELINE = "2000-01-01T00:00:00"          # what the first run finds is the starting point, not "new"
-COMPANY_RX = r"فواز|fawaz|kjac|الكويتي[هة] الياباني[هة]|الكويتية اليابانية|kuwait japan(ese)? air"
+COMPANY_RX = r"فواز|fawaz|kjac|الكويتي[هة] الياباني[هة]|الكويتية اليابانية|kuwait japan(ese)? air|الحساوي|al[- ]?hasawi"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS tenders(
@@ -427,6 +427,61 @@ def company_news_feed(con, gd, first):
     return n
 
 
+# the company itself (a person called Fawaz is not the company): normalised text (ة->ه, أ->ا)
+CO_STRICT = re.compile(r"شركه\s*فواز|فواز\s*لل?تجار|فواز\s*لل?تبريد|فواز\s*للخدمات|فواز\s*للتكييف|الكويتيه\s*اليابانيه|"
+                       r"اليابانيه\s*لل?تكييف|\bkjac\b|fawaz\s*(?:trading|refrig|engineering)|الحساوي|al[- ]?hasawi", re.I)
+
+
+def mention_kind(where, text):
+    return f"{where} بيذكر الملاك (الحساوي)" if re.search(r"الحساوي|hasawi", text, re.I) else f"{where} بيذكر فواز / KJAC"
+
+
+def official_mentions(con, gd, ct, first):
+    """Fawaz / KJAC named in the full text of the Kuwait Al-Youm issues and of the CAPT meeting minutes"""
+    n = 0
+    today = datetime.date.today()
+    # gazette pages
+    try:
+        g = gd.gz_db()
+        rows = g.execute("SELECT issue, page, path, text FROM pages WHERE pages MATCH ?",
+                         ('"فواز" OR "اليابانيه" OR "kjac" OR "fawaz" OR "الحساوي" OR "hasawi"',)).fetchall()
+        g.close()
+    except Exception:                               # noqa: BLE001 - no index yet
+        rows = []
+    latest = max((int(r["issue"]) for r in rows), default=0)
+    for r in rows:
+        m = CO_STRICT.search(r["text"])
+        if not m:
+            continue
+        snip = re.sub(r"\s+", " ", r["text"][max(0, m.start() - 160):m.end() + 220])
+        old = first or int(r["issue"]) < latest - 1
+        n += add_feed(con, mention_kind("الكويت اليوم", m.group(0)), f"الكويت اليوم {r['issue']} - صفحة {r['page']}", snip,
+                      f"/api/file?path={urllib.parse.quote(r['path'])}#page={r['page']}",
+                      uniq=f"gz|{r['issue']}|{r['page']}", at=BASELINE if old else None)
+    # CAPT minutes pages (capt_tool's index)
+    try:
+        c = ct.db()
+        mrows = c.execute("SELECT text, file, page, year, meeting, mdate FROM pages WHERE pages MATCH ?",
+                          ('"فواز" OR "اليابانيه" OR "kjac" OR "fawaz" OR "الحساوي" OR "hasawi"',)).fetchall()
+        c.close()
+        meets = ct.load_meetings()
+    except Exception:                               # noqa: BLE001
+        mrows, meets = [], {}
+    for text, file, page, year, meeting, mdate in mrows:
+        m = CO_STRICT.search(text or "")
+        if not m:
+            continue
+        snip = re.sub(r"\s+", " ", text[max(0, m.start() - 160):m.end() + 220])
+        url = meets.get(f"{year}/{meeting}", {}).get("url", "")
+        try:
+            old = first or (today - datetime.date.fromisoformat(mdate)).days > 21
+        except (TypeError, ValueError):
+            old = True
+        n += add_feed(con, mention_kind("محضر الجهاز", m.group(0)), f"محضر الجهاز {meeting}/{year} ({mdate or '-'}) - صفحة {page}", snip,
+                      url, uniq=f"min|{file}|{page}", at=BASELINE if old else None)
+    return n
+
+
 def e_text(r):
     return f"{r['etype'] or ''} {r['text'] or ''}"
 
@@ -475,6 +530,20 @@ def run(gd, ct, progress=print):
     summary["ربط بالدليل والترسيات"] = match_public(con, gd, ct, first, progress)
     summary["أخبار مناقصاتنا"] = match_news(con, gd, first)
     summary["أخبار الشركة"] = company_news_feed(con, gd, first)
+    summary["الجريدة والمحاضر"] = official_mentions(con, gd, ct, first)
+    try:
+        st = gd.gazette_status()
+        if st.get("current"):
+            if not st.get("have"):
+                add_feed(con, "عدد جديد من الكويت اليوم", f"العدد {st['current']} نزل ({st.get('date', '')})",
+                         "حمّله من موقع الكويت اليوم (بتسجيل دخولك) في D:\\Download 2026 أو التنزيلات - البرنامج هيلاقيه ويدوّر فيه على فواز و KJAC والملاك لوحده",
+                         gd.GZ_SITE, uniq=f"gzissue|{st['current']}")
+            else:
+                add_feed(con, "عدد جديد من الكويت اليوم", f"العدد {st['current']} اتفهرس واتدوّر فيه",
+                         "أي ذِكر لفواز أو KJAC أو الملاك في العدد ده بيظهر في قسم الأخبار والذِكر", "",
+                         uniq=f"gzdone|{st['current']}")
+    except Exception:                               # noqa: BLE001
+        pass
     con.commit()
     con.close()
     progress(f"متابعة فواز: {summary}")
@@ -486,7 +555,18 @@ def data(limit_feed=400):
     if not DB.exists():
         return {"feed": [], "tenders": [], "emails": [], "seen": {}}
     con = db()
-    feed = [dict(r) for r in con.execute("SELECT id, at, kind, title, text, url, tender_key FROM feed ORDER BY id DESC LIMIT ?", (limit_feed,))]
+    # newest real updates first; what the first load found (BASELINE) goes after them
+    feed = [dict(r) for r in con.execute("SELECT id, at, kind, title, text, url, tender_key FROM feed "
+                                         "ORDER BY (at='{BASELINE}') , at DESC, id DESC LIMIT ?".replace("{BASELINE}", BASELINE), (limit_feed,))]
+    # everything that names the companies / the owners, newest by its own date (meeting / issue / news date)
+    ment = [dict(r) for r in con.execute("SELECT id, at, kind, title, text, url FROM feed WHERE kind LIKE '%يذكر%' OR kind LIKE '%تذكر%' OR kind LIKE 'خبر عن فواز%'")]
+    def mdate(f):
+        m = re.search(r"(20\d\d-\d\d-\d\d)", f["title"] + " " + f["text"])
+        g = re.search(r"الكويت اليوم (\d{4})", f["title"])
+        return m.group(1) if m else (f"9999-{g.group(1)}" if g and not f["at"].startswith("2000") else (f["at"][:10] if not f["at"].startswith("2000") else "0000"))
+    for f in ment:
+        f["d"] = mdate(f)
+    ment.sort(key=lambda f: (f["d"], f["id"]), reverse=True)
     tenders = []
     for r in con.execute("SELECT * FROM tenders ORDER BY live DESC, closing DESC"):
         t = dict(r)
@@ -496,7 +576,7 @@ def data(limit_feed=400):
     emails = [dict(r) for r in con.execute("SELECT id, received, sender, subject, body, attachment FROM emails ORDER BY received DESC LIMIT 40")]
     seen = dict(con.execute("SELECT tab, marker FROM seen").fetchall())
     con.close()
-    return {"feed": feed, "tenders": tenders, "emails": emails, "seen": seen}
+    return {"feed": feed, "tenders": tenders, "emails": emails, "seen": seen, "mentions": ment[:800]}
 
 
 def get_seen():
