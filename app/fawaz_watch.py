@@ -408,32 +408,48 @@ def company_news_feed(con, gd, first):
     dcon = gd.db()
     rows = dcon.execute("SELECT id, date, source, title, url FROM news WHERE query LIKE 'شركة:%' ORDER BY date").fetchall()
     named = [r for r in dcon.execute("SELECT id, date, source, title, summary, url FROM news WHERE query NOT LIKE 'شركة:%'")
-             if re.search(COMPANY_RX, (r["title"] or "") + " " + (r["summary"] or ""), re.I)]
+             if CO_STRICT.search(gd.norm((r["title"] or "") + " " + (r["summary"] or "")))]
     events = [r for r in dcon.execute("SELECT e.id, e.date, e.source, e.etype, e.text, e.url, i.subject, i.official FROM events e "
                                       "JOIN items i ON i.id=e.item_id WHERE e.source NOT LIKE 'تقرير مشاريع%'")
-              if re.search(COMPANY_RX, e_text(r), re.I)]
+              if CO_STRICT.search(gd.norm(e_text(r)))]
     dcon.close()
     n = 0
     for r in rows:
         n += add_feed(con, "خبر عن فواز / KJAC", r["title"], f"{r['date']} · {r['source']}", r["url"],
-                      uniq=f"conews|{r['url']}", at=BASELINE if first else None)
+                      uniq=f"conews|{r['url']}", at=BASELINE if first or is_old(r["date"]) else None)
     for r in named:
-        n += add_feed(con, "خبر بيذكر فواز / KJAC", r["title"], f"{r['date']} · {r['source']}", r["url"],
-                      uniq=f"conews|{r['url']}", at=BASELINE if first else None)
+        n += add_feed(con, mention_kind("خبر", r["title"] + " " + (r["summary"] or "")), r["title"], f"{r['date']} · {r['source']}", r["url"],
+                      uniq=f"conews|{r['url']}", at=BASELINE if first or is_old(r["date"]) else None)
     for r in events:
-        n += add_feed(con, "قرار / إعلان بيذكر فواز / KJAC", r["subject"], f"{r['date']} · {r['source']} · {r['etype']} · {r['text'][:300]}",
+        n += add_feed(con, mention_kind("قرار / إعلان", e_text(r)), r["subject"], f"{r['date']} · {r['source']} · {r['etype']} · {r['text'][:300]}",
                       r["official"] if (r["official"] or "").startswith("http") else "",
-                      uniq=f"coevent|{r['id']}", at=BASELINE if first else None)
+                      uniq=f"coevent|{r['id']}", at=BASELINE if first or is_old(r["date"]) else None)
     return n
 
 
 # the company itself (a person called Fawaz is not the company): normalised text (ة->ه, أ->ا)
-CO_STRICT = re.compile(r"شركه\s*فواز|فواز\s*لل?تجار|فواز\s*لل?تبريد|فواز\s*للخدمات|فواز\s*للتكييف|الكويتيه\s*اليابانيه|"
-                       r"اليابانيه\s*لل?تكييف|\bkjac\b|fawaz\s*(?:trading|refrig|engineering)|الحساوي|al[- ]?hasawi", re.I)
+CO_STRICT = re.compile(
+    # FAWAZ Trading & (General) Engineering Services - the gazette text is often broken ("للتعار واخلدمات الندسيه"),
+    # so: "فواز" + "خدمات/هندسية" a few words later; other companies called Fawaz (livestock, refrigeration ...) don't match
+    r"فواز.{0,32}?(?:خدمات|دمات|هندسي|ندسيه)|fawaz\s*trading|"
+    r"الكويتيه\s*اليابانيه|اليابانيه\s*لل?تكييف|kjac|kuwait\s*japan(?:ese)?\s*air|"
+    r"الحساوي|al[- ]?hasawi", re.I | re.S)
 
 
 def mention_kind(where, text):
     return f"{where} بيذكر الملاك (الحساوي)" if re.search(r"الحساوي|hasawi", text, re.I) else f"{where} بيذكر فواز / KJAC"
+
+
+def purge_loose(con, gd):
+    """once per rule version: drop mentions found with the old loose rule / watermarked pages"""
+    if gd.GZ_INDEX_V == (cfg.S.get("gz_mentions_v") or ""):
+        return
+    # mentions found before the watermark was removed / with the loose rule are not real - they come back if real
+    for pat in ("gz|%", "min|%", "coevent|%"):
+        con.execute("DELETE FROM feed WHERE uniq LIKE ?", (pat,))
+    con.execute("DELETE FROM feed WHERE uniq LIKE 'conews|%' AND kind NOT LIKE 'خبر عن فواز%'")
+    con.commit()
+    cfg.save_setting("gz_mentions_v", gd.GZ_INDEX_V)
 
 
 def official_mentions(con, gd, ct, first):
@@ -454,7 +470,7 @@ def official_mentions(con, gd, ct, first):
         if not m:
             continue
         snip = re.sub(r"\s+", " ", r["text"][max(0, m.start() - 160):m.end() + 220])
-        old = first or int(r["issue"]) < latest - 1
+        old = first or int(r["issue"]) < latest - 1 or not gd.gazette_status().get("current") or int(r["issue"]) < int(gd.gazette_status().get("current", 0)) - 1
         n += add_feed(con, mention_kind("الكويت اليوم", m.group(0)), f"الكويت اليوم {r['issue']} - صفحة {r['page']}", snip,
                       f"/api/file?path={urllib.parse.quote(r['path'])}#page={r['page']}",
                       uniq=f"gz|{r['issue']}|{r['page']}", at=BASELINE if old else None)
@@ -480,6 +496,14 @@ def official_mentions(con, gd, ct, first):
         n += add_feed(con, mention_kind("محضر الجهاز", m.group(0)), f"محضر الجهاز {meeting}/{year} ({mdate or '-'}) - صفحة {page}", snip,
                       url, uniq=f"min|{file}|{page}", at=BASELINE if old else None)
     return n
+
+
+def is_old(d, days=14):
+    """older than two weeks = not "new" for the unread counts (it still shows in the list)"""
+    try:
+        return (datetime.date.today() - datetime.date.fromisoformat(str(d)[:10])).days > days
+    except ValueError:
+        return True
 
 
 def e_text(r):
@@ -529,6 +553,7 @@ def run(gd, ct, progress=print):
     con.commit()
     summary["ربط بالدليل والترسيات"] = match_public(con, gd, ct, first, progress)
     summary["أخبار مناقصاتنا"] = match_news(con, gd, first)
+    purge_loose(con, gd)
     summary["أخبار الشركة"] = company_news_feed(con, gd, first)
     summary["الجريدة والمحاضر"] = official_mentions(con, gd, ct, first)
     try:

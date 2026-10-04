@@ -777,6 +777,29 @@ def gz_db():
     return con
 
 
+GZ_INDEX_V = "v2"          # v2: the subscriber's watermark (company name on every page) is removed
+
+
+def gazette_page_texts(d):
+    """page texts without what repeats on most pages - the subscriber watermark ("شركة فواز للتجارة ..." +
+    the user name on every page of a downloaded issue) and the running header; otherwise every page
+    would look like news about Fawaz"""
+    import collections
+    import gazette_online as go
+    raw = [d[i].get_text() for i in range(d.page_count)]
+    cnt = collections.Counter()
+    for t in raw:
+        cnt.update({l.strip() for l in t.splitlines() if l.strip()})
+    limit = max(4, d.page_count * 0.4)
+    common = {l for l, c in cnt.items() if c >= limit}
+    user = (go.account()[0] or "").strip().lower()
+    out = []
+    for t in raw:
+        keep = [l for l in t.splitlines() if l.strip() and l.strip() not in common and (not user or l.strip().lower() != user)]
+        out.append("\n".join(keep))
+    return out
+
+
 def index_gazette(progress, keep=40):
     """index the text of the latest issues (one-off per issue, a few seconds each)"""
     import pymupdf
@@ -786,13 +809,13 @@ def index_gazette(progress, keep=40):
     n = 0
     for issue in sorted(pdfs, key=int)[-keep:]:
         f = pdfs[issue]
-        sig = f"{f.name}|{f.stat().st_size}|{int(f.stat().st_mtime)}"
+        sig = f"{GZ_INDEX_V}|{f.name}|{f.stat().st_size}|{int(f.stat().st_mtime)}"
         if known.get(issue) == sig:
             continue
         d = pymupdf.open(f)
         con.execute("DELETE FROM pages WHERE issue=?", (issue,))
         con.executemany("INSERT INTO pages(text, issue, page, path) VALUES(?,?,?,?)",
-                        [(norm(d[i].get_text()), issue, i + 1, str(f)) for i in range(d.page_count)])
+                        [(norm(t), issue, i + 1, str(f)) for i, t in enumerate(gazette_page_texts(d))])
         con.execute("INSERT OR REPLACE INTO files VALUES(?,?,?,?)", (issue, str(f), sig, d.page_count))
         con.commit()
         d.close()

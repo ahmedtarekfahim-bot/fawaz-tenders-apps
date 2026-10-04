@@ -1,5 +1,5 @@
 {
- "version": "1.1.4",
+ "version": "1.1.5",
  "setup_url": "https://raw.githubusercontent.com/ahmedtarekfahim-bot/fawaz-tenders-apps/main/updates/FAWAZ-Tenders-Setup.exe",
  "notes": "تحديث تلقائي كل 5 دقايق (قابل للتغيير) + تبويب متابعة فواز و KJAC + علامات بعدد التحديثات + الموبايل بيتحدّث من السحابة"
 }
