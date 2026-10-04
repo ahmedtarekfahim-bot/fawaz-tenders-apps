@@ -6,7 +6,7 @@ is kept with Windows DPAPI (tender_docs). With it the program signs in by itself
 issue and saves its PDF into the gazette folder - then the directory indexes it and the Fawaz watch
 searches it, with nobody downloading anything by hand.
 """
-import re, html, datetime, urllib.request, urllib.parse, http.cookiejar
+import re, html, json, datetime, urllib.request, urllib.parse, http.cookiejar
 from pathlib import Path
 import fawaz_config as cfg
 
@@ -87,23 +87,43 @@ def explore():
     return {"ok": True, "pages": pages}
 
 
+def edition_id(issue, op=None):
+    """the site's ID of an issue (newest edition with that number) from the public editions table"""
+    op = op or urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    cols = ["EditionNo", "ID", "EditionType", "EditionDate", "HijriDate", "ID"]
+    p = {"draw": "1", "start": "0", "length": "10", "search[value]": "", "search[regex]": "false",
+         "order[0][column]": "1", "order[0][dir]": "desc", "EditionNo": str(issue), "EditionsType": "", "startdate": "", "enddate": ""}
+    for i, c in enumerate(cols):
+        p.update({f"columns[{i}][data]": c, f"columns[{i}][name]": "", f"columns[{i}][searchable]": "true",
+                  f"columns[{i}][orderable]": "true", f"columns[{i}][search][value]": "", f"columns[{i}][search][regex]": "false"})
+    H = dict(UA, **{"X-Requested-With": "XMLHttpRequest", "Referer": SITE + "/online/editions"})
+    r = op.open(urllib.request.Request(SITE + "/online/EditionsJson", data=urllib.parse.urlencode(p).encode(), headers=H), timeout=60)
+    rows = [x for x in json.loads(r.read()).get("data", []) if str(x.get("EditionNo")) == str(issue) and x.get("EditionTypeID", 1) == 1]
+    def ms(x):
+        m = re.search(r"\d+", x.get("EditionDate") or "")
+        return int(m.group(0)) if m else 0
+    rows.sort(key=ms, reverse=True)
+    if not rows:
+        raise FileNotFoundError(f"العدد {issue} مش في جدول الإصدارات على الموقع")
+    return rows[0]["ID"]
+
+
 def fetch_issue_pdf(issue, dest_dir):
-    """save the current issue's PDF as <dest>/<issue>.pdf -> path, or raises with what was found"""
+    """sign in, find the issue's ID and download its PDF as <dest>/<issue>.pdf"""
     op = login()
-    h = op.open(urllib.request.Request(SITE + "/online/MainEditions", headers=UA), timeout=60).read().decode("utf-8", "replace")
-    cands = [u for u in re.findall(r'["\'](/[^"\']*(?:\.pdf|Pdf|PDF|Download|download)[^"\']*)["\']', h)]
-    cands += [u for u, t in _links(h) if re.search(r"تحميل|PDF|العدد|الإصدار", t)]
-    tried = []
-    for u in dict.fromkeys(cands):
-        url = u if u.startswith("http") else SITE + u
-        try:
-            with op.open(urllib.request.Request(url, headers=UA), timeout=300) as r:
-                data = r.read()
-            if data[:4] == b"%PDF" and len(data) > 1_000_000:
-                dst = Path(dest_dir) / f"{issue}.pdf"
-                dst.write_bytes(data)
-                return dst
-            tried.append(url)
-        except Exception:                        # noqa: BLE001
-            tried.append(url)
-    raise FileNotFoundError(f"ملقيتش ملف العدد بعد الدخول (جربت {len(tried)} لينك)")
+    eid = edition_id(issue, op)
+    H = dict(UA, **{"Referer": SITE + "/online/editions"})
+    try:                                          # the site counts the download first (same as its button)
+        op.open(urllib.request.Request(SITE + "/Online/CheckToDownload", data=b"",
+                                       headers=dict(H, **{"Content-Type": "application/json; charset=utf-8",
+                                                          "X-Requested-With": "XMLHttpRequest"})), timeout=60).read()
+    except Exception:                             # noqa: BLE001
+        pass
+    with op.open(urllib.request.Request(f"{SITE}/Online/DownloadPDF?id={eid}&no=1", headers=H), timeout=600) as r:
+        data = r.read()
+    if data[:4] != b"%PDF":
+        txt = re.sub(r"<[^>]+>|\s+", " ", data[:3000].decode("utf-8", "replace"))[:200]
+        raise PermissionError(f"الموقع ما ادّاش ملف العدد {issue} (id {eid}): {txt}")
+    dst = Path(dest_dir) / f"{issue}.pdf"
+    dst.write_bytes(data)
+    return dst

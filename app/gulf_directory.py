@@ -727,6 +727,19 @@ def gazette_watch(progress):
             except Exception as e:                  # noqa: BLE001
                 st["error"] = str(e)[:200]
                 progress(f"الكويت اليوم بالاشتراك: {e}")
+    if st.get("current") and st.get("have"):          # fill earlier issues that never got here (one per update)
+        import gazette_online as go
+        if all(go.account()):
+            pdfs = gazette_pdfs()
+            for n in range(int(st["current"]) - 1, int(st["current"]) - 9, -1):
+                if str(n) not in pdfs and str(n) not in st.get("missing_failed", []):
+                    try:
+                        go.fetch_issue_pdf(n, GAZETTE_PDF_DIR)
+                        progress(f"اتجاب عدد الكويت اليوم {n} (كان ناقص)")
+                    except Exception as e:          # noqa: BLE001
+                        st.setdefault("missing_failed", []).append(str(n))
+                        progress(f"العدد {n}: {e}")
+                    break
     GZ_STATUS.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
     return st
 
