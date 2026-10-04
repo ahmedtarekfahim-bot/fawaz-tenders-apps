@@ -197,7 +197,11 @@ def build_feed(log=print):
     (data / "users_pub.json").write_text(json.dumps(users), encoding="utf-8")
     (data / "ntfy.json").write_text(json.dumps(ntfy_info()), encoding="utf-8")
     try:
-        raw = json.dumps(private_bundle(), ensure_ascii=False, separators=(",", ":")).encode()
+        bundle = private_bundle()
+        raw = json.dumps(bundle, ensure_ascii=False, separators=(",", ":")).encode()
+        # what changed in the Fawaz part (without its time stamp) - the sealed file differs every time
+        _last_feed["priv_now"] = hashlib.sha256(json.dumps({k: v for k, v in bundle.items() if k != "updated"},
+                                                           ensure_ascii=False).encode()).hexdigest()
         enc, fkeys = accounts.seal_private(raw, users)
         (data / "private.enc").write_text(json.dumps(enc), encoding="utf-8")
         (data / "fkeys.json").write_text(json.dumps(fkeys), encoding="utf-8")
@@ -231,12 +235,17 @@ def _publish(log, force):
     meta = build_feed(log)
     sig = hashlib.sha256(b"".join((FEED / "data" / n).read_bytes() for n in
                                   ("directory.json", "news.json", "awards.json", "users_pub.json"))).hexdigest()
-    if force or sig != _last_feed.get("sig") or time.time() - _last_feed.get("at", 0) > 1800:
+    sig = hashlib.sha256((sig + _last_feed.get("priv_now", "")).encode()).hexdigest()
+    changed = sig != _last_feed.get("sig")
+    if force or changed or time.time() - _last_feed.get("at", 0) > 1800:
         if push_dir(FEED, "pc-feed", url, f"pc feed {meta['updated']}", log):
             _last_feed.update(sig=sig, at=time.time())
-    # 2) accounts changed, first sealed publish, or the cloud copy is stale -> publish the phone site from here too
+    # 2) accounts changed, first sealed publish, something new and the phone copy is 15+ minutes old, or the
+    #    cloud copy is stale -> publish the phone site from here too (GitHub runs the 15-minute cloud job
+    #    only every few hours when it is busy)
     first_sealed = not cfg.S.get("sealed_published")
-    if force or first_sealed or cloud_age_minutes() > 60:
+    age = cloud_age_minutes()
+    if force or first_sealed or (changed and age > 15) or age > 60:
         n = build_site(FEED / "data", SITE, log)
         if push_dir(SITE, "gh-pages", url, f"data {meta['updated']} (pc)", log):
             log(f"نسخة التليفون اتحدثت من الكمبيوتر ({meta['items']} مناقصة، {n} حساب متفعّل)")
