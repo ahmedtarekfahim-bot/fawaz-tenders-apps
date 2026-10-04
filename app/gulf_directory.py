@@ -716,6 +716,14 @@ def gazette_watch(progress):
         st["checked"] = now.isoformat(timespec="seconds")
     pick_up_gazette_downloads(progress)
     st["have"] = bool(st.get("current") and st["current"] in gazette_pdfs())
+    ids = st.setdefault("ids", {})
+    for issue in sorted(gazette_pdfs(), key=int)[-12:]:   # the site's ID of each issue (for the phone links)
+        if issue not in ids:
+            try:
+                import gazette_online as go
+                ids[issue] = go.edition_id(issue)
+            except Exception:                       # noqa: BLE001
+                break
     if st.get("current") and not st["have"]:        # with the subscription: the program gets the issue itself
         import gazette_online as go
         if all(go.account()) and (not st.get("tried") or (now - datetime.datetime.fromisoformat(st["tried"])).total_seconds() > 900):

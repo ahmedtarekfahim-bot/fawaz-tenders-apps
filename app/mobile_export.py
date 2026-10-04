@@ -107,17 +107,31 @@ def capt_docs_map():
     return out
 
 
+def phone_url(f):
+    """a link the phone can open: web links as they are; a gazette page on this PC -> the same page on the
+    Kuwait Al-Youm site viewer (the owner signs in there with the subscription)"""
+    u = str(f.get("url") or "")
+    if u.startswith("http"):
+        return u
+    m = re.search(r"الكويت اليوم (\d{4}) - صفحة (\d+)", f.get("title") or "")
+    if m:
+        import gulf_directory as gd
+        eid = (gd.gazette_status().get("ids") or {}).get(m.group(1))
+        if eid:
+            return f"https://kuwaitalyawm.media.gov.kw/flip?id={eid}&no={m.group(2)}"
+    return ""
+
+
 def private_bundle():
     import fawaz_watch as fw
     d = fw.data(limit_feed=600)
     return {"updated": datetime.datetime.now().isoformat(timespec="minutes"),
-            "feed": [[f["id"], f["at"][:16], f["kind"], f["title"], f["text"], f["url"] if str(f["url"]).startswith("http") else "",
-                      f["tender_key"]] for f in d["feed"]],
+            "feed": [[f["id"], f["at"][:16], f["kind"], f["title"], f["text"], phone_url(f), f["tender_key"]] for f in d["feed"]],
             "tenders": [{"k": t["key"], "src": t["src"], "t": t["title"], "c": t["client"], "n": t["number"], "nk": t["numkey"],
                          "cl": t["closing"], "st": t["status"], "rm": t["remarks"], "lv": t["live"], "rk": t["fawaz_rank"],
                          "b": t["bidders"], "ln": [[l["kind"], l["title"], l["url"]] for l in t["links"]]} for t in d["tenders"]],
             "cd": capt_docs_map(),
-            "mn": [[f["id"], f["at"][:16], f["kind"], f["title"], f["text"][:400], f["url"] if str(f["url"]).startswith("http") else "", f["d"]]
+            "mn": [[f["id"], f["at"][:16], f["kind"], f["title"], f["text"][:400], phone_url(f), f["d"]]
                    for f in d.get("mentions", [])[:400]],
             "emails": [{"d": e["received"], "f": e["sender"], "s": e["subject"], "b": e["body"][:1800],
                         "a": Path(e["attachment"]).name if e["attachment"] else ""} for e in d["emails"]]}
