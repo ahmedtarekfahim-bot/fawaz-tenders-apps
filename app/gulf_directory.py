@@ -1811,57 +1811,132 @@ def serve(open_browser=True):
                 state["next"] = (datetime.datetime.now() + datetime.timedelta(minutes=every - age)).isoformat(timespec="minutes")
             time.sleep(20)
 
+    import http.cookies
+    import desktop_auth as auth
+    # what each call needs from the logged-in account ('' = any account); see desktop_auth.has
+    NEED = {"/api/search": "dir", "/api/detail": "dir", "/api/docs": "dir", "/api/docs/download": "dir",
+            "/api/report": "dir", "/api/news": "news", "/api/awards/search": "awards", "/api/awards/detail": "awards",
+            "/api/awards/minutes": "awards", "/api/awards/report": "awards", "/api/open-excel": "awards",
+            "/api/gazette/search": "awards", "/api/page.png": "any:dir,awards", "/api/file": "any:dir,awards,watch",
+            "/api/watch": "watch", "/api/open-file": "fawaz", "/api/accounts": "admin",
+            ("POST", "/api/settings"): "admin", ("POST", "/api/gazette-account"): "watch", ("POST", "/api/capt-account"): "dir"}
+    OPEN = {"/", "/api/me", "/api/login", "/api/logout", "/api/forgot"}
+
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a):
             pass
 
-        def send(self, obj, code=200, ctype="application/json; charset=utf-8"):
+        def send(self, obj, code=200, ctype="application/json; charset=utf-8", headers=()):
             data = obj if isinstance(obj, bytes) else json.dumps(obj, ensure_ascii=False, default=str).encode()
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Cache-Control", "no-store")
+            for k, v in headers:
+                self.send_header(k, v)
             self.end_headers()
             self.wfile.write(data)
+
+        def token(self):
+            c = http.cookies.SimpleCookie()
+            try:
+                c.load(self.headers.get("Cookie") or "")
+            except http.cookies.CookieError:
+                pass
+            return c[auth.COOKIE].value if auth.COOKIE in c else ""
+
+        def guard(self, method, path):
+            """the logged-in account allowed to make this call, or None (401 / 403 already sent)"""
+            self.sess = auth.session(self.token())
+            if path in OPEN:
+                return True
+            if not self.sess:
+                self.send({"error": "سجّل دخولك الأول", "login": True}, 401)
+                return None
+            need = NEED.get((method, path), NEED.get(path, ""))
+            if need and not auth.has(self.sess, need):
+                self.send({"error": "مش مسموحلك بالجزء ده"}, 403)
+                return None
+            return self.sess
+
+        def item_ok(self, iid):
+            """an item of a country this account may see"""
+            con = db()
+            r = con.execute("SELECT country FROM items WHERE id=?", (int(iid),)).fetchone()
+            con.close()
+            if r and not auth.country_ok(self.sess, r[0]):
+                raise PermissionError("مش مسموحلك بالدولة دي")
+
+        def countries(self, rows, key="country"):
+            return [r for r in rows if auth.country_ok(self.sess, r.get(key))]
 
         def do_GET(self):
             u = urllib.parse.urlparse(self.path)
             q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
+            if not self.guard("GET", u.path):
+                return
             try:
                 if u.path == "/":
                     return self.send((cfg.res_dir() / "ui" / "واجهة الدليل.html").read_bytes(), ctype="text/html; charset=utf-8")
+                if u.path == "/api/me":
+                    return self.send({"me": auth.public(self.sess), "owner_pc": auth.master_mode(),
+                                      "version": cfg.build_info().get("version")})
+                mine = self.sess.get("countries") or []
+                if q.get("country") and not auth.country_ok(self.sess, q["country"]):
+                    q["country"] = "-"                  # a country he may not see: nothing
+                elif not q.get("country") and len(mine) == 1:
+                    q["country"] = mine[0]              # "all" = his only country
                 if u.path == "/api/status":
                     try:
                         un, seen = unread()
                     except Exception:   # noqa: BLE001
                         un, seen = {}, {}
-                    return self.send(dict(stats(q.get("country", "")), update=state["update"], log=state["log"][-18:],
+                    st = stats(q.get("country", ""))
+                    st["countries"] = {c: n for c, n in st["countries"].items() if auth.country_ok(self.sess, c)}
+                    return self.send(dict(st, update=state["update"], log=state["log"][-18:],
                                           next=state["next"], version=cfg.build_info().get("version"),
-                                          unread=un, seen=seen))
+                                          unread=un, seen=seen, me=auth.public(self.sess)))
                 if u.path == "/api/watch":
-                    return self.send(watch_view())
+                    w = watch_view()
+                    if not auth.has(self.sess, "fawaz"):    # our tenders, Sanjay's mails, the feed: confidential
+                        w.update(feed=[], tenders=[], emails=[], mentions=[])
+                    w["won_items"] = self.countries(w["won_items"])
+                    if not auth.has(self.sess, "admin"):
+                        w["gazette"] = {k: v for k, v in w["gazette"].items() if k not in ("folder",)}
+                    return self.send(w)
                 if u.path == "/api/gazette-account":
                     import gazette_online as go
                     if q.get("explore"):
+                        if not auth.has(self.sess, "admin"):
+                            return self.send({"error": "للأدمن بس"}, 403)
                         return self.send(go.explore())
                     return self.send({"user": go.account()[0], "has_password": go.account()[1], "status": gazette_status()})
                 if u.path == "/api/gazette/search":
                     return self.send(gazette_search(q.get("q", ""), issue=q.get("issue", "")))
                 if u.path == "/api/docs":
+                    self.item_ok(q["id"])
                     return self.send(item_docs(int(q["id"])))
                 if u.path == "/api/capt-account":
                     import tender_docs as td
                     user, has = td.account()
                     if q.get("explore"):                # what the company account area offers (menu links only)
+                        if not auth.has(self.sess, "admin"):
+                            return self.send({"error": "للأدمن بس"}, 403)
                         return self.send(td.explore_account())
                     return self.send({"user": user, "has_password": has})
                 if u.path == "/api/search":
-                    return self.send(search(q.get("q", ""), q.get("status", ""), q.get("cat", ""), q.get("org", ""),
-                                            q.get("fawaz") == "1", int(q.get("days") or 0), country=q.get("country", ""),
-                                            fresh=int(q.get("fresh") or 0)))
+                    some = not q.get("country") and len(mine) < len(COUNTRIES)   # 2 of 3 countries: search more, keep his
+                    return self.send(self.countries(search(
+                        q.get("q", ""), q.get("status", ""), q.get("cat", ""), q.get("org", ""), q.get("fawaz") == "1",
+                        int(q.get("days") or 0), limit=750 if some else 250, country=q.get("country", ""),
+                        fresh=int(q.get("fresh") or 0)))[:250])
                 if u.path == "/api/news":
-                    return self.send(search_news(q.get("q", ""), fawaz=q.get("fawaz") == "1", country=q.get("country", "")))
+                    rows = self.countries(search_news(q.get("q", ""), fawaz=q.get("fawaz") == "1", country=q.get("country", "")))
+                    if not auth.has(self.sess, "watch"):     # news about the company belong to the Fawaz tab
+                        rows = [r for r in rows if not str(r.get("query") or "").startswith("شركة:")]
+                    return self.send(rows)
                 if u.path == "/api/detail":
+                    self.item_ok(q["id"])
                     return self.send(detail(int(q["id"])))
                 # --- Kuwait awards + minutes (the awards tool, same program)
                 if u.path == "/api/awards/search":
@@ -1887,13 +1962,32 @@ def serve(open_browser=True):
                     dd.close()
                     return self.send(png, ctype="image/png")
                 self.send({"error": "not found"}, 404)
+            except PermissionError as e:
+                self.send({"error": str(e)}, 403)
             except Exception as e:      # noqa: BLE001
                 self.send({"error": str(e)}, 500)
 
         def do_POST(self):
             u = urllib.parse.urlparse(self.path)
             body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0)) or 0) or b"{}")
+            if not self.guard("POST", u.path):
+                return
             try:
+                if u.path == "/api/login":
+                    tok, s, err = auth.login(body.get("u", ""), body.get("pw", ""), bool(body.get("remember")))
+                    if not tok:
+                        return self.send({"ok": False, "msg": err})
+                    ck = f"{auth.COOKIE}={tok}; Path=/; HttpOnly; SameSite=Strict"
+                    if body.get("remember"):
+                        ck += f"; Max-Age={auth.REMEMBER_DAYS * 86400}"
+                    return self.send({"ok": True, "me": auth.public(s)}, headers=[("Set-Cookie", ck)])
+                if u.path == "/api/logout":
+                    auth.logout(self.token())
+                    return self.send({"ok": True}, headers=[("Set-Cookie", f"{auth.COOKIE}=; Path=/; Max-Age=0")])
+                if u.path == "/api/forgot":
+                    return self.send({"msg": auth.forgot(body.get("u", ""))})
+                if u.path in ("/api/report", "/api/docs/download"):
+                    self.item_ok(body["id"])
                 if u.path == "/api/report":
                     p = build_pdf(int(body["id"]), body.get("hits"))
                     os.startfile(p)
@@ -1953,6 +2047,8 @@ def serve(open_browser=True):
                         cfg.save_setting("auto_update_minutes", max(0, int(body["auto_update_minutes"])))
                     return self.send({"auto_minutes": auto_minutes()})
                 self.send({"error": "not found"}, 404)
+            except PermissionError as e:
+                self.send({"error": str(e)}, 403)
             except Exception as e:      # noqa: BLE001
                 self.send({"error": str(e)}, 500)
 

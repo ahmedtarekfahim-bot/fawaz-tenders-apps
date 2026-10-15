@@ -81,6 +81,15 @@ a{color:#0b5aa5}
 #modal img{max-width:min(900px,96vw);background:#fff;border-radius:6px}
 #toast{position:fixed;bottom:18px;left:18px;background:#1d2733;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:6;max-width:460px}
 @media (max-width:900px){main{grid-template-columns:1fr;height:auto}}
+#login{position:fixed;inset:0;background:linear-gradient(135deg,#0b2a4a,#123b63);display:none;align-items:center;justify-content:center;z-index:50}
+#login .box{background:#fff;border-radius:14px;padding:26px 28px;width:340px;max-width:calc(100vw - 32px);box-shadow:0 10px 40px rgba(0,0,0,.3)}
+#login h2{margin:0 0 4px;direction:ltr;text-align:center;color:var(--brand)}
+#login p{margin:0 0 16px;text-align:center;color:var(--muted);font-size:13px}
+#login input[type=text],#login input[type=password]{width:100%;font:inherit;padding:9px 12px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px;direction:ltr}
+#login button.pri{width:100%;padding:9px;margin-top:6px}
+#login .err{color:var(--warn);font-size:13px;min-height:20px;text-align:center;margin-top:8px}
+#login a{font-size:12.5px;color:var(--brand2)}
+.me{font-size:12.5px;background:rgba(255,255,255,.14);border-radius:8px;padding:3px 10px}
 </style>
 </head>
 <body>
@@ -93,7 +102,18 @@ a{color:#0b5aa5}
     <select id="auto" style="color:var(--ink)"><option value="5">كل 5 دقايق</option><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
   <button id="btnUpdate" title="يجيب الجديد من المواقع دلوقتي">تحديث دلوقتي</button>
   <button onclick="post('/api/open-folder')">فولدر التقارير</button>
+  <span class="me" id="me" style="display:none"></span><button id="btnOut" style="display:none" title="تسجيل خروج">خروج</button>
 </header>
+<div id="login"><form class="box" id="lform" autocomplete="on">
+  <h2>GCC Tenders</h2><p>دليل مناقصات الخليج - سجّل دخولك</p>
+  <input type="text" id="lu" placeholder="اسم المستخدم" autocomplete="username" required>
+  <input type="password" id="lp" placeholder="كلمة السر" autocomplete="current-password" required>
+  <label style="font-size:13px"><input type="checkbox" id="lr" checked> افتكرني على الجهاز ده (30 يوم)</label>
+  <button class="pri" type="submit" id="lgo">دخول</button>
+  <div class="err" id="lerr"></div>
+  <div style="text-align:center"><a href="#" id="lforgot">نسيت كلمة السر؟</a></div>
+  <p style="margin:10px 0 0;font-size:11.5px">نفس حساب تطبيق الموبايل. الحسابات بيعملها الأدمن.</p>
+</form></div>
 <div class="bar">
   <div class="seg" id="mode"><button data-m="items" class="on">المناقصات والمشاريع</button><button data-m="news">الأخبار</button><button data-m="awards">ترسيات ومحاضر الكويت</button><button data-m="watch">متابعة فواز و KJAC</button></div>
   <input type="search" id="q" placeholder="اكتب عنوان المناقصة أو المشروع أو رقمها أو الجهة ... (فاضي = المطروح بترتيب الإقفال)" autofocus>
@@ -126,8 +146,37 @@ const STATUSES=['مطروحة','اتوافق على طرحها','إعلان مس
 function stClass(s,closing){if(s==='مطروحة'){const d=(new Date(closing)-new Date(today))/864e5;return d<=7?'st-soon':'st-open'}
   return {'مترسية':'st-award','ملغاة':'st-cancel','عقد جاري (قرار الجهاز)':'st-run','اتوافق على طرحها':'st-soon','إعلان مسبق':'st-soon'}[s]||'st-study'}
 function toast(m,ms=4000){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',ms)}
-async function get(u){const r=await fetch(u);const j=await r.json();if(j&&j.error)throw new Error(j.error);return j}
-async function post(u,b={}){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});const j=await r.json();if(j&&j.error)throw new Error(j.error);return j}
+function chk(r,j){if(r.status===401){showLogin();const e=new Error(j.error||'سجّل دخولك');e.login=1;throw e}if(j&&j.error)throw new Error(j.error);return j}
+async function get(u){const r=await fetch(u);return chk(r,await r.json())}
+async function post(u,b={}){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return chk(r,await r.json())}
+// ---------------------------------------------------------------- login + permissions (same accounts as the phone app)
+let ME=null;
+const can=p=>!!ME&&(p==='admin'?ME.admin:(ME.perms.includes(p)||(p==='awards'&&ME.perms.includes('watch'))));
+const MODE_NEED={items:'dir',news:'news',awards:'awards',watch:'watch'};
+function showLogin(msg){ME=null;$('#login').style.display='flex';$('#lerr').textContent=msg||'';setTimeout(()=>($('#lu').value?$('#lp'):$('#lu')).focus(),50)}
+$('#lform').onsubmit=async e=>{e.preventDefault();$('#lerr').textContent='';$('#lgo').disabled=true;
+  try{const r=await post('/api/login',{u:$('#lu').value.trim(),pw:$('#lp').value,remember:$('#lr').checked});
+    if(!r.ok){$('#lerr').textContent=r.msg;return}
+    $('#lp').value='';$('#login').style.display='none';start(r.me)}
+  catch(x){$('#lerr').textContent='البرنامج مش شغال - افتحه من الأيقونة'}finally{$('#lgo').disabled=false}};
+$('#lforgot').onclick=async e=>{e.preventDefault();const u=$('#lu').value.trim();if(!u){$('#lerr').textContent='اكتب اسم المستخدم الأول';return}
+  $('#lerr').textContent='...';try{const r=await post('/api/forgot',{u});$('#lerr').textContent=r.msg}catch(x){$('#lerr').textContent=x.message}};
+$('#btnOut').onclick=async()=>{await post('/api/logout').catch(()=>{});location.reload()};
+function applyMe(me){
+  ME=me;$('#me').textContent='👤 '+me.u+(me.expires?' · لحد '+dmy(me.expires):'');$('#me').style.display='';$('#btnOut').style.display='';
+  document.querySelectorAll('#mode button').forEach(b=>b.style.display=can(MODE_NEED[b.dataset.m])?'':'none');
+  const cs=me.countries||[];
+  document.querySelectorAll('#ctry button').forEach(b=>b.style.display=!b.dataset.c?(cs.length>1?'':'none'):(cs.includes(b.dataset.c)?'':'none'));
+  if(cs.length===1){country=cs[0];document.querySelectorAll('#ctry button').forEach(x=>x.classList.toggle('on',x.dataset.c===country))}
+  $('#auto').closest('label').style.display=can('admin')?'':'none';
+  if(!can('fawaz'))wsec='conews';
+  const first=[...document.querySelectorAll('#mode button')].find(b=>b.style.display!=='none');
+  if(!first){$('#results').innerHTML='<div class="empty">الحساب ده مالوش أي صلاحية - كلّم الأدمن</div>';return false}
+  if(!can(MODE_NEED[mode])){first.click();return false}
+  return true;
+}
+function start(me){if(applyMe(me))status_(true).then(()=>search());else status_(true)}
+async function boot(){try{const r=await get('/api/me');r.me?start(r.me):showLogin()}catch(e){showLogin('البرنامج مش شغال - افتحه من الأيقونة')}}
 // official page of the announcement (Dubai eSupply needs its guest session first)
 function openOfficial(url){
   if(!url)return;
@@ -162,7 +211,7 @@ async function status_(first){
     const fin=s.last_run&&s.last_run.finished||'';
     if(window._fin!==undefined&&fin!==window._fin&&mode!=='awards')search(true)
     window._fin=fin;
-  }catch(e){$('#stat').textContent='البرنامج مش شغال - افتحه من الأيقونة'}
+  }catch(e){if(!e.login)$('#stat').textContent='البرنامج مش شغال - افتحه من الأيقونة'}
 }
 setInterval(()=>status_(),30000);
 $('#btnUpdate').onclick=async()=>{await post('/api/update');toast('بدأ التحديث - بياخد كام دقيقة');status_()};
@@ -338,8 +387,10 @@ function openTab(tab,noSearch){
 }
 // ---------------------------------------------------------------- متابعة فواز و KJAC
 let W=null,wsec='feed';
-const WSEC=[['feed','آخر التحديثات'],['live','مناقصاتنا الشغالة'],['hist','سجل مناقصاتنا 2022-2026'],['mails','إيميلات Sanjay'],['conews','📰 أخبار فواز و KJAC ومناقصاتنا والملاك'],['won','ترسيات لفواز / KJAC'],['phone','👥 حسابات الموبايل']];
+const WSEC_ALL=[['feed','آخر التحديثات','fawaz'],['live','مناقصاتنا الشغالة','fawaz'],['hist','سجل مناقصاتنا 2022-2026','fawaz'],['mails','إيميلات Sanjay','fawaz'],['conews','📰 أخبار فواز و KJAC ومناقصاتنا والملاك'],['won','ترسيات لفواز / KJAC'],['phone','👥 الحسابات (الكمبيوتر والموبايل)','admin']];
+let WSEC=WSEC_ALL;
 async function searchWatch(q,keep){
+  WSEC=WSEC_ALL.filter(x=>!x[2]||can(x[2]));if(!WSEC.find(x=>x[0]===wsec))wsec=WSEC[0][0];
   try{W=await get('/api/watch')}catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
   const hl=+HL.watch||0,newFeed=W.feed.filter(f=>f.id>hl&&!f.at.startsWith('2000')).length;
   const cnt={feed:W.feed.length,live:W.tenders.filter(t=>t.live).length,hist:W.tenders.filter(t=>!t.live).length,mails:W.emails.length,conews:W.company_news.length+(W.mentions||[]).length,won:W.awards.length+W.won_items.length,phone:''};
@@ -365,7 +416,7 @@ async function searchWatch(q,keep){
     const items=W.company_news.filter(n=>m(n.title)).map(n=>({d:n.date||'',html:`<div class="res"><div class="m"><span class="wk us">خبر</span><span>${dmy(n.date)}</span><span>${esc(n.source)}</span></div><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div></div>`}))
       .concat((W.mentions||[]).filter(f=>m(f.kind+' '+f.title+' '+f.text+' '+(f.tender||''))).map(f=>({d:f.d||'',html:`<div class="res ${f.id>hl&&!f.at.startsWith('2000')?'unread':''}" ${f.url?`data-ment="${esc(f.url)}"`:''}><div class="m"><span class="wk us">${esc(f.kind)}</span>${f.d&&!f.d.startsWith('9999')&&f.d!=='0000'?`<span>${dmy(f.d)}</span>`:''}${f.tender_key&&f.rank?`<span class="fzb">${esc(f.rank)}</span>`:''}</div><div class="t">${esc(f.title)}</div>${f.tender?`<div class="snip"><b>مناقصتنا:</b> ${esc(f.tender)} <a href="#" data-tkd="${esc(f.tender_key)}">📋 تفاصيلها وأسعارها</a></div>`:''}<div class="snip">${esc(f.text)}</div></div>`})));
     items.sort((a,b)=>b.d.localeCompare(a.d));L=items.length;h=items.slice(0,400).map(x=>x.html).join('')}
-  else if(wsec==='phone'){L=1;h='<div class="empty">حسابات تطبيق الموبايل في التفاصيل ←<br>مين يقدر يدخل، ومين اتوقف، وآخر مرة فتح</div>';setTimeout(accountsBox,0)}
+  else if(wsec==='phone'){L=1;h='<div class="empty">الحسابات في التفاصيل ←<br>نفس الحساب بيدخل البرنامج على الكمبيوتر وتطبيق الموبايل<br>مين يقدر يدخل، ومين اتوقف، وآخر مرة فتح</div>';setTimeout(accountsBox,0)}
   else{const a=W.awards.filter(x=>m(x.subject+' '+x.tno+' '+x.org)),it=W.won_items.filter(x=>m(x.subject+' '+x.number+' '+x.org));L=a.length+it.length;
     h=a.map(x=>`<div class="res"><div class="t">${esc(x.subject)}</div><div class="m"><span>${dmy(x.date)}</span><span class="tno">${esc(x.tno)}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.total)}</span><a class="off" href="#" data-off="https://capt.gov.kw/ar/tenders/winning-bids/?meeting_date_from=${x.date}&meeting_date_to=${x.date}&form=date">الإعلان الرسمي ↗</a></div></div>`).join('')+
       it.map(x=>`<div class="res" data-id="${x.id}"><div class="t">${esc(x.subject)}</div><div class="m"><span class="cc">${CN[x.country]||''}</span><span>${esc(x.org)}</span><span class="fz">${esc(x.winner.slice(0,70))}</span><span class="money">${esc(x.value)}</span></div></div>`).join('')}
@@ -401,7 +452,7 @@ async function accountsBox(body){
     <button id="ac-mail" style="margin-top:8px">ابعتها على الجيميل بتاعي</button></div>`;
   h+=`<div class="card"><b>حسابك</b><div class="kv" style="margin-top:6px"><div>اسم المستخدم</div><div><b style="direction:ltr;unicode-bidi:isolate">${esc(d.owner)}</b></div>
     <div>كلمة السر</div><div><b style="direction:ltr;unicode-bidi:isolate;font-size:17px">${esc(d.owner_password)}</b></div></div>
-    <p class="snip">على الموبايل ادخل بيهم مرة، وبعد كده تقدر تدخل بالبصمة. لو نسيتها هناك، دوس "نسيت كلمة السر" وهتوصلك واحدة جديدة على ${esc(d.email)} (والكمبيوتر شغال).</p></div>
+    <p class="snip">بيهم بتدخل البرنامج على أي كمبيوتر والموبايل. على الموبايل ادخل بيهم مرة، وبعد كده تقدر تدخل بالبصمة. لو نسيتها هناك، دوس "نسيت كلمة السر" وهتوصلك واحدة جديدة على ${esc(d.email)} (والكمبيوتر شغال).</p></div>
   <div class="card"><b>مشترك جديد</b><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">
     <input id="ac-name" placeholder="اسم المستخدم (إنجليزي) مثلاً mohamed" style="direction:ltr;font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;min-width:220px">
     <label>المدة <select id="ac-dur">${DUR.map(([m,l])=>`<option value="${m}" ${m===1?'selected':''}>${l}</option>`).join('')}</select></label></div>
@@ -416,7 +467,7 @@ async function accountsBox(body){
       <button data-ac="active" data-u="${esc(x.u)}" data-v="${x.active?0:1}">${x.active?'إيقاف':'تفعيل'}</button>`}
       <button data-ac="reset" data-u="${esc(x.u)}">كلمة سر جديدة</button>${x.admin?'':` <button data-ac="delete" data-u="${esc(x.u)}">مسح</button>`}</td></tr>
     <tr id="pe-${esc(x.u)}" style="display:none"><td colspan="7">${permBoxes(d,x.perms,x.countries,'pe-'+x.u)}<button class="pri" data-psave="${esc(x.u)}" style="margin-top:6px">احفظ الصلاحيات</button></td></tr>`).join('')}</table>
-  <p class="snip">أي تغيير بيتنشر على الموبايل خلال دقيقة. اللي اشتراكه انتهى أو اتوقف مش بيقدر يفتح أي داتا جديدة، والتطبيق بيمسح اللي عنده (الانتهاء بيتطبّق لوحده حتى لو الكمبيوتر مقفول). اللي مش مسموحله بجزء، الجزء ده بيتشفّر بمفتاح مبيوصلوش.</p></div>`;
+  <p class="snip">أي تغيير بيتنشر خلال دقيقة، وبيتطبّق على برنامج الكمبيوتر في الأجهزة التانية خلال 5 دقايق. اللي اشتراكه انتهى أو اتوقف مش بيقدر يفتح أي داتا جديدة، والتطبيق بيمسح اللي عنده (الانتهاء بيتطبّق لوحده حتى لو الكمبيوتر مقفول). اللي مش مسموحله بجزء، الجزء ده بيتشفّر بمفتاح مبيوصلوش.</p></div>`;
   $('#detail').innerHTML=h;wireOff($('#detail'));
   if($('#ac-mail'))$('#ac-mail').onclick=()=>accountsBox({action:'mail',u:d.new.u,pw:d.new.pw});
   $('#ac-add').onclick=()=>{const n=$('#ac-name').value.trim();if(!n)return toast('اكتب اسم المستخدم');
@@ -452,7 +503,7 @@ function mailDetail(e){
     <div class="mail">${esc(e.body)}</div></div>${e.attachment?`<div class="actions"><button class="pri" id="opa">افتح ملف الإكسيل المرفق</button></div>`:''}`;
   if(e.attachment)$('#opa').onclick=()=>post('/api/open-file',{path:e.attachment}).catch(x=>toast('خطأ: '+x.message));
 }
-status_(true).then(search);
+boot();
 </script>
 </body>
 </html>
