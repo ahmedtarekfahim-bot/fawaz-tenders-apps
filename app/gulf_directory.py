@@ -1409,6 +1409,25 @@ def projects_view(q, sess_can_open=True):
             "files": d.get("files", []) if sess_can_open else []}
 
 
+def match_item(number, org, sess=None):
+    """the directory item of a tender from our register / the projects report: same number (all its parts),
+    the closest client"""
+    if not str(number or "").strip():
+        return 0
+    import desktop_auth as auth
+    parts = ct.num_parts(number)
+    best, score = 0, -1.0
+    for r in search(number, limit=40):
+        if sess and not auth.country_ok(sess, r["country"]):
+            continue
+        if parts and not all(x in ct.num_parts(r["number"]) for x in parts):
+            continue
+        sc = org_sim(org, r["org"]) if org else 0.5
+        if sc > score:
+            best, score = r["id"], sc
+    return best if score >= 0.3 or not org else 0
+
+
 def ocr_image(data_url):
     """a photo / screenshot -> its text (Windows OCR, Arabic then English)"""
     import base64, tempfile, shutil, subprocess
@@ -1650,7 +1669,8 @@ def item_docs(iid, live=True):
                      "error": f"موقع الجهاز ما ردّش: {e}"}
         else:
             r = {"docs": json.loads(cached["docs"]) if cached else [], "login": bool(cached and cached["logged"]), "error": ""}
-        capt = {"login": r.get("login"), "error": r.get("error", ""), "account": td.account()[0], "note": r.get("note", "")}
+        capt = {"login": r.get("login"), "error": r.get("error", ""), "account": td.account()[0], "has_password": bool(td.account()[1]),
+                "note": r.get("note", "")}
         docs += [dict(d, src="الجهاز المركزي", local=False) for d in r.get("docs", [])]
     for e in ev:                                    # CAPT minutes (public PDFs) + gazette pages on this PC
         if (e["url"] or "").lower().endswith(".pdf") and "capt.gov.kw" in (e["url"] or ""):
@@ -1980,7 +2000,7 @@ def serve(open_browser=True):
             "/api/watch": "watch", "/api/open-file": "fawaz", "/api/accounts": "admin", "/api/projects": "projects",
             "/api/summary": "summary", "/api/ocr-image": "scan", "/api/routines": "routines", "/api/routines/run": "run",
             "/api/routines/send": "send", "/api/routines/copy": "share", "/api/routines/recipients": "admin",
-            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin",
+            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin", "/api/match": "dir",
             ("POST", "/api/settings"): "admin", ("POST", "/api/gazette-account"): "watch", ("POST", "/api/capt-account"): "dir"}
     OPEN = {"/", "/api/me", "/api/login", "/api/logout", "/api/forgot"}
 
@@ -2105,6 +2125,8 @@ def serve(open_browser=True):
                     return self.send(refine(rows, q, "news")[:300] if filtering(q) else rows)
                 if u.path == "/api/projects":
                     return self.send(projects_view(q, auth.master_mode()))
+                if u.path == "/api/match":                    # a tender we know by number + client -> its directory item
+                    return self.send({"id": match_item(q.get("number", ""), q.get("org", ""), self.sess)})
                 if u.path == "/api/routines":
                     import routines
                     d = routines.listing()

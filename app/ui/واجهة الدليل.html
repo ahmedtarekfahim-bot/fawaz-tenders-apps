@@ -9,7 +9,35 @@
 :root{--bg:#f2f4f9;--panel:#fff;--ink:#16213a;--muted:#5f6b7f;--line:#e2e7f0;--brand:#14325c;--brand2:#e07a1f;--brand3:#2563a8;--soft:#fff2e5;--soft2:#eaf1fb;--fz:#ffe873;--ok:#18794e;--warn:#c2410c;--new:#eaf1fb}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "IBM Plex Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif}
-header{background:linear-gradient(120deg,#102a4f 0%,#14325c 45%,#1f4f8a 100%);border-bottom:3px solid var(--brand2);color:#fff;padding:10px 20px;box-shadow:0 2px 10px rgba(11,42,74,.25);display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+html,body{height:100%}
+body{display:flex;flex-direction:column}
+header{background:linear-gradient(120deg,#102a4f 0%,#14325c 45%,#1f4f8a 100%);border-bottom:3px solid var(--brand2);color:#fff;padding:8px 20px;box-shadow:0 2px 10px rgba(11,42,74,.25);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.15;direction:rtl}.brand b{font-size:18px;direction:ltr;text-align:right}.brand small{font-size:11.5px;opacity:.75}
+.menu{position:relative}.menu summary{list-style:none;cursor:pointer;width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);font-size:16px}
+.menu summary::-webkit-details-marker{display:none}
+.menu .mbox{position:absolute;inset-inline-end:0;top:40px;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(15,27,45,.18);padding:10px;display:flex;flex-direction:column;gap:8px;min-width:230px;z-index:20}
+.menu .mbox button{background:#fff;color:var(--ink);border-color:var(--line);text-align:start}
+.menu .mbox label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px}
+.tabsbar{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 20px 0;overflow-x:auto}
+.tabsbar .seg{border:0;border-radius:0;gap:2px}
+.tabsbar .seg button{border-radius:10px 10px 0 0;padding:8px 14px;white-space:nowrap;color:var(--muted)}
+.tabsbar .seg button.on{background:var(--bg);color:var(--brand);border-bottom:3px solid var(--brand2)}
+.sbox{flex:1;display:flex;min-width:280px;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+.sbox:focus-within{border-color:var(--brand2)}
+.sbox input{flex:1;border:0;outline:none;font:inherit;font-size:15px;padding:9px 14px;min-width:0}
+.sbox .pri{border-radius:0;box-shadow:none;padding:0 18px}
+.ib{height:38px;min-width:38px;padding:0 11px;border-radius:10px;font-size:15px;white-space:nowrap}
+.ib.on{background:var(--brand2);border-color:var(--brand2);color:#fff}
+.chk{display:inline-flex;align-items:center;gap:5px;font-size:13px;white-space:nowrap}
+.stat2{color:var(--muted);font-size:12px;width:100%;order:9}
+.fpanel{display:none;background:#fbfcfe;border-bottom:1px solid var(--line);padding:10px 20px}
+.fpanel.open{display:block}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px 12px;align-items:end}
+.fgrid label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.fgrid label.chk{flex-direction:row;color:var(--ink);font-size:13px;padding-bottom:7px}
+.fgrid input:not([type=checkbox]),.fgrid select{font:inherit;font-size:13.5px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;width:100%;max-width:none}
+.fpanel .qd{display:flex;gap:6px;align-items:center;margin-top:8px;font-size:12.5px;color:var(--muted)}
+.fpanel .qd button{padding:3px 11px;border-radius:20px;font-size:12.5px}.fpanel .qd .sp{flex:1}
 header h1{font-size:18px;margin:0}
 header .stat{font-size:12.5px;opacity:.92}
 header .sp{flex:1}
@@ -21,7 +49,7 @@ header button{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35
 .ctry{display:inline-flex;border:1px solid rgba(255,255,255,.4);border-radius:10px;overflow:hidden}
 .ctry button{border:0;border-radius:0;background:transparent;color:#fff;padding:6px 13px}
 .ctry button.on{background:#fff;color:var(--brand);font-weight:700}
-.bar{padding:10px 20px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bar{padding:10px 20px 6px;background:var(--bg);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .bar input[type=search]{flex:1;min-width:260px;font:inherit;font-size:16px;padding:9px 14px;border:1.5px solid var(--line);border-radius:10px;outline:none}
 .bar input[type=search]:focus{border-color:var(--brand2)}
 select,.bar input[list]{font:inherit;padding:7px;border:1px solid var(--line);border-radius:8px;background:#fff;max-width:220px}
@@ -34,7 +62,7 @@ select,.bar input[list]{font:inherit;padding:7px;border:1px solid var(--line);bo
 .chip.fresh{border-color:var(--brand3);color:var(--brand3)}
 .chip.fresh.on{background:var(--brand3);color:#fff}
 .chip b{margin-inline-start:4px}
-main{display:grid;grid-template-columns:minmax(360px,44%) 1fr;gap:14px;padding:12px 20px;height:calc(100vh - 220px)}
+main{display:grid;grid-template-columns:minmax(360px,44%) 1fr;gap:14px;padding:12px 20px;flex:1;min-height:0}
 .col{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:auto;box-shadow:0 1px 2px rgba(15,27,45,.06),0 4px 14px rgba(15,27,45,.06)}
 .col h3{margin:0;padding:10px 14px;font-size:14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);z-index:1}
 .res{padding:9px 14px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -81,7 +109,7 @@ a{color:#0b5aa5}
 #modal{position:fixed;inset:0;background:rgba(10,20,30,.6);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:20px;z-index:5}
 #modal img{max-width:min(900px,96vw);background:#fff;border-radius:6px}
 #toast{position:fixed;bottom:18px;left:18px;background:#1d2733;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:6;max-width:460px}
-@media (max-width:900px){main{grid-template-columns:1fr;height:auto}}
+@media (max-width:900px){main{grid-template-columns:1fr;height:auto;flex:none}body{display:block}}
 #login{position:fixed;inset:0;background:linear-gradient(120deg,#102a4f 0%,#14325c 45%,#1f4f8a 100%);display:none;align-items:center;justify-content:center;z-index:50}
 #login .box{background:#fff;border-radius:14px;padding:26px 28px;width:340px;max-width:calc(100vw - 32px);box-shadow:0 10px 40px rgba(0,0,0,.3)}
 #login h2{margin:0 0 4px;direction:ltr;text-align:center;color:var(--brand)}
@@ -113,7 +141,7 @@ a{color:#0b5aa5}
 .pwd{direction:ltr;unicode-bidi:isolate;font-family:Consolas,monospace;background:var(--soft);border-radius:6px;padding:0 6px}
 .ptitle{display:none}
 @media print{
-  header,.bar,.fbar,.chips,.actions,#toast,#log,#login,#scanbox,.np{display:none!important}
+  header,.tabsbar,.bar,.fpanel,.chips,.actions,#toast,#log,#login,#scanbox,.np{display:none!important}
   body{background:#fff}
   main{display:block;height:auto;padding:0}
   .col{border:0;box-shadow:none;overflow:visible;margin-bottom:14px}
@@ -126,15 +154,15 @@ a{color:#0b5aa5}
 </head>
 <body>
 <header>
-  <h1 style="direction:ltr">GCC Tenders</h1><span class="stat" style="opacity:.75">مناقصات ومشاريع الخليج</span>
+  <div class="brand"><b>GCC Tenders</b><small>مناقصات ومشاريع الخليج</small></div>
   <div class="ctry" id="ctry"><button data-c="" class="on">الكل</button><button data-c="KW">الكويت</button><button data-c="SA">السعودية</button><button data-c="AE">الإمارات</button></div>
-  <span class="stat" id="stat">...</span>
   <span class="sp"></span>
-  <label class="stat" title="البرنامج بيجيب الجديد من المواقع لوحده طول ما هو شغال (حتى لو النافذة مقفولة)">تحديث تلقائي
-    <select id="auto" style="color:var(--ink)"><option value="5">كل 5 دقايق</option><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
-  <button id="btnUpdate" title="يجيب الجديد من المواقع دلوقتي">تحديث دلوقتي</button>
-  <button onclick="post('/api/open-folder')">فولدر التقارير</button>
-  <span class="me" id="me" style="display:none"></span><button id="btnOut" style="display:none" title="تسجيل خروج">خروج</button>
+  <button id="btnUpdate" title="يجيب الجديد من المواقع دلوقتي">⟳ تحديث دلوقتي</button>
+  <span class="me" id="me" style="display:none"></span>
+  <details class="menu" id="menu"><summary title="الإعدادات">⚙</summary><div class="mbox">
+    <label id="autoRow">تحديث تلقائي <select id="auto"><option value="5">كل 5 دقايق</option><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
+    <button onclick="post('/api/open-folder')">📁 فولدر التقارير</button>
+    <button id="btnOut" style="display:none">🚪 تسجيل خروج</button></div></details>
 </header>
 <div id="login"><form class="box" id="lform" autocomplete="on">
   <h2>GCC Tenders</h2><p>دليل مناقصات الخليج - سجّل دخولك</p>
@@ -146,30 +174,31 @@ a{color:#0b5aa5}
   <div style="text-align:center"><a href="#" id="lforgot">نسيت كلمة السر؟</a></div>
   <p style="margin:10px 0 0;font-size:11.5px">نفس حساب تطبيق الموبايل. الحسابات بيعملها الأدمن.</p>
 </form></div>
+<nav class="tabsbar"><div class="seg" id="mode"><button data-m="items" class="on">المناقصات والمشاريع</button><button data-m="news">الأخبار</button><button data-m="awards">ترسيات ومحاضر الكويت</button><button data-m="projects">شغل المشاريع</button><button data-m="routines">الروتينات والتقارير</button><button data-m="watch">متابعة فواز و KJAC</button></div></nav>
 <div class="bar">
-  <div class="seg" id="mode"><button data-m="items" class="on">المناقصات والمشاريع</button><button data-m="news">الأخبار</button><button data-m="awards">ترسيات ومحاضر الكويت</button><button data-m="projects">شغل المشاريع</button><button data-m="routines">الروتينات والتقارير</button><button data-m="watch">متابعة فواز و KJAC</button></div>
-  <input type="search" id="q" placeholder="اكتب عنوان المناقصة أو المشروع أو رقمها أو الجهة ... (فاضي = المطروح بترتيب الإقفال)" autofocus>
-  <span class="only-items">
-    <select id="cat"><option value="">كل أنواع الشغل</option></select>
-    <input list="orgs" id="org" placeholder="الجهة"><datalist id="orgs"></datalist>
-    <select id="days"><option value="0">أي موعد إقفال</option><option value="7">بيقفل خلال أسبوع</option><option value="14">خلال أسبوعين</option><option value="30">خلال شهر</option></select>
-    <label><input type="checkbox" id="fawaz"> نطاق فواز</label>
-  </span>
-  <span class="only-awards" style="display:none"><select id="ayear"><option value="">كل السنين</option></select><label><input type="checkbox" id="amin"> بحث مباشر في المحاضر</label><label><input type="checkbox" id="agz"> بحث في أعداد الكويت اليوم</label><button onclick="post('/api/open-excel')">افتح إكسيل الترسيات</button></span>
-  <button class="pri" id="go">بحث</button>
+  <div class="sbox"><input type="search" id="q" placeholder="اكتب عنوان المناقصة أو رقمها أو الجهة..." autofocus><button class="pri" id="go">بحث</button></div>
+  <button class="ib" id="bfil" title="فلترة وترتيب">⚙ فلترة <span class="fcount" id="fcount" style="display:none"></span></button>
+  <button class="ib" id="bscan" title="بحث بصورة: صوّر أو اختار صورة فيها اسم المناقصة (أو Ctrl+V لصورة منسوخة)">📷 صورة</button><input type="file" id="fscan" accept="image/*" hidden>
+  <button class="ib" id="bprint" title="طباعة النتايج والتفاصيل">🖨 طباعة</button>
+  <span class="only-awards" style="display:none"><select id="ayear"><option value="">كل السنين</option></select><label class="chk"><input type="checkbox" id="amin"> في المحاضر</label><label class="chk"><input type="checkbox" id="agz"> في الكويت اليوم</label><button class="ib" onclick="post('/api/open-excel')" title="افتح إكسيل الترسيات">📗</button></span>
+  <span class="stat2" id="stat">...</span>
 </div>
-<div class="fbar" id="fbar">
-  <span class="fl">فلترة وترتيب <span class="fcount" id="fcount" style="display:none"></span></span>
-  <label>من <input type="date" id="fdfrom"></label><label>لحد <input type="date" id="fdto"></label>
-  <span class="qd"><button data-qd="7">آخر أسبوع</button><button data-qd="30">آخر شهر</button><button data-qd="90">آخر 3 شهور</button><button data-qd="y">السنة دي</button></span>
-  <select id="fdby" title="التاريخ اللي بيتفلتر بيه"><option value="">التاريخ: الأنسب</option><option value="publish">بتاريخ الطرح</option><option value="closing">بتاريخ الإقفال</option><option value="award">بتاريخ الترسية</option></select>
-  <select id="fsort"><option value="">الترتيب: الأهم</option><option value="new">الأحدث الأول</option><option value="old">الأقدم الأول</option><option value="closing">الإقفال الأقرب</option><option value="value">القيمة الأعلى</option></select>
-  <input type="text" id="fco" placeholder="🏢 اسم الشركة / المقاول">
-  <input type="text" id="fcl" placeholder="🏛 الوزارة / الجهة / العميل">
-  <button id="fclear">مسح الفلاتر</button>
-  <span class="sp"></span>
-  <button class="tool" id="bscan" title="صوّر أو اختار صورة فيها اسم المناقصة - البرنامج يطلّع الكلام اللي فيها وتدوّر بيه (أو Ctrl+V لصورة منسوخة)">📷 بحث بصورة</button><input type="file" id="fscan" accept="image/*" hidden>
-  <button class="tool" id="bprint" title="اطبع النتايج والتفاصيل اللي على الشاشة">🖨 طباعة</button>
+<div class="fpanel" id="fbar">
+  <div class="fgrid">
+    <label>من تاريخ<input type="date" id="fdfrom"></label>
+    <label>لحد تاريخ<input type="date" id="fdto"></label>
+    <label>الترتيب<select id="fsort"><option value="">الأهم</option><option value="new">الأحدث الأول</option><option value="old">الأقدم الأول</option><option value="closing">الإقفال الأقرب</option><option value="value">القيمة الأعلى</option></select></label>
+    <label class="fdbyl">التاريخ حسب<select id="fdby"><option value="">الأنسب</option><option value="publish">الطرح</option><option value="closing">الإقفال</option><option value="award">الترسية</option></select></label>
+    <label>الشركة / المقاول<input type="text" id="fco" placeholder="مثلاً: الخرافي"></label>
+    <label>الوزارة / الجهة / العميل<input type="text" id="fcl" placeholder="مثلاً: وزارة الصحة"></label>
+    <span class="only-items">
+      <label>نوع الشغل<select id="cat"><option value="">كل الأنواع</option></select></label>
+      <label>الجهة من القايمة<input list="orgs" id="org" placeholder="اختار جهة"><datalist id="orgs"></datalist></label>
+      <label>موعد الإقفال<select id="days"><option value="0">أي موعد</option><option value="7">خلال أسبوع</option><option value="14">خلال أسبوعين</option><option value="30">خلال شهر</option></select></label>
+      <label class="chk"><input type="checkbox" id="fawaz"> نطاق فواز بس</label>
+    </span>
+  </div>
+  <div class="qd"><span>بسرعة:</span><button data-qd="7">آخر أسبوع</button><button data-qd="30">آخر شهر</button><button data-qd="90">آخر 3 شهور</button><button data-qd="y">السنة دي</button><span class="sp"></span><button id="fclear">مسح الفلاتر</button></div>
 </div>
 <div class="chips" id="chips"></div>
 <div id="scanbox"><div class="box"><b style="color:var(--brand);font-size:16px">📷 البحث بصورة</b>
@@ -205,7 +234,8 @@ const MODE_NEED={items:'dir',news:'news',awards:'awards',projects:'projects',rou
 function FX(){const o={dfrom:$('#fdfrom').value,dto:$('#fdto').value,sort:$('#fsort').value,company:$('#fco').value.trim(),client:$('#fcl').value.trim(),dby:mode==='items'?$('#fdby').value:''};
   Object.keys(o).forEach(k=>{if(!o[k])delete o[k]});return o}
 function fxq(){const p=new URLSearchParams(FX()).toString();return p?'&'+p:''}
-function fxCount(){const n=Object.keys(FX()).length;$('#fcount').textContent=n;$('#fcount').style.display=n?'':'none';return n}
+function fxCount(){const n=Object.keys(FX()).length;$('#fcount').textContent=n;$('#fcount').style.display=n?'':'none';$('#bfil').classList.toggle('on',n>0);return n}
+$('#bfil').onclick=()=>$('#fbar').classList.toggle('open');
 function wfilter(list,dateOf,textOf,clientOf){const f=FX();if(!Object.keys(f).length)return list;
   let out=list.filter(x=>{const d=(dateOf(x)||'').slice(0,10);
     if(f.dfrom&&!(d&&d>=f.dfrom))return false;if(f.dto&&!(d&&d<=f.dto))return false;
@@ -231,8 +261,8 @@ function applyMe(me){
   const cs=me.countries||[];
   document.querySelectorAll('#ctry button').forEach(b=>b.style.display=!b.dataset.c?(cs.length>1?'':'none'):(cs.includes(b.dataset.c)?'':'none'));
   if(cs.length===1){country=cs[0];document.querySelectorAll('#ctry button').forEach(x=>x.classList.toggle('on',x.dataset.c===country))}
-  $('#auto').closest('label').style.display=can('admin')?'':'none';
-  $('#fbar').querySelectorAll('label,select,input[type=text],.qd,#fclear,.fl').forEach(e=>e.style.display=can('filters')?'':'none');
+  $('#autoRow').style.display=can('admin')?'':'none';
+  $('#bfil').style.display=can('filters')?'':'none';if(!can('filters'))$('#fbar').classList.remove('open');
   $('#bscan').style.display=can('scan')?'':'none';$('#bprint').style.display=can('print')?'':'none';
   if(!can('fawaz'))wsec='conews';
   const first=[...document.querySelectorAll('#mode button')].find(b=>b.style.display!=='none');
@@ -285,7 +315,7 @@ $('#auto').onchange=async()=>{const v=+$('#auto').value;await post('/api/setting
 document.querySelectorAll('#ctry button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ctry button').forEach(x=>x.classList.toggle('on',x===b));country=b.dataset.c;status='';status_();search()});
 document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));mode=b.dataset.m;
   openTab(mode);
-  $('.only-items').style.display=['awards','watch','projects','routines'].includes(mode)?'none':'contents';$('#fdby').style.display=mode==='items'?'':'none';$('.only-awards').style.display=mode==='awards'?'contents':'none';status_();search()});
+  $('.only-items').style.display=['awards','watch','projects','routines'].includes(mode)?'none':'contents';$('.fdbyl').style.display=mode==='items'?'':'none';$('.only-awards').style.display=mode==='awards'?'contents':'none';status_();search()});
 let deb;$('#q').addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(search,450)});
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
 $('#go').onclick=search;['#cat','#days','#fawaz','#org','#ayear','#amin','#agz'].forEach(s=>$(s).onchange=search);
@@ -404,15 +434,14 @@ async function loadDocs(id){
   if(!current||current.id!==id)return;
   const off=d.item.official&&d.item.official.startsWith('http')?d.item.official:'';
   const site=/capt\.gov\.kw/.test(off)?'الجهاز المركزي':/etimad/.test(off)?'منصة اعتماد':/esupply/.test(off)?'دبي eSupply':/pahw/.test(off)?'الرعاية السكنية':'الموقع الرسمي';
-  let h=off?`<div class="card" style="margin:6px 0;border-color:#0e7c86"><button class="pri" id="docs-site">🌐 افتح صفحة المناقصة على ${site} - سجّل دخولك وحمّل</button>
-    <p class="snip" style="margin:6px 0 0">${/capt\.gov\.kw/.test(off)?'من الصفحة دي: "تسجيل الدخول" فوق ← بعدها "كراسة الشروط" وباقي الملفات بتبقى قابلة للتحميل.':/etimad|esupply/.test(off)?'الكراسة بتتحمّل / بتتشتري من المنصة بعد تسجيل الدخول بحساب المورّد.':'الملفات بتتحمّل من الصفحة مباشرة.'}</p></div>`:'';
+  let h=off?`<p class="snip" style="margin:4px 0 8px"><a href="#" id="docs-site">🌐 صفحة المناقصة على ${site} ↗</a></p>`:'';
   h+=d.docs.length?`<table><tr><th>المستند</th><th>المصدر</th><th>التاريخ</th><th></th></tr>${d.docs.map(x=>`<tr><td>${esc(x.label)}</td><td>${esc(x.src||'')}</td><td>${esc(x.date||'')}</td>
     <td>${x.archived?`<a href="#" data-open="${esc(x.path)}">فتح (من الأرشيف)</a>`:x.url?(x.local?`<a href="${esc(x.url)}" target="_blank">فتح</a>`:`<a href="#" data-off="${esc(x.url)}">تحميل ↗</a>`):(off?`<a href="#" data-off="${esc(off)}">من الموقع بحسابك ↗</a>`:'محتاج دخول')}</td></tr>`).join('')}</table>`
     :'<p class="snip">مفيش مستندات منشورة للمناقصة دي على المواقع.</p>';
   if(d.capt){
     if(d.capt.note)h+=`<p class="snip" style="color:#8a4b00">ℹ ${esc(d.capt.note)}</p>`;
-    if(d.capt.login)h+=`<p class="snip">✔ التحميل التلقائي شغال بحساب الجهاز المركزي (${esc(d.capt.account)})</p>`;
-    else h+=`<details style="margin-top:8px"><summary class="snip" style="cursor:pointer">اختياري: تحميل تلقائي بحسابك على الجهاز المركزي (من غير ما تفتح الموقع)</summary>
+    if(d.capt.login||d.capt.has_password)h+=`<p class="snip">✔ الملفات بتتحمّل لوحدها بحساب الجهاز المركزي (${esc(d.capt.account)})</p>`;
+    else if(can('admin'))h+=`<details style="margin-top:8px"><summary class="snip" style="cursor:pointer">اختياري: تحميل تلقائي بحسابك على الجهاز المركزي (من غير ما تفتح الموقع)</summary>
       <div class="card" style="margin-top:6px"><p class="snip">الإيميل وكلمة السر بيتحفظوا متشفّرين على الجهاز ده بس (Windows).</p>
       <div style="display:flex;gap:6px;flex-wrap:wrap"><input id="capt-u" placeholder="الإيميل" value="${esc(d.capt.account||'')}" style="direction:ltr;padding:6px;border:1px solid var(--line);border-radius:8px;min-width:200px">
       <input id="capt-p" type="password" placeholder="كلمة السر" style="direction:ltr;padding:6px;border:1px solid var(--line);border-radius:8px;min-width:160px">
@@ -420,7 +449,7 @@ async function loadDocs(id){
   }
   box.innerHTML=h;wireOff(box);
   box.querySelectorAll('[data-open]').forEach(a=>a.onclick=e=>{e.preventDefault();post('/api/open',{url:a.dataset.open})});
-  if($('#docs-site'))$('#docs-site').onclick=()=>openOfficial(off);
+  if($('#docs-site'))$('#docs-site').onclick=e=>{e.preventDefault();openOfficial(off)};
   if($('#capt-save'))$('#capt-save').onclick=async()=>{const u=$('#capt-u').value.trim(),pw=$('#capt-p').value;if(!u||!pw)return toast('اكتب الإيميل وكلمة السر');
     toast('بيدخل على الجهاز المركزي...');const r=await post('/api/capt-account',{user:u,password:pw});toast(r.msg,7000);if(r.ok)loadDocs(id)};
 }
@@ -562,6 +591,14 @@ async function accountsBox(body){
 function sel(el){document.querySelectorAll('.res').forEach(x=>x.classList.remove('sel'));el.classList.add('sel')}
 function norm(s){return String(s||'').normalize('NFKC').replace(/[أإآ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).toLowerCase()}
 function digits(s){return norm(s).match(/\d+/g)||[]}
+// the directory item of a tender we know by number + client (our register, the projects report)
+async function itemFor(number,org){try{const r=await get(`/api/match?number=${encodeURIComponent(number||'')}&org=${encodeURIComponent(org||'')}`);return r.id||0}catch(e){return 0}}
+function tenderButtons(number,org){if(!number||!(can('summary')||can('bnb')))return '';
+  return `<div class="actions" data-tb="1">${can('summary')?`<button class="pri" data-tsum="1">📝 ملخص المناقصة</button>`:''}${can('bnb')?`<button data-tbnb="1">📄 BNB</button>`:''}${can('summary')&&can('send')?`<button data-tsend="1">✉ ابعت الملخص</button>`:''}</div>`}
+function wireTenderButtons(number,org,known){const root=$('#detail');
+  const go=async fn=>{const id=known||await itemFor(number,org);if(!id)return toast('ملقتش المناقصة دي في الدليل (رقمها مش متسجّل في المواقع)',7000);fn(id)};
+  root.querySelectorAll('[data-tsum]').forEach(b=>b.onclick=()=>go(summaryOf));root.querySelectorAll('[data-tbnb]').forEach(b=>b.onclick=()=>go(bnbOf));
+  root.querySelectorAll('[data-tsend]').forEach(b=>b.onclick=()=>go(sendSummary))}
 function tenderDetail(key){
   const t=W.tenders.find(x=>x.key===key);if(!t){$('#detail').innerHTML='<div class="empty">مش لاقيها</div>';return}
   const feed=[...new Map(W.feed.concat(W.mentions||[]).filter(f=>f.tender_key===key).map(f=>[f.id,f])).values()].sort((a,b)=>(b.d||b.at).localeCompare(a.d||a.at));
@@ -573,7 +610,8 @@ function tenderDetail(key){
   const items=t.links.filter(l=>l.kind==='item');
   if(items.length)h+=`<h4>نفس المناقصة في الدليل</h4>${items.map(l=>`<div class="m"><a href="#" data-item="${esc(l.ref)}">${esc(l.title)}</a>${l.url?`<a class="off" href="#" data-off="${esc(l.url)}">الإعلان الرسمي ↗</a>`:''}</div>`).join('')}`;
   if(feed.length)h+=`<h4>كل اللي اترصد عنها (${feed.length})</h4>${feed.map(f=>`<div class="hit"><div style="flex:1"><div class="m"><span class="wk">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div>${/^(الكويت اليوم|محضر)/.test(f.title)?`<b>${esc(f.title)}</b> · `:''}${esc(f.text)}${f.url?` <a href="#" data-off="${esc(f.url)}">↗</a>`:''}</div></div></div>`).join('')}`;
-  h+='</div>';$('#detail').innerHTML=h;wireOff($('#detail'));
+  h+='</div>'+tenderButtons(t.number||'x',t.client);$('#detail').innerHTML=h;wireOff($('#detail'));
+  wireTenderButtons(t.number,t.client,items.length?+items[0].ref:0);
   document.querySelectorAll('[data-item]').forEach(a=>a.onclick=e=>{e.preventDefault();detail(+a.dataset.item)});
 }
 function mailDetail(e){
@@ -611,16 +649,17 @@ function projectRow(i){const d=PJ.data,r=d.rows.find(x=>x.i===i);if(!r)return;
     h+=`<div>${esc(hd)}</div><div>${v&&typeof v==='object'&&v.l?`${esc(t.length>120?t.slice(0,120)+'…':t)} <a href="#" data-open="${esc(v.l)}">فتح ↗</a>`:esc(/^\d{4}-\d\d-\d\d$/.test(t)?dmy(t):t)}</div>`});
   h+='</div></div>';
   const no=col(d,PJ_NO,r);
-  h+=`<div class="actions">${no?`<button class="pri" id="pjfind">🔎 دوّر عليها في الدليل</button>`:''}<button onclick="window.print()">🖨 طباعة</button></div>`;
+  h+=`<div class="actions">${no?`<button id="pjfind">🔎 دوّر عليها في الدليل</button>`:''}${no&&can('summary')?`<button class="pri" data-tsum="1">📝 ملخص المناقصة</button>`:''}${no&&can('bnb')?`<button data-tbnb="1">📄 BNB</button>`:''}${no&&can('summary')&&can('send')?`<button data-tsend="1">✉ ابعت الملخص</button>`:''}${can('print')?'<button onclick="window.print()">🖨 طباعة</button>':''}</div>`;
   $('#detail').innerHTML=h;wireOpen($('#detail'));
   if($('#pjfind'))$('#pjfind').onclick=()=>{goMode('items');$('#q').value=no;search()};
+  if(no)wireTenderButtons(no,col(d,PJ_ORG,r),0);
 }
 function wireOpen(root){root.querySelectorAll('[data-open]').forEach(a=>a.onclick=e=>{e.preventDefault();const u=a.dataset.open;
   if(u.startsWith('http'))openOfficial(u);else post('/api/open',{url:u}).then(r=>{if(r.ok===false)toast('الملف ده على جهاز الأدمن بس')}).catch(x=>toast('خطأ: '+x.message))})}
 function goMode(m){const b=document.querySelector(`#mode button[data-m="${m}"]`);if(b&&b.style.display!=='none')b.click()}
 // ---------------------------------------------------------------- ملخص المناقصة
 async function summaryOf(id){toast('بحمّل ملفات المناقصة وبقراها (والممسوح كمان) - ممكن ياخد دقيقة أو اتنين...',120000);
-  try{const r=await post('/api/summary',{id});toast(`الملخص جاهز واتفتح: لقيت ${r.found} من 12 بند في ${r.files.length} ملف (${r.pages} صفحة)`,9000)}
+  try{const r=await post('/api/summary',{id});toast(r.files.length?`الملخص جاهز واتفتح: لقيت ${r.found} من 12 بند في ${r.files.length} ملف (${r.pages} صفحة)`:'الملخص اتفتح من بيانات الإعلان بس - مفيش ملفات منشورة للمناقصة دي على المواقع',9000)}
   catch(e){toast('الملخص ما اتعملش: '+e.message,9000)}}
 // ---------------------------------------------------------------- الروتينات والتقارير
 let RT=null,rsel='';

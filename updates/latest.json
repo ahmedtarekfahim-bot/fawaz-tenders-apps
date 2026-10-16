@@ -1,5 +1,5 @@
 {
- "version": "2.0.1",
+ "version": "2.0.2",
  "setup_url": "https://raw.githubusercontent.com/ahmedtarekfahim-bot/fawaz-tenders-apps/main/updates/FAWAZ-Tenders-Setup.exe",
- "notes": "روتينات Claude بقت بتشتغل من زرار البرنامج ومن الموبايل (Claude Code اللي مع برنامج Claude)، وزرار تسجيل دخول Claude في تبويب الروتينات"
+ "notes": "ترتيب الشاشة في الكمبيوتر والموبايل (سطر بحث واحد + لوحة فلاتر)، تنزيل كراسات الجهاز المركزي اللي اسمها عربي، الملخص و BNB من مناقصاتنا وشغل المشاريع، الموبايل مبقاش يرجع للواجهة القديمة"
 }

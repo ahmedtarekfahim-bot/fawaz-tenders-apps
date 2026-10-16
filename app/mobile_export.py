@@ -234,11 +234,35 @@ def build_feed(log=print):
     return meta
 
 
+SHELL_FILES = ("index.html", "sw.js", "manifest.webmanifest")
+
+
+def newest_shell(site, log=print):
+    """replace the app files with the ones on GitHub main when those are newer (by the cache version in sw.js)"""
+    def ver(t):
+        m = re.search(r"fawaz-shell-v(\d+)", t or "")
+        return int(m.group(1)) if m else 0
+    base = "https://raw.githubusercontent.com/ahmedtarekfahim-bot/fawaz-tenders-apps/main/app/mobile/"
+    try:
+        got = {}
+        for n in SHELL_FILES:
+            req = urllib.request.Request(base + n + f"?t={int(time.time())}", headers={"Cache-Control": "no-cache"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                got[n] = r.read()
+        if ver(got["sw.js"].decode("utf-8", "ignore")) > ver((Path(site) / "sw.js").read_text(encoding="utf-8")):
+            for n, b in got.items():
+                (Path(site) / n).write_bytes(b)
+            log("موقع الموبايل اتبنى بآخر واجهة من GitHub (البرنامج اللي على الجهاز ده أقدم)")
+    except Exception:                                   # noqa: BLE001 - offline: the bundled screens
+        pass
+
+
 def build_site(feed_data, site, log=print):
     """the phone site from a feed folder: app files + every data file encrypted for the active users"""
     import accounts
     _rmtree(site)
     shutil.copytree(cfg.res_dir() / "mobile", site)
+    newest_shell(site, log)
     shutil.copytree(feed_data, site / "data", dirs_exist_ok=True)
     d = site / "data"
     users = json.loads((d / "users_pub.json").read_text(encoding="utf-8"))

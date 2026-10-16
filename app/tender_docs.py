@@ -142,7 +142,8 @@ def download(item, docs, out_root):
             except PermissionError:
                 op = urllib.request.build_opener()
         try:
-            with op.open(urllib.request.Request(d["url"], headers=UA), timeout=180) as r:
+            url = urllib.parse.quote(d["url"], safe=":/?&=%#+,;@!$'()*~")   # Arabic file names (CAPT zips)
+            with op.open(urllib.request.Request(url, headers=UA), timeout=180) as r:
                 data = r.read()
                 cd = r.headers.get("Content-Disposition", "")
             ext = Path(urllib.parse.urlparse(d["url"]).path).suffix or ".pdf"
