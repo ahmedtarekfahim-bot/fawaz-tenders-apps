@@ -231,11 +231,13 @@ class Store:
     def __init__(self):
         self.items, self.by_num, self.events = [], collections.defaultdict(list), []
 
-    def find(self, number, org, subject, country="KW"):
+    def find(self, number, org, subject, country="KW", when=None):
         nk = numkey(number)
         cands = self.by_num.get((country, nk), []) if nk and len(nk) >= 3 else []
         best, bs = None, 0
         for it in cands:
+            if when and _other_round(it, when):
+                continue                                # same number, another round (re-tender / an older award)
             s = org_sim(org, it["org"])
             if len(ct.num_parts(number)) >= 3 or len(nk) >= 6:
                 s += 0.3                                # long numbers are nearly unique
@@ -249,7 +251,13 @@ class Store:
         number, org, subject = (str(x or "").strip() for x in (number, org, subject))
         if not subject and not number:
             return None
-        it = self.find(number, org, subject, country) if number else None
+        if not numkey(number) or len(re.sub(r"\W", "", number)) < 3:
+            number = ""                                 # a broken number ('م', 'ه', '-') would only mislead
+        when = {"publish": f.get("publish") or "", "award": f.get("award_date") or "",
+                "event": (event or {}).get("date", "") if source in ("awards", "capt-closing") or status in ("مترسية", "ملغاة") else ""}
+        it = self.find(number, org, subject, country, when) if number else None
+        if it is None and not number and source == "capt-minutes":
+            it = self.find_by_subject(org, subject, country)
         if it is None:
             it = {"kind": f.pop("kind", "مناقصة"), "number": number, "numkey": numkey(number), "org": org,
                   "subject": subject, "subj_src": source, "status": status, "url": url, "sources": set(), "ev": [],
@@ -262,6 +270,7 @@ class Store:
                 self.by_num[(country, it["numkey"])].append(it)
         else:
             f.pop("kind", None)
+            it.setdefault("claims", [])
             # the tender's own title beats the wording of a board decision about it
             SUBJ_RANK = {"capt": 5, "pahw": 4, "capt-closing": 4, "gazette": 3, "awards": 3, "adham": 2, "capt-minutes": 0}
             if subject and SUBJ_RANK.get(source, 1) > SUBJ_RANK.get(it["subj_src"], 1):
@@ -273,6 +282,8 @@ class Store:
             if STATUS_RANK.get(status, -1) > STATUS_RANK.get(it["status"], -1):
                 it["status"] = status
         it["sources"].add(source)
+        if status:                                       # every source's word on the state, with its date
+            it.setdefault("claims", []).append((status, (event or {}).get("date") or f.get("award_date") or f.get("publish") or "", source))
         for d in f.pop("docs", None) or []:          # tender documents published by the source
             if d["url"] not in {x["url"] for x in it.setdefault("docs", [])}:
                 it["docs"].append(d)
@@ -285,6 +296,9 @@ class Store:
             if k == "closing":          # the latest closing date wins (postponements)
                 if not it["closing"] or v > it["closing"]:
                     it["closing"] = v
+            elif k == "publish":        # the first announcement is the publish date (not a postponement notice)
+                if not it["publish"] or v < it["publish"]:
+                    it["publish"] = v
             elif k == "notes":
                 if v not in it["notes"]:
                     it["notes"] = (it["notes"] + " | " + v).strip(" |")
@@ -293,6 +307,64 @@ class Store:
         if event:
             it["ev"].append(dict(event, source=source))
         return it
+
+    def find_by_subject(self, org, subject, country="KW"):
+        """a board decision printed without a usable number: the open tender with the same client + subject"""
+        qs = set(stems(subject))
+        if len(qs) < 3:
+            return None
+        best, bs = None, 0
+        for it in self.items:
+            if it["country"] != country or not it["number"] or org_sim(org, it["org"]) < 0.6:
+                continue
+            hs = set(stems(it["subject"]))
+            sc = len(qs & hs) / max(1, min(len(qs), len(hs)))
+            if sc > bs:
+                best, bs = it, sc
+        return best if bs >= 0.7 else None
+
+
+def _days(a, b):
+    try:
+        return (datetime.date.fromisoformat(a[:10]) - datetime.date.fromisoformat(b[:10])).days
+    except (TypeError, ValueError):
+        return 0
+
+
+def _other_round(it, when):
+    """True when a record with this number can't be this item: an award / decision from before it was announced,
+    or a new announcement long after it was awarded"""
+    for d in (when.get("award"), when.get("event")):
+        if d and it["publish"] and _days(it["publish"], d) > 45:
+            return True
+    if when.get("publish") and it["award_date"] and _days(when["publish"], it["award_date"]) > 45:
+        return True
+    return False
+
+
+def final_status(it, today):
+    """the state from the evidence and the dates - not 'the strongest word any source used':
+    a tender whose (latest) closing date is still ahead is open, whatever an older record says"""
+    claims = [c for c in it.get("claims", []) if c[0]]
+    said = {c[0] for c in claims}
+    closing, winner = it.get("closing") or "", it.get("winner") or ""
+    if closing and closing >= today and not winner:
+        if "ملغاة" in said and any(c[0] == "ملغاة" and c[1] >= (it.get("publish") or "") for c in claims):
+            return "ملغاة"
+        return "مطروحة"
+    if winner or "مترسية" in said:
+        return "مترسية"
+    for st in ("ملغاة", "أسعار معلنة"):
+        if st in said:
+            return st
+    if not closing:
+        for st in ("اتوافق على طرحها", "إعلان مسبق", "مطروحة", "مقفولة - تحت الدراسة"):
+            if st in said:
+                return "مطروحة" if st == "مطروحة" and not closing else st
+        if it.get("sources") and it["sources"] <= {"capt-minutes", SRC_NAME.get("capt-minutes")}:
+            return "عقد جاري (قرار الجهاز)"
+        return it.get("status") or "مقفولة - تحت الدراسة"
+    return "مقفولة - تحت الدراسة"
 
 
 # ----------------------------------------------------------------- source: CAPT open tenders
@@ -424,7 +496,10 @@ def collect_gazette(store, progress):
                           bond=str(r.get("التأمين الأولي") or ""), ttype=typ, publish=iso(idate),
                           event={"date": iso(idate), "etype": typ or "إعلان", "file": str(pdf) if pdf.exists() else "",
                                  "page": int(r.get("صفحة PDF") or 0) if str(r.get("صفحة PDF") or "").isdigit() else 0,
-                                 "text": f"{src} ص {r.get('صفحة PDF') or ''}: إقفال {r.get('موعد الإقفال') or '-'} - تمهيدي {r.get('الاجتماع التمهيدي') or '-'} - وثائق {r.get('سعر الوثائق') or '-'} - تأمين {r.get('التأمين الأولي') or '-'}",
+                                 "text": f"{src} ص {r.get('صفحة PDF') or ''}: " + " - ".join(
+                                     f"{lab} {v}" for lab, v in (("إقفال", r.get("موعد الإقفال")), ("", r.get("الاجتماع التمهيدي")),
+                                                                 ("وثائق", r.get("سعر الوثائق")), ("تأمين", r.get("التأمين الأولي")))
+                                     if str(v or "").strip() not in ("", "-")).strip(),
                                  "url": str(f)})
                 n += 1
         if "2-الأخبار" in wb.sheetnames:
@@ -1109,17 +1184,16 @@ def save_store(store):
     new_n = chg_n = 0
     # the very first load of a country is the baseline - only what appears after it counts as "new"
     populated = {r[0] for r in con.execute("SELECT DISTINCT country FROM items")}
+    seen_keys = set()
     for it in store.items:
         it["sources"] = {SRC_NAME.get(s, s) for s in it["sources"]}
         for e in it["ev"]:
             e["source"] = SRC_NAME.get(e["source"], e["source"])
-        if it["status"] in ("مطروحة", "") and it["closing"] and it["closing"] < today:
-            it["status"] = "مقفولة - تحت الدراسة"
-        if not it["status"] and it["sources"] == {SRC_NAME["capt-minutes"]}:
-            it["status"] = "عقد جاري (قرار الجهاز)"     # extensions / change orders of running contracts
-        if not it["status"]:
-            it["status"] = "مطروحة" if it["closing"] and it["closing"] >= today else "مقفولة - تحت الدراسة"
+        it["status"] = final_status(it, today)
         k = ukey(it)
+        if k in seen_keys:                              # another round of the same number: its own row
+            k = f"{k}|{(it['publish'] or it['award_date'] or 'x')[:7]}"
+        seen_keys.add(k)
         notes = (it["notes"] + " | المصادر: " + "، ".join(sorted(it["sources"]))).strip(" |")
         vals = dict(country=it["country"], kind=it["kind"], number=it["number"], numkey=it["numkey"], org=it["org"],
                     subject=it["subject"], status=it["status"], publish=it["publish"], closing=it["closing"], ptm=it["ptm"],
@@ -1133,6 +1207,15 @@ def save_store(store):
             vals["docs"] = old["docs"]
         if old is not None and not vals["official"] and old["official"]:
             vals["official"], vals["official_label"] = old["official"], old["official_label"]
+        if old is not None:
+            # what we already know counts too: the first publish date, the latest (postponed) closing date, the winner
+            if old["publish"] and (not vals["publish"] or old["publish"] < vals["publish"]):
+                vals["publish"] = old["publish"]
+            eff = dict(it, publish=vals["publish"], closing=max(vals["closing"] or "", old["closing"] or ""),
+                       winner=vals["winner"] or old["winner"] or "")
+            if old["status"] in ("مترسية", "ملغاة", "أسعار معلنة", "اتوافق على طرحها", "إعلان مسبق", "عقد جاري (قرار الجهاز)"):
+                eff["claims"] = list(it.get("claims", [])) + [(old["status"], old["award_date"] or "", "db")]
+            vals["status"] = it["status"] = final_status(eff, today)
         if old is None:
             cur = con.execute("INSERT INTO items(ukey," + ",".join(vals) + ",first_seen,last_seen,changed,updated) VALUES(" +
                               ",".join("?" * (len(vals) + 5)) + ")",
@@ -1144,8 +1227,12 @@ def save_store(store):
             changed = False
             for f, label in TRACKED.items():
                 ov, nv = old[f] or "", vals[f] or ""
-                if f == "status" and ov in ("مترسية", "ملغاة") and STATUS_RANK.get(nv, -1) < STATUS_RANK.get(ov, -1):
-                    vals[f] = ov                   # an award / cancellation is final
+                if f == "status" and ov in ("مترسية", "ملغاة") and STATUS_RANK.get(nv, -1) < STATUS_RANK.get(ov, -1) \
+                        and not (nv == "مطروحة" and vals["closing"] and vals["closing"] >= today and not vals["winner"]):
+                    vals[f] = ov                   # an award / cancellation is final (unless it is plainly open again)
+                    continue
+                if f == "publish" and ov and nv and nv > ov:
+                    vals[f] = ov                   # the first announcement stays the publish date
                     continue
                 if f == "closing" and ov and nv and nv < ov:
                     vals[f] = ov                   # postponements only move the date forward
@@ -1179,9 +1266,73 @@ SOURCES = {"KW": [("ترسيات جديدة من الموقع", refresh_awards),
            "AE": [("دبي eSupply", collect_esupply)]}
 
 
+DATA_FIX_V = "2026-10-16b"
+
+
+def repair_data(progress=print):
+    """once per rule version: put right what the old merge rules saved -
+    the state from the dates, the publish date = the first announcement, broken numbers, minutes pages of older
+    rounds, empty fields in the gazette lines"""
+    if cfg.S.get("data_fix_v") == DATA_FIX_V or not DB.exists():
+        return
+    today = iso(TODAY())
+    con = db()
+    n_status = n_pub = n_num = n_ev = 0
+    now = datetime.datetime.now().isoformat(timespec="seconds")
+    for r in con.execute("SELECT * FROM items").fetchall():
+        it = dict(r)
+        evs = [dict(e) for e in con.execute("SELECT rowid AS rid, date, source, etype, text FROM events WHERE item_id=?", (it["id"],))]
+        # publish = the first real announcement (CAPT / Etimad / eSupply / PAHW / the gazette notice itself)
+        ann = sorted(e["date"] for e in evs if e["date"] and re.search(r"طرح|إعلان|اعلان|مطروح", e["etype"] or "")
+                     and "قرار الجهاز" not in (e["etype"] or ""))
+        if ann and (not it["publish"] or ann[0] < it["publish"]):
+            con.execute("UPDATE items SET publish=? WHERE id=?", (ann[0], it["id"]))
+            it["publish"] = ann[0]
+            n_pub += 1
+        # board decisions / awards dated well before the tender was announced belong to an older round
+        if it["publish"]:
+            for e in evs:
+                if e["date"] and _days(it["publish"], e["date"]) > 45 and re.search(r"ترسي|إلغاء|الغاء|فض العطاءات|ترسيات", (e["etype"] or "") + " " + (e["source"] or "")):
+                    con.execute("DELETE FROM events WHERE rowid=?", (e["rid"],))
+                    n_ev += 1
+            if it["award_date"] and _days(it["publish"], it["award_date"]) > 45:
+                con.execute("UPDATE items SET winner='', value='', award_date='' WHERE id=?", (it["id"],))
+                it["winner"] = it["award_date"] = ""
+        # a broken number shown as the tender number
+        if it["number"] and len(re.sub(r"\W", "", it["number"])) < 3:
+            con.execute("UPDATE items SET number='' WHERE id=?", (it["id"],))
+            n_num += 1
+        # the gazette lines without '-' placeholders
+        for e in evs:
+            m = re.match(r"(.*?): إقفال (.*?) - تمهيدي (.*?) - وثائق (.*?) - تأمين (.*)$", e["text"] or "", re.S)
+            if (e["source"] or "") == "جريدة الكويت اليوم" and m:
+                head, vals = m.group(1), m.groups()[1:]
+                txt = f"{head}: " + " - ".join(f"{lab} {v.strip()}".strip() for lab, v in zip(("إقفال", "", "وثائق", "تأمين"), vals)
+                                               if v.strip() not in ("", "-"))
+                if txt != e["text"]:
+                    con.execute("UPDATE events SET text=? WHERE rowid=?", (txt, e["rid"]))
+        # the state from the dates
+        src = set(s.strip() for s in (it["notes"] or "").split("المصادر: ")[-1].split("، ")) if "المصادر: " in (it["notes"] or "") else set()
+        claims = [(it["status"], it["award_date"] or "", "")] if it["status"] not in ("مطروحة", "مقفولة - تحت الدراسة") else []
+        st = final_status({"claims": claims, "closing": it["closing"], "winner": it["winner"], "publish": it["publish"],
+                           "sources": src, "status": it["status"]}, today)
+        if st != it["status"]:
+            con.execute("INSERT INTO changes(item_id,at,field,old,new) VALUES(?,?,?,?,?)", (it["id"], now, "الحالة", it["status"], st))
+            con.execute("UPDATE items SET status=? WHERE id=?", (st, it["id"]))
+            n_status += 1
+    con.commit()
+    con.close()
+    cfg.save_setting("data_fix_v", DATA_FIX_V)
+    progress(f"تصليح الداتا: {n_status} حالة، {n_pub} تاريخ طرح، {n_num} رقم مكسور، {n_ev} قرار من جولة قديمة")
+
+
 def run_update(progress=print, countries=None):
     countries = countries or list(COUNTRIES)
     started = datetime.datetime.now()
+    try:
+        repair_data(progress)
+    except Exception as e:      # noqa: BLE001
+        progress(f"تصليح الداتا: {e}")
     store, summary = Store(), {}
     for cc in countries:
         for name, fn in SOURCES[cc]:
@@ -1800,8 +1951,9 @@ def detail(iid):
         rec = {"tno": it["number"], "subject": it["subject"], "org": it["org"], "row": -1}
         hist = ct.similar_history(rec)
         hits = ct.search_minutes(it["number"], it["subject"], it["org"], it["award_date"] or "", limit=15)
-        if it["number"] and len(ct.num_parts(it["number"])) >= 2:
-            hits = [h for h in hits if h["num"] > 0] or hits[:5]
+        # a page counts as this tender's only when it carries the number and is not older than the tender
+        start = it["publish"] or ""
+        hits = [h for h in hits if h["num"] > 0 and (not start or not h.get("mdate") or _days(start, h["mdate"]) <= 60)]
     elif it["subject"]:                                # same country, similar work, already awarded
         tb = idf(all_items())
         qs = list(dict.fromkeys(stems(it["subject"])))

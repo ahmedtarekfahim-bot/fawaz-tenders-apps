@@ -450,7 +450,7 @@ function dirCard(r){const left=r.st==='مطروحة'&&r.cl?Math.round((new Date(
   return `<div class="card ${isNewDir(r)?'unread':''}" data-i="${r.i}"><div class="t">${esc(r.s)}</div>
     <div class="m"><span class="st ${stClass(r.st,r.cl)}">${esc(r.st)}</span>${recent(r.fs)?'<span class="flag new">جديد</span>':recent(r.ch)?'<span class="flag chg">اتغيّر</span>':''}${country?'':`<span>${CN[r.c]}</span>`}${r.fz?'<span class="fzb">نطاق فواز</span>':''}</div>
     <div class="m">${r.n?`<span class="tno">${esc(r.n)}</span>`:''}<span>${esc(r.o)}</span></div>
-    <div class="m">${r.cl?`<span class="${left!==null&&left<=7?'urgent':''}">إقفال ${dmy(r.cl)}${left!==null?` (باقي ${left} يوم)`:''}</span>`:''}${r.w?`<span class="${US.test(r.w)?'fz':''}">${esc(r.w.slice(0,60))}</span>`:''}${r.v?`<span class="money">${esc(r.v)}</span>`:''}
+    <div class="m">${r.p?`<span>طرح ${dmy(r.p)}</span>`:''}${r.cl?`<span class="${left!==null&&left<=7?'urgent':''}">إقفال ${dmy(r.cl)}${left!==null?` (باقي ${left} يوم)`:''}</span>`:''}${r.w?`<span class="${US.test(r.w)?'fz':''}">${esc(r.w.slice(0,60))}</span>`:''}${r.v?`<span class="money">${esc(r.v)}</span>`:''}
     ${r.off?`<a class="off" href="${esc(r.off)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">الإعلان الرسمي ↗</a>`:''}</div></div>`}
 function renderDir(q){
   const lim=new Date(Date.now()+soon*864e5).toISOString().slice(0,10);
@@ -603,7 +603,7 @@ function openItem(i){const r=D.find(x=>x.i===i);if(!r)return;
     h+=`<h3>كشف تفريغ الأسعار (فض العطاءات ${esc(r.bd.m)})</h3><table><tr><th>#</th><th>المقاول</th><th>العرض</th></tr>${rows.map((x,i)=>`<tr><td>${/مستبعد/.test(x[1]+x[2])?'✖':'L'+(i+1)}</td><td class="${US.test(x[0])?'fz':''}">${esc(x[0])}${/مستبعد/.test(x[1]+x[2])?` <span class="note">(${esc(x[2]||x[1])})</span>`:''}</td><td class="money">${esc(x[3]||'-')}</td></tr>`).join('')}</table>`}
   if(r.chg.length)h+=`<h3>التغييرات اللي اترصدت</h3><table><tr><th>الوقت</th><th>البند</th><th>كان</th><th>بقى</th></tr>${r.chg.map(c=>`<tr><td>${esc(c[0].replace('T',' '))}</td><td>${esc(c[1])}</td><td>${esc(c[2])}</td><td><b>${esc(c[3])}</b></td></tr>`).join('')}</table>`;
   if(r.ev.length)h+=`<h3>كل اللي اتنشر عنها</h3>`+r.ev.map(e=>`<div class="ev"><b>${dmy(e[0])} · ${esc(e[1])} · ${esc(e[2])}</b><div>${esc(e[3])}${e[4]?` <a class="off" href="${esc(e[4])}" target="_blank" rel="noopener">المصدر ↗</a>`:''}</div></div>`).join('');
-  if(r.c==='KW'){const sim=similarAwards(r.s,-1);if(sim.length)h+=`<h3>ترسيات سابقة لنفس نوع الشغل</h3>`+awTable(sim)}
+  if(r.c==='KW'){const sim=similarAwards(r.s,-1);if(sim.length)h+=`<h3>ترسيات قديمة لمناقصات شبيهة (مش المناقصة دي - للمقارنة في التسعير)</h3>`+awTable(sim)}
   const nw=N.filter(n=>n.c===r.c).map(n=>[score(r.s,tokset(n,o=>o.t),''),n]).filter(x=>x[0]>=.5).sort((a,b)=>b[0]-a[0]).slice(0,6);
   if(nw.length)h+=`<h3>أخبار قريبة</h3>`+nw.map(([s,n])=>`<div class="ev"><b>${dmy(n.d)} · ${esc(n.src)}</b><div><a href="${esc(n.u)}" target="_blank" rel="noopener">${esc(n.t)}</a></div></div>`).join('');
   const pm=(ME&&ME.perms)||[];
@@ -624,7 +624,7 @@ function openAward(row){const a=A.find(x=>x.r===row);if(!a)return;const m=MEET[a
   <p class="note">صفحات المحاضر متعلّمة وملف PDF الكامل بيتعمل من برنامج الترسيات على الكمبيوتر.</p>`;
   const same=A.filter(x=>x.r!==a.r&&norm(x.n).replace(/\s/g,'')===norm(a.n).replace(/\s/g,'')&&norm(a.n).length>=4);
   if(same.length)h+=`<h3>صفوف تانية لنفس الرقم</h3>`+awTable(same);
-  const sim=similarAwards(a.s,a.r);if(sim.length)h+=`<h3>ترسيات سابقة لنفس نوع الشغل</h3>`+awTable(sim);
+  const sim=similarAwards(a.s,a.r);if(sim.length)h+=`<h3>ترسيات قديمة لمناقصات شبيهة (مش المناقصة دي - للمقارنة في التسعير)</h3>`+awTable(sim);
   showSheet('ترسية',h)}
 document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));tab=b.dataset.t;shown=150;
   openTabMarks(tab);badges();
