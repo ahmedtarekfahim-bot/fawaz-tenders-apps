@@ -19,10 +19,16 @@ from pathlib import Path
 ITER = 200_000
 # what an account may use - every part of the phone data is sealed with its own key, so a user only
 # receives the keys of the parts he is allowed (and nothing once his subscription ends)
-FEATURES = {"dir": "الدليل", "news": "الأخبار", "awards": "ترسيات الكويت", "watch": "متابعة فواز و KJAC",
-            "fawaz": "بيانات فواز السرية"}
+FEATURES = {"dir": "الدليل", "news": "الأخبار", "awards": "ترسيات الكويت", "projects": "شغل المشاريع",
+            "watch": "متابعة فواز و KJAC", "fawaz": "بيانات فواز السرية", "routines": "الروتينات والتقارير"}
 COUNTRIES = {"KW": "الكويت", "SA": "السعودية", "AE": "الإمارات"}
+# what an account may DO - every button / option on its own (checked on the PC and for phone commands)
+ACTIONS = {"filters": "الفلاتر والترتيب", "print": "الطباعة", "scan": "البحث بصورة", "docs": "تحميل مستندات المناقصة",
+           "pdf": "تقارير PDF", "summary": "ملخص المناقصة", "bnb": "فورمة BNB", "send": "الإرسال بالإيميل",
+           "share": "فتح / مشاركة / نسخ التقارير", "run": "تشغيل الروتينات"}
+ALL = {**FEATURES, **ACTIONS}
 DEFAULT_PERMS = ["dir", "news", "awards", "watch"]
+DEFAULT_ACTIONS = ["filters", "print", "scan", "docs", "pdf", "summary"]
 b64 = lambda x: base64.b64encode(x).decode()
 unb64 = base64.b64decode
 
@@ -62,6 +68,24 @@ def new_keypair(password):
     return b64(pub), {"salt": b64(salt), "iv": b64(iv), "iter": ITER, "data": b64(_aes(key).encrypt(iv, pk8, None))}
 
 
+def _keep_pw(pw):
+    """the password itself, so the owner can see it in the accounts list - Windows DPAPI: only the owner's
+    Windows user on his PC can read it back (the master list never leaves that PC)"""
+    try:
+        import tender_docs
+        return tender_docs._protect(pw)
+    except Exception:                                # noqa: BLE001 - no DPAPI (cloud / tests): keep nothing
+        return ""
+
+
+def _shown_pw(d):
+    try:
+        import tender_docs
+        return tender_docs._unprotect(d["pw"]) if d.get("pw") else ""
+    except Exception:                                # noqa: BLE001
+        return ""
+
+
 def new_password():
     abc = "abcdefghjkmnpqrstuvwxyz23456789"
     return "-".join("".join(secrets.choice(abc) for _ in range(4)) for _ in range(3))
@@ -98,7 +122,11 @@ def is_live(d):
 
 
 def perms_of(d):
+    if d.get("admin"):                               # the owner always has every part (new parts included)
+        return list(ALL)
     p = list(d.get("perms") or DEFAULT_PERMS)
+    if not any(x in ACTIONS for x in p):             # accounts made before the per-button options
+        p += DEFAULT_ACTIONS
     if d.get("fawaz") and "fawaz" not in p:
         p.append("fawaz")
     return p
@@ -116,13 +144,18 @@ def ensure_owner():
     owner = cfg.S.get("phone_owner") or "ahmed"
     if owner not in m["users"]:
         pw = new_password()
-        add_user(owner, pw, admin=True, note="صاحب البرنامج", perms=list(FEATURES))
+        add_user(owner, pw, admin=True, note="صاحب البرنامج", perms=list(ALL))
         cfg.save_setting("phone_owner", owner)
         cfg.save_setting("phone_owner_password", pw)
     return owner
 
 
-def add_user(name, password=None, fawaz=False, admin=False, note="", perms=None, countries=None, expires=""):
+def routine_ok(d, rid):
+    """[] = every routine the account's options allow"""
+    return bool(d.get("admin")) or not d.get("routines") or rid in d["routines"]
+
+
+def add_user(name, password=None, fawaz=False, admin=False, note="", perms=None, countries=None, expires="", routines=None):
     u = norm_name(name)
     if not u:
         raise ValueError("اسم المستخدم فاضي - استخدم حروف إنجليزي وأرقام")
@@ -131,14 +164,14 @@ def add_user(name, password=None, fawaz=False, admin=False, note="", perms=None,
         raise ValueError(f"المستخدم {u} موجود")
     pw = password or new_password()
     pub, priv = new_keypair(pw)
-    perms = [x for x in (perms or DEFAULT_PERMS) if x in FEATURES]
+    perms = [x for x in (perms or DEFAULT_PERMS + DEFAULT_ACTIONS) if x in ALL]
     if fawaz and "fawaz" not in perms:
         perms.append("fawaz")
     m["users"][u] = {"active": True, "fawaz": "fawaz" in perms, "admin": bool(admin), "note": note,
                      "perms": perms, "countries": [c for c in (countries or list(COUNTRIES)) if c in COUNTRIES],
-                     "expires": expires or "",
+                     "expires": expires or "", "routines": list(routines or []),
                      "created": datetime.datetime.now().isoformat(timespec="minutes"),
-                     "pub": pub, "priv": priv, "last_seen": "", "opens": 0, "forgot": ""}
+                     "pub": pub, "priv": priv, "pw": _keep_pw(pw), "last_seen": "", "opens": 0, "forgot": ""}
     save(m)
     return u, pw
 
@@ -150,6 +183,7 @@ def set_password(name, password=None):
     u = norm_name(name)
     pw = password or new_password()
     m["users"][u]["pub"], m["users"][u]["priv"] = new_keypair(pw)
+    m["users"][u]["pw"] = _keep_pw(pw)
     m["users"][u]["forgot"] = ""
     save(m)
     if u == cfg.S.get("phone_owner"):
@@ -165,7 +199,9 @@ def update(name, **flags):
         if k in flags:
             d[k] = flags[k]
     if "perms" in flags:
-        d["perms"] = [x for x in flags["perms"] if x in FEATURES]
+        d["perms"] = [x for x in flags["perms"] if x in ALL]
+    if "routines" in flags:
+        d["routines"] = [str(x) for x in flags["routines"] or []]
     if "countries" in flags:
         d["countries"] = [c for c in flags["countries"] if c in COUNTRIES] or ["KW"]
     if "fawaz" in flags:                             # the old single switch
@@ -198,7 +234,8 @@ def seen(name, when, what="open"):
 
 def listing():
     """for the window - no keys"""
-    return [{"u": u, **{k: v for k, v in d.items() if k not in ("pub", "priv")}, "perms": perms_of(d),
+    return [{"u": u, **{k: v for k, v in d.items() if k not in ("pub", "priv", "pw")}, "password": _shown_pw(d), "perms": perms_of(d),
+             "rids": d.get("routines") or [],
              "countries": d.get("countries") or list(COUNTRIES), "expires": d.get("expires", ""), "live": is_live(d)}
             for u, d in sorted(load()["users"].items())]
 
@@ -207,7 +244,7 @@ def public_users():
     """what goes to the phone (and the cloud): login material for active users, nothing for the others"""
     out = {}
     for u, d in load()["users"].items():
-        out[u] = {"active": bool(d["active"]), "expires": d.get("expires", ""), "perms": perms_of(d),
+        out[u] = {"active": bool(d["active"]), "expires": d.get("expires", ""), "perms": perms_of(d), "rids": d.get("routines") or [],
                   "countries": d.get("countries") or list(COUNTRIES), "fawaz": "fawaz" in perms_of(d)}
         if d["active"]:
             out[u].update(pub=d["pub"], priv=d["priv"])
@@ -218,12 +255,13 @@ def public_users():
 PLAIN_KEEP = {"users.json", "keys.json", "ntfy.json", "meta.json"}
 
 
-def seal_private(raw, users_pub):
-    """(PC) the Fawaz-confidential bundle -> (encrypted file, {user: wrapped key}) for allowed live users"""
+def seal_private(raw, users_pub, need="fawaz"):
+    """(PC) a confidential bundle (the Fawaz part, the projects report) -> (encrypted file, {user: wrapped key})
+    for the live users allowed to see it - sealed on the PC, so the plain data never reaches GitHub"""
     fk = os.urandom(32)
     users = users_pub.get("users", {})
     return seal_bytes(raw, fk), {u: wrap_for(d["pub"], fk) for u, d in users.items()
-                                 if is_live(d) and "fawaz" in perms_of(d) and d.get("pub")}
+                                 if is_live(d) and need in perms_of(d) and d.get("pub")}
 
 
 def _parts(data_dir):
@@ -254,7 +292,7 @@ def allowed(d, need, country):
     return need in p and (country is None or country in (d.get("countries") or list(COUNTRIES)))
 
 
-def seal_dir(data_dir, users_pub, fawaz_keys=None):
+def seal_dir(data_dir, users_pub, fawaz_keys=None, sealed=None):
     """encrypt the phone data part by part; every live user gets the keys of the parts he may open.
     Users are published under uid() - not by name. Expired / stopped users get no keys at all."""
     data_dir = Path(data_dir)
@@ -270,11 +308,16 @@ def seal_dir(data_dir, users_pub, fawaz_keys=None):
     for u, w in (fawaz_keys or {}).items():
         if u in live and "fawaz" in perms_of(live[u]):
             keys[uid(u)]["private"] = w
+    for part, need in (("projects", "projects"), ("routines", "routines")):    # other parts sealed on the PC: {part: {user: wrapped key}}
+        for u, w in ((sealed or {}).get(part) or {}).items():
+            if u in live and need in perms_of(live[u]):
+                keys[uid(u)][part] = w
     (data_dir / "keys.json").write_text(json.dumps({"v": 2, "keys": keys}), encoding="utf-8")
     pub = {}
     for u, d in users.items():
         if u in live:
-            pub[uid(u)] = {"priv": d["priv"], "perms": perms_of(d), "countries": d.get("countries") or list(COUNTRIES),
+            pub[uid(u)] = {"priv": d["priv"], "perms": perms_of(d), "rids": d.get("rids") or d.get("routines") or [],
+                           "countries": d.get("countries") or list(COUNTRIES),
                            "expires": d.get("expires", "")}
         elif d.get("active") and d.get("expires"):
             pub[uid(u)] = {"expired": d["expires"]}

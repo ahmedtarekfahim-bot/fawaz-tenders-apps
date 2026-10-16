@@ -58,3 +58,21 @@ def open_window(title, port, bg_args, width=1440, height=920):
         subprocess.Popen([edge, f"--app={url}", f"--window-size={width},{height}"], close_fds=True)
         return
     webbrowser.open(url)
+
+
+def open_url(title, url, width=1280, height=900):
+    """a site in the program's own window (the subscriber app on PCs other than the owner's)"""
+    try:
+        import webview
+        webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
+        webview.create_window(title, url, width=width, height=height, min_size=(420, 600), text_select=True)
+        webview.start(private_mode=False, storage_path=os.path.join(
+            os.environ.get("LOCALAPPDATA", str(Path.home())), "FAWAZ Tenders", "webview"))
+        return
+    except Exception:                             # noqa: BLE001
+        pass
+    edge = edge_path()
+    if edge:
+        subprocess.Popen([edge, f"--app={url}", f"--window-size={width},{height}"], close_fds=True)
+        return
+    webbrowser.open(url)

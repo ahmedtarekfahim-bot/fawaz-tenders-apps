@@ -7,8 +7,19 @@
                                                           the accounts list, and resets it from the window
 The messages carry only a user name; the worst a stranger can do with the topic is cause a reset mail
 to the owner (at most one every 10 minutes per user).
+
+Commands from the routines tab of the phone are signed, so knowing the topic is not enough:
+  run|<user>|<routine id>|<unix time>|<sig>             - start a routine on this PC
+  send|<user>|<routine id>,<report no>,<email no>|...    - e-mail a report to one of the saved addresses
+  summary|<user>|<item id>,<email no>|...                 - make a tender summary and e-mail it
+  get|<user>|<routine id>,<report no>|...                 - a report for the phone: sealed with the routines
+                                                            key, posted as a short-lived ntfy attachment
+sig = HMAC-SHA256(routines key, "kind|user|arg|time") - the key reaches only accounts allowed the routines
+(inside their sealed part); the PC checks the account, the time (10 minutes) and never runs one twice.
 """
+import hmac, hashlib
 import json, time, secrets, threading, urllib.request, datetime
+from pathlib import Path
 import fawaz_config as cfg
 
 NTFY = "https://ntfy.sh/"
@@ -68,7 +79,79 @@ def reset_owner(why, log=print):
         return pw, err
 
 
-def poll(log=print):
+def routines_key():
+    k = cfg.S.get("routines_key")
+    if not k:
+        k = secrets.token_hex(24)
+        cfg.save_setting("routines_key", k)
+    return k
+
+
+_done = set()
+
+
+def _command(msg, hooks, log):
+    """a signed command from the phone -> True when it was one (handled or refused)"""
+    parts = msg.split("|")
+    if len(parts) != 5 or parts[0] not in ("run", "send", "summary", "get"):
+        return False
+    kind, user, arg, ts, sig = parts
+    import accounts
+    good = hmac.new(routines_key().encode(), f"{kind}|{user}|{arg}|{ts}".encode(), hashlib.sha256).hexdigest()[:32]
+    d = accounts.load()["users"].get(accounts.norm_name(user))
+    if not (hmac.compare_digest(good, sig) and ts.isdigit() and abs(time.time() - int(ts)) < 600 and sig not in _done
+            and d and accounts.is_live(d) and "routines" in accounts.perms_of(d)
+            and {"run": ["run"], "send": ["send"], "summary": ["summary", "send"], "get": ["share"]}[kind][0] in accounts.perms_of(d)
+            and (kind != "summary" or "send" in accounts.perms_of(d))
+            and (kind == "summary" or accounts.routine_ok(d, arg.split(",")[0]))):
+        log(f"طلب من الموبايل اترفض ({kind} - {user})")
+        return True
+    _done.add(sig)
+    import routines
+    try:
+        if kind == "run":
+            log(f"الموبايل ({user}): {routines.run(arg, hooks or {}, f'الموبايل ({user})')}")
+        elif kind == "send":
+            rid, k, e, *f = arg.split(",")
+            lst = routines.listing()
+            r = next(x for x in lst["routines"] if x["id"] == rid)
+            to = routines.recipients()[int(e)]
+            frm = lst["senders"][int(f[0])] if f and f[0] != "" else None
+            err = routines.send([r["reports"][int(k)]["path"]], [to], sender_addr=frm)
+            log(f"الموبايل ({user}): " + (f"الإرسال ما تمش: {err}" if err else f"اتبعت {r['reports'][int(k)]['name']} على {to}"))
+        elif kind == "get":                      # the phone opens / shares a report: sealed upload, gone in hours
+            rid, k = arg.split(",")[:2]
+            r = next(x for x in routines.listing()["routines"] if x["id"] == rid)
+            f = Path(r["reports"][int(k)]["path"])
+            if f.stat().st_size > 14_000_000:
+                log(f"الملف {f.name} أكبر من إن الموبايل يفتحه - اتبعت على الإيميل بدل كده")
+                return True
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+            import os
+            key = hashlib.sha256((routines_key() + "|file").encode()).digest()
+            iv = os.urandom(12)
+            data = iv + AESGCM(key).encrypt(iv, f.read_bytes(), None)
+            req = urllib.request.Request(f"{NTFY}{topic()}-files", data=data, method="PUT",
+                                         headers={"Filename": sig[:16] + ".bin", "Title": "file"})
+            urllib.request.urlopen(req, timeout=120).read()
+            log(f"الموبايل ({user}) فتح {f.name}")
+        elif kind == "summary":
+            iid, e, *f = arg.split(",")
+            to = routines.recipients()[int(e)]
+            frm = routines.senders()[int(f[0])] if f and f[0] != "" else None
+
+            def job():
+                import tender_summary
+                res = tender_summary.summarize(int(iid), log)
+                err = routines.send([res["path"]], [to], f"ملخص المناقصة - {Path(res['folder']).name[:120]}", sender_addr=frm)
+                log(f"ملخص من الموبايل ({user}): " + (f"الإرسال ما تمش: {err}" if err else f"اتبعت على {to}"))
+            threading.Thread(target=job, daemon=True).start()
+    except Exception as e:                      # noqa: BLE001
+        log(f"طلب الموبايل ({kind}) ما اتنفذش: {e}")
+    return True
+
+
+def poll(log=print, hooks=None):
     since = int(cfg.S.get("reset_since") or time.time() - 600)
     try:
         with urllib.request.urlopen(f"{NTFY}{topic()}/json?poll=1&since={since}", timeout=20) as r:
@@ -83,6 +166,8 @@ def poll(log=print):
     import accounts
     owner = accounts.ensure_owner()
     for m in msgs:
+        if _command(str(m.get("message", "")), hooks, log):
+            continue
         kind, _, user = str(m.get("message", "")).partition("|")
         user = accounts.norm_name(user) or owner
         when = datetime.datetime.fromtimestamp(int(m["time"])).isoformat(timespec="minutes")

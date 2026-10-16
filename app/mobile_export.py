@@ -208,6 +208,29 @@ def build_feed(log=print):
         (data / "fkeys.json").write_text(json.dumps(fkeys), encoding="utf-8")
     except Exception as e:                              # noqa: BLE001
         log(f"بيانات فواز المشفرة: {e}")
+    skeys = {}
+    try:                                                # the weekly projects report - internal, sealed here too
+        import projects
+        praw = json.dumps(projects.phone_bundle(), ensure_ascii=False, separators=(",", ":")).encode()
+        _last_feed["proj_now"] = hashlib.sha256(praw).hexdigest()
+        enc, pkeys = accounts.seal_private(praw, users, "projects")
+        (data / "projects.enc").write_text(json.dumps(enc), encoding="utf-8")
+        skeys["projects"] = pkeys
+    except Exception as e:                              # noqa: BLE001
+        log(f"تقرير المشاريع المشفر: {e}")
+    try:                                                # the routines tab: reports list + the key that signs commands
+        import routines, phone_lock
+        idx = routines.phone_index()
+        idx["rkey"] = phone_lock.routines_key()
+        rraw = json.dumps(idx, ensure_ascii=False, separators=(",", ":")).encode()
+        _last_feed["rout_now"] = hashlib.sha256(json.dumps(
+            [[r["id"], [x["at"] for x in r["reports"]], r["last_run"]] for r in idx["routines"]], ensure_ascii=False).encode()).hexdigest()
+        enc, rkeys = accounts.seal_private(rraw, users, "routines")
+        (data / "routines.enc").write_text(json.dumps(enc), encoding="utf-8")
+        skeys["routines"] = rkeys
+    except Exception as e:                              # noqa: BLE001
+        log(f"الروتينات المشفرة: {e}")
+    (data / "skeys.json").write_text(json.dumps(skeys), encoding="utf-8")
     return meta
 
 
@@ -220,8 +243,10 @@ def build_site(feed_data, site, log=print):
     d = site / "data"
     users = json.loads((d / "users_pub.json").read_text(encoding="utf-8"))
     fkeys = json.loads((d / "fkeys.json").read_text(encoding="utf-8")) if (d / "fkeys.json").exists() else {}
+    skeys = json.loads((d / "skeys.json").read_text(encoding="utf-8")) if (d / "skeys.json").exists() else {}
     (d / "users_pub.json").unlink()
-    n = accounts.seal_dir(d, users, fkeys)
+    (d / "skeys.json").unlink(missing_ok=True)
+    n = accounts.seal_dir(d, users, fkeys, skeys)
     (site / ".nojekyll").write_text("", encoding="utf-8")
     return n
 
@@ -236,7 +261,7 @@ def _publish(log, force):
     meta = build_feed(log)
     sig = hashlib.sha256(b"".join((FEED / "data" / n).read_bytes() for n in
                                   ("directory.json", "news.json", "awards.json", "users_pub.json"))).hexdigest()
-    sig = hashlib.sha256((sig + _last_feed.get("priv_now", "")).encode()).hexdigest()
+    sig = hashlib.sha256((sig + _last_feed.get("priv_now", "") + _last_feed.get("proj_now", "") + _last_feed.get("rout_now", "")).encode()).hexdigest()
     changed = sig != _last_feed.get("sig")
     if force or changed or time.time() - _last_feed.get("at", 0) > 1800:
         if push_dir(FEED, "pc-feed", url, f"pc feed {meta['updated']}", log):

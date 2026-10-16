@@ -234,7 +234,7 @@ def main():
     build = STATE / "build"
     shutil.rmtree(build, ignore_errors=True)
     meta = me.export(build, award_rows=AW["rows"], meetings=meetings)
-    for extra in ("users_pub.json", "fkeys.json", "private.enc", "ntfy.json"):   # from the PC
+    for extra in ("users_pub.json", "fkeys.json", "private.enc", "ntfy.json", "skeys.json", "projects.enc", "routines.enc"):   # from the PC
         if (FEED / extra).exists():
             shutil.copy2(FEED / extra, build / "data" / extra)
     meta.update(by="cloud", pc_updated=load(FEED / "meta.json", {}).get("updated", ""),

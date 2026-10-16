@@ -1249,7 +1249,19 @@ def idf(rows):
     return _IDF
 
 
-def search(q="", status="", cat="", org="", fawaz=False, closing_days=0, limit=250, country="", fresh=0):
+def _near(s, hay):
+    """a word read from a photo (OCR may miss a letter or two) matches a similar word"""
+    import difflib
+    best = 0.0
+    for h in hay:
+        if abs(len(h) - len(s)) <= 2 and h[:1] == s[:1] or abs(len(h) - len(s)) <= 1:
+            m = difflib.SequenceMatcher(None, s, h)
+            if m.real_quick_ratio() >= 0.7 and m.ratio() >= 0.7:
+                best = max(best, m.ratio())
+    return 0.8 if best else 0
+
+
+def search(q="", status="", cat="", org="", fawaz=False, closing_days=0, limit=250, country="", fresh=0, fuzzy=False):
     rows = all_items()
     tb = idf(rows)
     qs = [s for s in dict.fromkeys(stems(q)) if not s.isdigit()]
@@ -1277,12 +1289,13 @@ def search(q="", status="", cat="", org="", fawaz=False, closing_days=0, limit=2
         sc = 1.0
         if qs or qn:
             hay = set(stems(r["subject"] + " " + r["org"] + " " + (r["winner"] or "")))
-            got = sum(tb.get(s, 8.0) * (1 if s in hay else 0.6 if len(s) >= 4 and any(h.startswith(s) for h in hay) else 0) for s in qs)
+            got = sum(tb.get(s, 8.0) * (1 if s in hay else 0.6 if len(s) >= 4 and any(h.startswith(s) for h in hay)
+                                        else _near(s, hay) if fuzzy and len(s) >= 3 else 0) for s in qs)
             sc = got / wsum if qs else 0
             if qn:
                 ns = 1.0 if all(x in ct.num_parts(r["number"]) for x in qn) else 0
                 sc = max(sc, ns) if not qs else 0.65 * sc + 0.35 * ns
-            if sc < 0.4:
+            if sc < (0.3 if fuzzy else 0.4):
                 continue
         out.append((sc, r))
     if q:
@@ -1292,6 +1305,139 @@ def search(q="", status="", cat="", org="", fawaz=False, closing_days=0, limit=2
         out.sort(key=lambda t: (rank.get(t[1]["status"], 9), t[1]["closing"] or "9999" if t[1]["status"] == "مطروحة"
                                 else "~" + (t[1]["award_date"] or t[1]["publish"] or "")))
     return [dict(r, score=round(s, 3)) for s, r in out[:limit]]
+
+
+FILTER_KEYS = ("dfrom", "dto", "company", "client", "sort", "dby")
+
+
+def _money(v):
+    m = re.search(r"\d[\d,]*(?:\.\d+)?", str(v or "").replace("٬", ","))
+    try:
+        return float(m.group(0).replace(",", "")) if m else 0.0
+    except ValueError:
+        return 0.0
+
+
+def refine(rows, q, kind):
+    """the filter bar shared by every tab: a period (from / to), the order (newest / oldest / closing soon /
+    highest value), a company (winner / bidder / named in it) and a client (ministry / authority / source).
+    kind: items | news | awards | projects"""
+    dby = q.get("dby", "")
+
+    def dt(r):
+        if kind == "items":
+            if dby in ("publish", "closing"):
+                return r.get(dby) or ""
+            if dby == "award":
+                return r.get("award_date") or ""
+            fs = r.get("first_seen") or ""
+            return r.get("publish") or r.get("award_date") or ("" if fs.startswith("2000") else fs[:10]) or r.get("closing") or ""
+        return str(r.get("date") or r.get("_date") or "")[:10]
+
+    def co_text(r):
+        if kind == "items":
+            return " ".join(str(r.get(k) or "") for k in ("winner", "subject", "notes"))
+        if kind == "awards":
+            return f"{r.get('winner', '')} {r.get('notes', '')}"
+        if kind == "news":
+            return f"{r.get('title', '')} {r.get('summary', '')}"
+        return r.get("_text", "")
+
+    def cl_text(r):
+        if kind == "news":
+            return f"{r.get('title', '')} {r.get('summary', '')} {r.get('source', '')}"
+        if kind == "projects":
+            return r.get("_client", "") or r.get("_text", "")
+        return str(r.get("org") or "")
+
+    co, cl = norm(q.get("company", "")).strip(), norm(q.get("client", "")).strip()
+    df, dt_to = q.get("dfrom", ""), q.get("dto", "")
+    out = []
+    for r in rows:
+        d = dt(r)
+        if (df and not (d and d >= df)) or (dt_to and not (d and d[:10] <= dt_to)):
+            continue
+        if co and not all(w in norm(co_text(r)) for w in co.split()):
+            continue
+        if cl and not all(w in norm(cl_text(r)) for w in cl.split()):
+            continue
+        out.append(r)
+    srt = q.get("sort", "")
+    if srt == "new":
+        out.sort(key=lambda r: dt(r) or "", reverse=True)
+    elif srt == "old":
+        out.sort(key=lambda r: dt(r) or "9999")
+    elif srt == "closing" and kind == "items":
+        today = iso(TODAY())
+        out.sort(key=lambda r: (not (r.get("closing") or "") >= today, r.get("closing") or "9999"))
+    elif srt == "value":
+        out.sort(key=lambda r: _money(r.get("value") or r.get("total") or r.get("_value")), reverse=True)
+    return out
+
+
+def filtering(q):
+    return any(q.get(k) for k in FILTER_KEYS)
+
+
+def projects_view(q, sess_can_open=True):
+    """the 'شغل المشاريع' tab: one week's report (default latest), one sheet, searched and filtered"""
+    import projects
+    d = projects.load(q.get("path") or None)
+    sheets = d["sheets"]
+    sh = next((x for x in sheets if x["name"] == q.get("sheet")), sheets[0] if sheets else None)
+    rows = []
+    if sh:
+        hs = sh["headers"]
+        di = next((i for i, h in enumerate(hs) if h.strip() in ("Dt", "تاريخ الطرح", "التاريخ", "تاريخ الإقفال", "تاريخ الترسية")), None)
+        ci = next((i for i, h in enumerate(hs) if h.strip() in ("الجهة",)), None)
+        vi = next((i for i, h in enumerate(hs) if h.strip() in ("Price", "القيمة", "القيمة / النسبة", "Lowest Price")), None)
+        txt = lambda v: v["t"] if isinstance(v, dict) else str(v or "")
+        for n, r in enumerate(sh["rows"]):
+            cells = [txt(v) for v in r["c"]]
+            rows.append({"i": n, "sec": r["sec"], "c": r["c"], "_text": " ".join(cells + [r["sec"]]),
+                         "_date": iso(any_date(cells[di])) if di is not None and cells[di] else "",
+                         "_client": cells[ci] if ci is not None else "", "_value": cells[vi] if vi is not None else ""})
+        qq = norm(q.get("q", "")).split()
+        if qq:
+            rows = [r for r in rows if all(w in norm(r["_text"]) for w in qq)]
+        rows = refine(rows, q, "projects")
+    strip_paths = (lambda v: v["t"] if isinstance(v, dict) else v) if not sess_can_open else (lambda v: v)
+    return {"no": d["no"], "week": d["week"], "year": d.get("year", ""), "path": d.get("path", ""),
+            "weeks": d["weeks"][:60], "sheets": [{"name": x["name"], "title": x["title"], "n": len(x["rows"])} for x in sheets],
+            "sheet": sh["name"] if sh else "", "title": sh["title"] if sh else "", "headers": sh["headers"] if sh else [],
+            "rows": [{"i": r["i"], "sec": r["sec"], "c": [strip_paths(v) for v in r["c"]]} for r in rows],
+            "files": d.get("files", []) if sess_can_open else []}
+
+
+def ocr_image(data_url):
+    """a photo / screenshot -> its text (Windows OCR, Arabic then English)"""
+    import base64, tempfile, shutil, subprocess
+    raw = base64.b64decode(data_url.split(",", 1)[-1])
+    tmp = Path(tempfile.mkdtemp(prefix="gcc-scan-"))
+    try:
+        try:                                         # Windows OCR wants a modest image
+            import pymupdf
+            pix = pymupdf.Pixmap(raw)
+            if pix.width > 2400:
+                pix = pymupdf.Pixmap(pix, 2400, int(pix.height * 2400 / pix.width))
+            pix.save(tmp / "p1.png")
+        except Exception:                            # noqa: BLE001
+            (tmp / "p1.png").write_bytes(raw)
+        ps1 = cfg.res_dir() / "ocr" / "ocr.ps1"
+        text = ""
+        for lang in ("ar-SA", "en-US"):
+            (tmp / "p1.txt").unlink(missing_ok=True)
+            subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ps1), str(tmp), lang],
+                           capture_output=True, timeout=120, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            if (tmp / "p1.txt").exists():
+                t = (tmp / "p1.txt").read_text(encoding="utf-8-sig")
+                if lang == "ar-SA":
+                    import tender_summary as ts
+                    t = "\n".join(ts._flip(x) for x in t.splitlines())
+                text += t + "\n"
+        return text.strip()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def search_news(q, limit=80, fawaz=False, country=""):
@@ -1400,7 +1546,8 @@ def accounts_api(body, log):
     try:
         if act == "add":
             u, pw = accounts.add_user(body.get("name", ""), note=body.get("note", ""), perms=body.get("perms"),
-                                      countries=body.get("countries"), expires=_until(body.get("months")))
+                                      countries=body.get("countries"), expires=_until(body.get("months")),
+                                      routines=body.get("rids") or [])
             out.update(new={"u": u, "pw": pw}, msg=f"اتعمل حساب {u}")
             changed = True
         elif act == "extend":                       # +N months from today or from the current end, whichever is later
@@ -1415,7 +1562,8 @@ def accounts_api(body, log):
                 out["msg"] = f"الاشتراك بقى لحد {_until(months, base)}"
             changed = True
         elif act == "perms":
-            accounts.update(user, perms=body.get("perms") or [], countries=body.get("countries") or [])
+            accounts.update(user, perms=body.get("perms") or [], countries=body.get("countries") or [],
+                            routines=body.get("rids") or [])
             out["msg"], changed = "الصلاحيات اتحفظت", True
         elif act == "reset":
             pw = accounts.set_password(user)
@@ -1439,8 +1587,14 @@ def accounts_api(body, log):
         out["msg"] = f"خطأ: {e}"
     if changed:                                     # the phone site is re-encrypted for the new list right away
         threading.Thread(target=me.publish, args=(log, True), daemon=True).start()
-    out.update(users=accounts.listing(), owner=owner, owner_password=cfg.S.get("phone_owner_password", ""),
-               email=phone_lock.owner_email(), site=me.PAGES, features=accounts.FEATURES, countries=accounts.COUNTRIES,
+    users = accounts.listing()
+    for x in users:                                 # the owner's password before it was kept in the list
+        if x["u"] == owner and not x["password"]:
+            x["password"] = cfg.S.get("phone_owner_password", "")
+    out.update(users=users, owner=owner, owner_password=cfg.S.get("phone_owner_password", ""),
+               email=phone_lock.owner_email(), site=me.PAGES, features=accounts.FEATURES, actions=accounts.ACTIONS,
+               routine_list=[{"id": r["id"], "title": r["title"], "icon": r["icon"]} for r in __import__("routines").REGISTRY],
+               default_actions=accounts.DEFAULT_ACTIONS, countries=accounts.COUNTRIES,
                today=datetime.date.today().isoformat())
     return out
 
@@ -1793,11 +1947,11 @@ def serve(open_browser=True):
                         os._exit(0)
                 except Exception:        # noqa: BLE001
                     pass
-            if cfg.S.get("mobile_publish") and time.time() - state.get("phone_poll", 0) >= 60:
+            if cfg.S.get("mobile_publish") and time.time() - state.get("phone_poll", 0) >= 25:
                 state["phone_poll"] = time.time()      # "forgot the passphrase" requests from the phone
                 try:
                     import phone_lock
-                    threading.Thread(target=phone_lock.poll, args=(lambda m: state["log"].append(m),), daemon=True).start()
+                    threading.Thread(target=phone_lock.poll, args=(lambda m: state["log"].append(m), state.get("hooks")), daemon=True).start()
                 except Exception:        # noqa: BLE001
                     pass
             every = auto_minutes()
@@ -1813,12 +1967,20 @@ def serve(open_browser=True):
 
     import http.cookies
     import desktop_auth as auth
+
+    def _gazette_now():
+        gazette_watch(lambda m: state["log"].append(m))
+    ROUTINE_HOOKS = {"update": lambda: start_update("تحديث من الروتينات"), "awards": lambda: start_update("ترسيات الجهاز والمحاضر (من الروتينات)"), "gazette": _gazette_now}
+    state["hooks"] = ROUTINE_HOOKS
     # what each call needs from the logged-in account ('' = any account); see desktop_auth.has
-    NEED = {"/api/search": "dir", "/api/detail": "dir", "/api/docs": "dir", "/api/docs/download": "dir",
-            "/api/report": "dir", "/api/news": "news", "/api/awards/search": "awards", "/api/awards/detail": "awards",
-            "/api/awards/minutes": "awards", "/api/awards/report": "awards", "/api/open-excel": "awards",
+    NEED = {"/api/search": "dir", "/api/detail": "dir", "/api/docs": "dir", "/api/docs/download": "docs",
+            "/api/report": "pdf", "/api/news": "news", "/api/awards/search": "awards", "/api/awards/detail": "awards",
+            "/api/awards/minutes": "awards", "/api/awards/report": "pdf", "/api/open-excel": "awards",
             "/api/gazette/search": "awards", "/api/page.png": "any:dir,awards", "/api/file": "any:dir,awards,watch",
-            "/api/watch": "watch", "/api/open-file": "fawaz", "/api/accounts": "admin",
+            "/api/watch": "watch", "/api/open-file": "fawaz", "/api/accounts": "admin", "/api/projects": "projects",
+            "/api/summary": "summary", "/api/ocr-image": "scan", "/api/routines": "routines", "/api/routines/run": "run",
+            "/api/routines/send": "send", "/api/routines/copy": "share", "/api/routines/recipients": "admin",
+            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb",
             ("POST", "/api/settings"): "admin", ("POST", "/api/gazette-account"): "watch", ("POST", "/api/capt-account"): "dir"}
     OPEN = {"/", "/api/me", "/api/login", "/api/logout", "/api/forgot"}
 
@@ -1881,6 +2043,9 @@ def serve(open_browser=True):
                 if u.path == "/api/me":
                     return self.send({"me": auth.public(self.sess), "owner_pc": auth.master_mode(),
                                       "version": cfg.build_info().get("version")})
+                if not auth.has(self.sess, "filters"):      # the period / company / client filter is an option too
+                    for k in FILTER_KEYS:
+                        q.pop(k, None)
                 mine = self.sess.get("countries") or []
                 if q.get("country") and not auth.country_ok(self.sess, q["country"]):
                     q["country"] = "-"                  # a country he may not see: nothing
@@ -1926,20 +2091,33 @@ def serve(open_browser=True):
                     return self.send({"user": user, "has_password": has})
                 if u.path == "/api/search":
                     some = not q.get("country") and len(mine) < len(COUNTRIES)   # 2 of 3 countries: search more, keep his
-                    return self.send(self.countries(search(
+                    big = filtering(q)                       # a filter: look through everything, then cut
+                    rows = self.countries(search(
                         q.get("q", ""), q.get("status", ""), q.get("cat", ""), q.get("org", ""), q.get("fawaz") == "1",
-                        int(q.get("days") or 0), limit=750 if some else 250, country=q.get("country", ""),
-                        fresh=int(q.get("fresh") or 0)))[:250])
+                        int(q.get("days") or 0), limit=100000 if big else (750 if some else 250), country=q.get("country", ""),
+                        fresh=int(q.get("fresh") or 0), fuzzy=q.get("fuzzy") == "1"))
+                    return self.send(refine(rows, q, "items")[:400] if big else rows[:250])
                 if u.path == "/api/news":
-                    rows = self.countries(search_news(q.get("q", ""), fawaz=q.get("fawaz") == "1", country=q.get("country", "")))
+                    rows = self.countries(search_news(q.get("q", ""), limit=100000 if filtering(q) else 80,
+                                                      fawaz=q.get("fawaz") == "1", country=q.get("country", "")))
                     if not auth.has(self.sess, "watch"):     # news about the company belong to the Fawaz tab
                         rows = [r for r in rows if not str(r.get("query") or "").startswith("شركة:")]
-                    return self.send(rows)
+                    return self.send(refine(rows, q, "news")[:300] if filtering(q) else rows)
+                if u.path == "/api/projects":
+                    return self.send(projects_view(q, auth.master_mode()))
+                if u.path == "/api/routines":
+                    import routines
+                    d = routines.listing()
+                    d["routines"] = [r for r in d["routines"] if auth.routine_ok(self.sess, r["id"])]
+                    return self.send(d)
                 if u.path == "/api/detail":
                     self.item_ok(q["id"])
                     return self.send(detail(int(q["id"])))
                 # --- Kuwait awards + minutes (the awards tool, same program)
                 if u.path == "/api/awards/search":
+                    if filtering(q):
+                        return self.send(refine(ct.search_awards(q.get("q", ""), limit=100000, year=q.get("year") or None),
+                                                q, "awards")[:300])
                     return self.send(ct.search_awards(q.get("q", ""), limit=60, year=q.get("year") or None))
                 if u.path == "/api/awards/detail":
                     rec = next(r for r in ct.read_excel_rows() if r["row"] == int(q["row"]))
@@ -1986,6 +2164,57 @@ def serve(open_browser=True):
                     return self.send({"ok": True}, headers=[("Set-Cookie", f"{auth.COOKIE}=; Path=/; Max-Age=0")])
                 if u.path == "/api/forgot":
                     return self.send({"msg": auth.forgot(body.get("u", ""))})
+                if u.path == "/api/ocr-image":                # scan a picture -> words to search with
+                    return self.send({"text": ocr_image(body.get("image", ""))})
+                if u.path.startswith("/api/routines/"):
+                    import routines
+                    act = u.path.rsplit("/", 1)[-1]
+                    if act in ("run", "send", "copy", "open"):     # only the routines this account may use
+                        lst = routines.listing()["routines"]
+                        ok_paths = {x["path"] for r in lst if auth.routine_ok(self.sess, r["id"]) for x in r["reports"]}
+                        if act == "run" and not auth.routine_ok(self.sess, body.get("id", "")) or                                 act != "run" and not set(body.get("paths") or [body.get("path", "")]) <= ok_paths:
+                            return self.send({"ok": False, "msg": "مش مسموحلك بالروتين ده"}, 403)
+                    if act == "run":
+                        return self.send({"msg": routines.run(body.get("id", ""), ROUTINE_HOOKS, f"الكمبيوتر ({self.sess['u']})")})
+                    if act == "send":
+                        err = routines.send(body.get("paths") or [], body.get("to") or [], body.get("subject", ""), body.get("note", ""),
+                                            body.get("from"))
+                        return self.send({"ok": not err, "msg": err or "اتبعت"})
+                    if act == "copy":
+                        err = routines.copy_files(body.get("paths") or [])
+                        return self.send({"ok": not err, "msg": err or "اتنسخ - الصقه في الواتساب أو الإيميل (Ctrl+V)"})
+                    if act == "recipients":
+                        if "from" in body:
+                            routines.save_sender(body["from"])
+                        return self.send({"recipients": routines.save_recipients(body.get("list") or routines.recipients()),
+                                          "sender": routines.sender()})
+                    if act == "open":
+                        f = routines.allowed_file(body.get("path", ""))
+                        if f:
+                            os.startfile(str(f), "print" if body.get("print") else "open")
+                        return self.send({"ok": bool(f)})
+                if u.path == "/api/bnb":                      # the BNB form for a tender (own button)
+                    import tender_summary
+                    self.item_ok(body["id"])
+                    r = tender_summary.make_bnb(int(body["id"]), lambda m: state["log"].append(m))
+                    if r.get("pdf"):
+                        os.startfile(r["pdf"])
+                    return self.send(r)
+                if u.path == "/api/summary/send":             # e-mail a tender's summary to the chosen addresses
+                    import routines
+                    self.item_ok(body["id"])
+                    f = Path(body.get("path", ""))
+                    if f.name != "ملخص المناقصة.html":
+                        return self.send({"ok": False, "msg": "ده مش ملخص"}, 403)
+                    err = routines.send([str(f)], body.get("to") or [], body.get("subject", ""), "", body.get("from"))
+                    return self.send({"ok": not err, "msg": err or "اتبعت"})
+                if u.path == "/api/summary":                  # download + read + summarize one tender
+                    import tender_summary
+                    self.item_ok(body["id"])
+                    r = tender_summary.summarize(int(body["id"]), lambda m: state["log"].append(m))
+                    if body.get("open", True):
+                        os.startfile(r["path"])
+                    return self.send({k: r[k] for k in ("path", "folder", "files", "pages", "found")})
                 if u.path in ("/api/report", "/api/docs/download"):
                     self.item_ok(body["id"])
                 if u.path == "/api/report":
@@ -2006,6 +2235,8 @@ def serve(open_browser=True):
                     return self.send({"ok": True})
                 if u.path == "/api/open":
                     target = body.get("url", "")
+                    if not target.startswith("http") and not auth.master_mode():
+                        return self.send({"ok": False})
                     if target.startswith("http") or Path(target).exists():
                         os.startfile(target)
                     return self.send({"ok": True})

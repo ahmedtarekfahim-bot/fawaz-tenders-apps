@@ -73,7 +73,7 @@ def lookup(name):
             return None, "الحساب ده متوقف - كلّم الأدمن"
         if d.get("expires") and d["expires"] < accounts.today():
             return None, f"الاشتراك انتهى يوم {d['expires']} - كلّم الأدمن يجدده"
-        return {"u": u, "priv": d["priv"], "perms": accounts.perms_of(d),
+        return {"u": u, "priv": d["priv"], "perms": accounts.perms_of(d), "rids": [] if d.get("admin") else (d.get("routines") or []),
                 "countries": d.get("countries") or list(accounts.COUNTRIES), "expires": d.get("expires", ""),
                 "admin": bool(d.get("admin"))}, ""
     users = _site_users()
@@ -86,7 +86,7 @@ def lookup(name):
         return None, "الحساب ده متوقف - كلّم الأدمن"
     if d.get("expired") or (d.get("expires") and d["expires"] < accounts.today()):
         return None, f"الاشتراك انتهى يوم {d.get('expired') or d.get('expires')} - كلّم الأدمن يجدده"
-    return {"u": u, "priv": d["priv"], "perms": list(d.get("perms") or accounts.DEFAULT_PERMS),
+    return {"u": u, "priv": d["priv"], "perms": accounts.perms_of({"perms": d.get("perms")}), "rids": d.get("rids") or [],
             "countries": d.get("countries") or list(accounts.COUNTRIES), "expires": d.get("expires", ""),
             "admin": False}, ""
 
@@ -125,7 +125,7 @@ _h = lambda tok: hashlib.sha256(tok.encode()).hexdigest()
 
 
 def public(s):
-    return {k: s[k] for k in ("u", "perms", "countries", "expires", "admin")} if s else None
+    return {k: s.get(k) for k in ("u", "perms", "countries", "expires", "admin", "rids")} if s else None
 
 
 def login(name, password, remember=False):
@@ -145,7 +145,7 @@ def login(name, password, remember=False):
     _fails.pop(u, None)
     tok = secrets.token_urlsafe(32)
     now = time.time()
-    s = {k: acc[k] for k in ("u", "perms", "countries", "expires", "admin")}
+    s = {k: acc[k] for k in ("u", "perms", "countries", "expires", "admin", "rids")}
     s.update(remember=bool(remember), until=now + (REMEMBER_DAYS * 86400 if remember else SHORT_HOURS * 3600), checked=now)
     with _lock:
         for k in [k for k, v in _sessions.items() if v.get("until", 0) < now]:
@@ -180,7 +180,7 @@ def session(tok):
                 _sessions.pop(key, None)
                 _save_sessions(_sessions)
                 return None
-            s.update({k: acc[k] for k in ("perms", "countries", "expires", "admin")}, checked=time.time())
+            s.update({k: acc[k] for k in ("perms", "countries", "expires", "admin", "rids")}, checked=time.time())
             _save_sessions(_sessions)
     return s
 
@@ -242,6 +242,10 @@ def has(s, need):
         return any(has(s, x) for x in need[4:].split(","))
     p = s.get("perms") or []
     return need in p or (need == "awards" and "watch" in p)   # "ترسيات لينا" in the Fawaz tab uses the awards list
+
+
+def routine_ok(s, rid):
+    return bool(s.get("admin")) or not s.get("rids") or rid in s["rids"]
 
 
 def country_ok(s, c):
