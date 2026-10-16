@@ -100,25 +100,78 @@ def _note_run(rid, status, msg=""):
 
 
 def claude_exe():
-    """Claude Code on this PC (the program starts the Claude routines with it)"""
+    r"""Claude Code on this PC (the program starts the Claude routines with it): a set path, one on PATH,
+    or the newest copy the Claude desktop app keeps (%APPDATA%\Claude\claude-code\<version>\...\claude.exe -
+    it moves on every app update, so it is looked up every time)"""
     for c in (cfg.S.get("claude_exe"), shutil.which("claude"), HOME / ".local" / "bin" / "claude.exe",
               Path(os.environ.get("APPDATA", "")) / "npm" / "claude.cmd"):
         if c and Path(c).exists():
             return str(c)
-    return ""
+    apps = [Path(os.environ.get("APPDATA", "")) / "Claude" / "claude-code"]
+    # the Claude desktop app is a packaged app: outside it, its folder really is under Packages\Claude_*
+    apps += [p / "LocalCache" / "Roaming" / "Claude" / "claude-code"
+             for p in (Path(os.environ.get("LOCALAPPDATA", "")) / "Packages").glob("Claude_*")]
+    found = []
+    for f in (x for app in apps for x in app.glob("*/*/claude.exe")):
+        try:
+            found.append((tuple(int(x) for x in f.parent.parent.name.split(".")), f.stat().st_mtime, f))
+        except (ValueError, OSError):
+            continue
+    return str(max(found)[2]) if found else ""
+
+
+def _clean_env():
+    """the program's own environment, without anything a parent Claude session may have set"""
+    return {k: v for k, v in os.environ.items() if not k.upper().startswith(("CLAUDE", "ANTHROPIC"))}
+
+
+_login = {"at": 0, "ok": False}
+
+
+def claude_signed_in(force=False):
+    """is Claude Code signed in on this PC (checked at most every 10 minutes)"""
+    import time
+    if not force and time.time() - _login["at"] < 600:
+        return _login["ok"]
+    ok = False
+    cl = claude_exe()
+    if cl:
+        try:
+            r = subprocess.run([cl, "auth", "status"], capture_output=True, timeout=40, env=_clean_env(),
+                               creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            ok = '"loggedIn": true' in r.stdout.decode("utf-8", "ignore")
+        except Exception:                           # noqa: BLE001
+            ok = False
+    _login.update(at=time.time(), ok=ok)
+    return ok
+
+
+_procs = {}
+
+
+def sign_in():
+    """open the Claude sign-in (the user finishes it in the browser) in its own console window"""
+    cl = claude_exe()
+    if not cl:
+        return "Claude Code مش موجود على الجهاز ده (بييجي مع برنامج Claude للكمبيوتر)"
+    subprocess.Popen([cl, "auth", "login"], env=_clean_env(), creationflags=getattr(subprocess, "CREATE_NEW_CONSOLE", 0))
+    _login["at"] = 0
+    return "اتفتحت نافذة تسجيل الدخول - كمّل في المتصفح، وبعدها الزرار يشتغل"
 
 
 def listing():
     rn, cl = runs(), claude_exe()
+    signed = claude_signed_in() if cl else False
     out = []
     for r in REGISTRY:
         sk = _skill(r["id"]) if r["kind"] == "claude" else None
         reps = reports(r)
         out.append({"id": r["id"], "title": r["title"], "icon": r["icon"], "kind": r["kind"], "when": r["when"],
                     "description": (sk or {}).get("description", ""), "has_prompt": bool(sk),
-                    "can_run": r["kind"] == "builtin" or bool(sk and cl), "reports": reps,
+                    "can_run": r["kind"] == "builtin" or bool(sk and cl and signed), "reports": reps,
                     "last_report": reps[0]["at"] if reps else "", "last_run": rn.get(r["id"])})
-    return {"routines": out, "claude": bool(cl), "recipients": recipients(), "sender": sender(), "senders": senders()}
+    return {"routines": out, "claude": bool(cl), "claude_login": signed, "recipients": recipients(), "sender": sender(),
+            "senders": senders()}
 
 
 def run(rid, hooks, who="الكمبيوتر"):
@@ -138,12 +191,17 @@ def run(rid, hooks, who="الكمبيوتر"):
         return "ملقتش خطوات الروتين ده على الجهاز"
     if not cl:
         return "الروتين ده بيعمله Claude - محتاج Claude Code متسطب على الجهاز ده عشان يشتغل من الزرار"
+    if not claude_signed_in(force=True):
+        return "Claude Code محتاج تسجيل دخول مرة واحدة - دوس 🔑 سجّل دخول Claude في تبويب الروتينات"
+    if rid in _procs and _procs[rid].poll() is None:
+        return "الروتين ده شغال دلوقتي فعلاً - استنى لما يخلص"
     log = cfg.LOCAL / "routine logs"
     log.mkdir(parents=True, exist_ok=True)
     lf = open(log / f"{rid} {datetime.datetime.now():%Y-%m-%d %H%M}.log", "w", encoding="utf-8")
     p = subprocess.Popen([cl, "-p", sk["prompt"], "--permission-mode", cfg.S.get("routine_permission_mode", "auto")],
-                         cwd=str(WORK if WORK.exists() else HOME), stdout=lf, stderr=subprocess.STDOUT,
+                         cwd=str(WORK if WORK.exists() else HOME), stdout=lf, stderr=subprocess.STDOUT, env=_clean_env(),
                          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    _procs[rid] = p
     _note_run(rid, "running", f"اتشغّل من {who}")
     threading.Thread(target=_wait, args=(rid, p, lf), daemon=True).start()
     return "Claude بدأ يشتغل على الروتين في الخلفية - التقارير هتظهر هنا لما يخلص"

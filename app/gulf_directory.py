@@ -1980,7 +1980,7 @@ def serve(open_browser=True):
             "/api/watch": "watch", "/api/open-file": "fawaz", "/api/accounts": "admin", "/api/projects": "projects",
             "/api/summary": "summary", "/api/ocr-image": "scan", "/api/routines": "routines", "/api/routines/run": "run",
             "/api/routines/send": "send", "/api/routines/copy": "share", "/api/routines/recipients": "admin",
-            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb",
+            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin",
             ("POST", "/api/settings"): "admin", ("POST", "/api/gazette-account"): "watch", ("POST", "/api/capt-account"): "dir"}
     OPEN = {"/", "/api/me", "/api/login", "/api/logout", "/api/forgot"}
 
@@ -2183,6 +2183,8 @@ def serve(open_browser=True):
                     if act == "copy":
                         err = routines.copy_files(body.get("paths") or [])
                         return self.send({"ok": not err, "msg": err or "اتنسخ - الصقه في الواتساب أو الإيميل (Ctrl+V)"})
+                    if act == "signin":                       # Claude Code sign-in (once, the owner does it)
+                        return self.send({"msg": routines.sign_in()})
                     if act == "recipients":
                         if "from" in body:
                             routines.save_sender(body["from"])

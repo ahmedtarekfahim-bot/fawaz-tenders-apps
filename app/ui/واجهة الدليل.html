@@ -632,7 +632,9 @@ function recpBoxes(pre,checkedAll){const L=(RT&&RT.recipients)||[];return L.leng
 async function loadRT(){RT=await get('/api/routines');return RT}
 async function searchRoutines(q,keep){
   try{await loadRT()}catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
-  $('#chips').innerHTML=`${can('admin')?`<span class="chip" id="rtmail">📧 الإيميلات (منه وليه)<b>${RT.recipients.length}</b></span>`:''}`+(RT.claude?'':`<span class="chip" title="روتينات Claude بتشتغل من الزرار لما Claude Code يتسطب على الجهاز">⚠ Claude Code مش متسطب</span>`);
+  $('#chips').innerHTML=`${can('admin')?`<span class="chip" id="rtmail">📧 الإيميلات (منه وليه)<b>${RT.recipients.length}</b></span>`:''}`+(!RT.claude?`<span class="chip" title="روتينات Claude بتشتغل من الزرار لما Claude Code يكون على الجهاز">⚠ Claude Code مش موجود</span>`
+      :(!RT.claude_login&&can('admin')?`<span class="chip on" id="rtsign" title="مرة واحدة: سجّل دخول Claude عشان روتينات Claude تشتغل من الزرار ومن الموبايل">🔑 سجّل دخول Claude</span>`:''));
+  if($('#rtsign'))$('#rtsign').onclick=async()=>{const x=await post('/api/routines/signin');toast(x.msg,10000);setTimeout(()=>searchRoutines($('#q').value.trim(),true),60000)};
   if($('#rtmail'))$('#rtmail').onclick=recipientsBox;
   const qq=norm(q);const list=RT.routines.filter(r=>!qq||norm(r.title+' '+r.description+' '+r.reports.map(x=>x.name).join(' ')).includes(qq));
   $('#lh').textContent=`الروتينات (${list.length})`;
@@ -648,7 +650,7 @@ function routineDetail(id){const r=RT.routines.find(x=>x.id===id);if(!r)return;
     <div class="m"><span>${esc(r.when)}</span><span class="wk">${KIND[r.kind]}</span></div>${r.description?`<p class="snip" style="max-height:none">${esc(r.description)}</p>`:''}</div></div>
     ${r.last_run?`<p class="m"><span class="rst ${r.last_run.status}">${RSTAT[r.last_run.status]||''}</span><span>${esc(r.last_run.at.replace('T',' '))}</span><span>${esc(r.last_run.msg||'')}</span></p>`:''}
     <button class="pri" id="rtrun" style="${can('run')?'':'display:none'}" ${r.can_run?'':'disabled'} title="${r.can_run?'يشتغل دلوقتي في الخلفية':(r.kind==='claude'?'محتاج Claude Code متسطب على الجهاز':'بيتعمل من تفاصيل المناقصة')}">▶ شغّل دلوقتي</button>
-    ${!r.can_run&&r.kind==='claude'?'<p class="snip">الروتين ده شغّال لوحده في مواعيده من Claude. زرار التشغيل محتاج Claude Code على الجهاز.</p>':''}</div>`;
+    ${!r.can_run&&r.kind==='claude'?`<p class="snip">الروتين ده شغّال لوحده في مواعيده من Claude. ${RT.claude?'زرار التشغيل محتاج تسجيل دخول Claude مرة واحدة (🔑 فوق).':'زرار التشغيل محتاج Claude Code على الجهاز.'}</p>`:''}</div>`;
   if(r.reports.length){h+=`<h4>التقارير (${r.reports.length})</h4><table class="rep"><tr><th><input type="checkbox" id="rpall"></th><th>الملف</th><th>اتعمل</th><th></th></tr>${r.reports.map((x,i)=>`<tr><td><input type="checkbox" class="rpck" value="${i}"></td>
     <td>${{pdf:'📕',xlsx:'📗',xlsm:'📗',xls:'📗',docx:'📘',doc:'📘',html:'🌐'}[x.ext]||'📄'} ${esc(x.name)}<div class="snip">${esc(x.folder)} · ${(x.size/1048576).toFixed(1)} MB</div></td><td>${esc(x.at.replace('T',' '))}</td>
     <td>${can('share')?`<a href="#" data-ro="${i}">فتح</a>`:''}${can('print')&&can('share')?`<a href="#" data-rp="${i}">🖨 طباعة</a>`:''}${can('send')?`<a href="#" data-rs="${i}">✉ ابعت</a>`:''}${can('share')?`<a href="#" data-rc="${i}">📋 مشاركة</a>`:''}</td></tr>`).join('')}</table>

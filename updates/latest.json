@@ -1,5 +1,5 @@
 {
- "version": "2.0.0",
+ "version": "2.0.1",
  "setup_url": "https://raw.githubusercontent.com/ahmedtarekfahim-bot/fawaz-tenders-apps/main/updates/FAWAZ-Tenders-Setup.exe",
- "notes": "GCC Tenders 2.0: فلاتر بالتاريخ والشركة والجهة في كل حاجة، طباعة، بحث بصورة، تبويب شغل المشاريع، ملخص المناقصة و BNB، الروتينات والتقارير (تشغيل وإرسال ومشاركة)، الإيميل اللي بتبعت منه وله، صلاحيات بالتفصيل لكل حساب، وألوان جديدة"
+ "notes": "روتينات Claude بقت بتشتغل من زرار البرنامج ومن الموبايل (Claude Code اللي مع برنامج Claude)، وزرار تسجيل دخول Claude في تبويب الروتينات"
 }
