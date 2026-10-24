@@ -26,7 +26,7 @@ Reuses the awards tool (capt tool.py) for normalisation, minutes search and the 
   python "gulf directory.py" report "<نص>" [--pick N]
   python "gulf directory.py" serve
 """
-import sys, os, re, json, sqlite3, datetime, time, math, html, threading, collections, importlib.util
+import sys, os, re, json, sqlite3, datetime, time, math, html, threading, collections, importlib.util, subprocess
 import urllib.request, urllib.parse
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -44,11 +44,11 @@ PORT = 8766
 
 
 def auto_minutes():
-    """minutes between automatic updates (0 = off) - read live, the window can change it"""
+    """minutes between automatic updates (0 = off, 0.5 = all the time: 30 seconds after the last one ended)"""
     try:
-        return max(0, int(cfg.S.get("auto_update_minutes", 5)))
+        return max(0.0, float(cfg.S.get("auto_update_minutes", 0.5)))
     except (TypeError, ValueError):
-        return 5
+        return 0.5
 
 
 COUNTRIES = {"KW": "الكويت", "SA": "السعودية", "AE": "الإمارات"}
@@ -1336,6 +1336,7 @@ def run_update(progress=print, countries=None):
     store, summary = Store(), {}
     for cc in countries:
         for name, fn in SOURCES[cc]:
+            progress(f"⟳ بيجيب من: {name} ({COUNTRIES[cc]})")
             try:
                 summary[f"{COUNTRIES[cc]} - {name}"] = fn(store, progress)
             except Exception as e:      # noqa: BLE001 - one source failing must not stop the rest
@@ -1558,6 +1559,198 @@ def projects_view(q, sess_can_open=True):
             "sheet": sh["name"] if sh else "", "title": sh["title"] if sh else "", "headers": sh["headers"] if sh else [],
             "rows": [{"i": r["i"], "sec": r["sec"], "c": [strip_paths(v) for v in r["c"]]} for r in rows],
             "files": d.get("files", []) if sess_can_open else []}
+
+
+OUT_TYPES = {".pdf": "application/pdf", ".html": "text/html; charset=utf-8", ".md": "text/markdown; charset=utf-8",
+             ".txt": "text/plain; charset=utf-8", ".zip": "application/zip", ".png": "image/png", ".jpg": "image/jpeg",
+             ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+             ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".doc": "application/msword"}
+
+
+def out_file(path):
+    """only files inside the program's own output folders (reports, summaries, downloaded documents, الزتونة)"""
+    try:
+        f = Path(path).resolve()
+    except (OSError, ValueError):
+        return None
+    roots = [OUT, DOCS_OUT, ct.OUT, Path(r"D:\شغل فواز\04 - BNB")]
+    if f.is_file() and any(str(f).startswith(str(r.resolve())) for r in roots if r.exists()):
+        return f
+    return None
+
+
+_VOCAB = {}
+
+
+def vocab():
+    """every word the data knows (titles, clients, winners) with how often - for 'did you mean'"""
+    con = db()
+    n = con.execute("SELECT count(*) FROM items").fetchone()[0]
+    con.close()
+    if _VOCAB.get("n") == n:
+        return _VOCAB["w"]
+    w = collections.Counter()
+    for r in all_items():
+        for t in re.findall(r"[a-z0-9]+|[\u0621-\u064a]+", norm(f"{r['subject']} {r['org']} {r['winner'] or ''}")):
+            if len(t) > 2:
+                w[t] += 1
+    try:
+        for a in ct.read_excel_rows()[-6000:]:
+            for t in re.findall(r"[a-z0-9]+|[\u0621-\u064a]+", norm(f"{a['subject']} {a['org']} {a['winner'] or ''}")):
+                if len(t) > 2:
+                    w[t] += 1
+    except Exception:                   # noqa: BLE001
+        pass
+    _VOCAB.update(n=n, w=w)
+    return w
+
+
+def suggest(q, k=6):
+    """spelling: for every word the data does not know, the closest known words -> whole alternative queries"""
+    import difflib
+    words_q = [t for t in re.findall(r"[a-z0-9]+|[\u0621-\u064a]+", norm(q))]
+    if not words_q:
+        return {"q": q, "suggestions": [], "unknown": []}
+    w = vocab()
+    known = set(w)
+    unknown = [t for t in words_q if len(t) > 2 and not t.isdigit() and t not in known
+               and not any(x.startswith(t) for x in (t + "ه", t + "ات", "ال" + t) if x in known)]
+    if not unknown:
+        return {"q": q, "suggestions": [], "unknown": []}
+    options = {}
+    for t in unknown:
+        near = difflib.get_close_matches(t, known, n=5, cutoff=0.72)
+        near.sort(key=lambda x: (-difflib.SequenceMatcher(None, t, x).ratio(), -w[x]))
+        options[t] = near[:4]
+    alts = []
+    for i in range(4):
+        cand = [options[t][min(i, len(options[t]) - 1)] if t in options and options[t] else t for t in words_q]
+        s = " ".join(cand)
+        if s != " ".join(words_q) and s not in alts:
+            alts.append(s)
+    return {"q": q, "unknown": unknown, "options": options, "suggestions": alts[:k]}
+
+
+def _co_key(name):
+    s = norm(name)
+    s = re.sub(r"\b(شركه|شركة|مؤسسه|مجموعه|للتجاره|التجاره|العامه|والمقاولات|المقاولات|ذ م م|ذمم|ش م ك|مقفله|المحدوده|"
+               r"co|company|wll|w l l|ltd|llc|kscc|k s c c|trading|contracting|general)\b", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+_COS = {}
+
+
+def companies_index():
+    """every company the data names as a winner or a bidder -> {display name: count}"""
+    con = db()
+    sig = (con.execute("SELECT count(*) FROM items").fetchone()[0], con.execute("SELECT count(*) FROM bid_sheets").fetchone()[0])
+    if _COS.get("sig") == sig:
+        con.close()
+        return _COS["names"]
+    names = collections.Counter()
+    for (w,) in con.execute("SELECT winner FROM items WHERE winner<>''"):
+        for part in re.split(r"\s*[؛;|]\s*|\s+و\s*بالتضامن\s+", w):
+            if len(part.strip()) > 3:
+                names[part.strip()[:120]] += 1
+    for (rows,) in con.execute("SELECT rows FROM bid_sheets"):
+        for x in json.loads(rows or "[]"):
+            if x and str(x[0]).strip():
+                names[str(x[0]).strip()[:120]] += 1
+    con.close()
+    try:
+        for a in ct.read_excel_rows():
+            if (a["winner"] or "").strip():
+                names[a["winner"].strip()[:120]] += 1
+    except Exception:                   # noqa: BLE001
+        pass
+    _COS.update(sig=sig, names=names)
+    return names
+
+
+def company_names(q, k=25):
+    """the companies that look like what was typed (spelling mistakes too), most frequent first"""
+    import difflib
+    qk = _co_key(q)
+    if len(qk) < 2:
+        return []
+    groups = collections.defaultdict(lambda: {"names": collections.Counter(), "n": 0})
+    for name, n in companies_index().items():
+        key = _co_key(name)
+        if not key:
+            continue
+        hit = qk in key or all(w in key for w in qk.split())
+        if hit:
+            sc = 1.0
+        else:                                           # every typed word close to one of the name's words
+            kw = key.split()
+            per = [max((difflib.SequenceMatcher(None, w, x).ratio() for x in kw), default=0) for w in qk.split()]
+            sc = (sum(per) / len(per)) if per and max(per) >= 0.85 else 0   # one strong word is enough to offer it
+        if sc >= 0.72:
+            g = groups[key[:40]]
+            g["names"][name] += n
+            g["n"] += n
+            g["score"] = max(g.get("score", 0), sc)
+    out = [{"name": g["names"].most_common(1)[0][0], "variants": [x for x, _ in g["names"].most_common(6)], "count": g["n"],
+            "score": round(g["score"], 2)} for g in groups.values()]
+    out.sort(key=lambda x: (-x["score"], -x["count"]))
+    return out[:k]
+
+
+def company_view(name, extra=(), sess=None):
+    """everything with one company: contracts / awards / bids newest first; news, board decisions,
+    complaints and the timeline only when asked for"""
+    import desktop_auth as auth
+    key = _co_key(name)
+    if not key:
+        return {"name": name, "rows": []}
+    has = lambda s: key in _co_key(s or "")
+    rows = []
+    try:
+        for a in ct.read_excel_rows():
+            if has(a["winner"]):
+                rows.append({"kind": "ترسية (الجهاز المركزي)", "date": a["date"], "number": a["tno"], "org": a["org"],
+                             "subject": a["subject"], "value": a["total"], "role": "فائز", "row": a["row"], "country": "KW"})
+    except Exception:                   # noqa: BLE001
+        pass
+    con = db()
+    for r in con.execute("SELECT id, country, number, org, subject, status, winner, value, award_date, publish FROM items WHERE winner<>''"):
+        if has(r["winner"]) and (not sess or auth.country_ok(sess, r["country"])):
+            rows.append({"kind": "عقد / ترسية", "date": r["award_date"] or r["publish"], "number": r["number"], "org": r["org"],
+                         "subject": r["subject"], "value": r["value"], "role": "فائز", "id": r["id"], "country": r["country"]})
+    for b in con.execute("SELECT meeting, meeting_date, number, org, subject, rows FROM bid_sheets"):
+        bidders = json.loads(b["rows"] or "[]")
+        for i, x in enumerate(bidders):
+            if x and has(x[0]):
+                rows.append({"kind": "مشاركة (فض العطاءات)", "date": iso(any_date(b["meeting_date"])) or b["meeting_date"],
+                             "number": b["number"], "org": b["org"],
+                             "subject": b["subject"], "value": x[3] if len(x) > 3 else "", "role": f"عرض {i + 1} من {len(bidders)}",
+                             "country": "KW"})
+    con.close()
+    seen, uniq = set(), []
+    for r in sorted(rows, key=lambda r: r["date"] or "", reverse=True):
+        k = (numkey(r["number"]) or norm(r["subject"])[:40], r["kind"][:4], (r["date"] or "")[:7])
+        if k not in seen:
+            seen.add(k)
+            uniq.append(r)
+    out = {"name": name, "rows": uniq}
+    if "news" in extra:
+        con = db()
+        out["news"] = [dict(n) for n in con.execute("SELECT date, source, title, summary, url, country FROM news ORDER BY date DESC")
+                       if has(n["title"] + " " + (n["summary"] or ""))][:60]
+        con.close()
+    if extra & {"decisions", "complaints", "events"}:
+        hits = ct.minutes_free_search(name, limit=60)
+        dec = [h for h in hits if has(h["snippet"])]
+        if "decisions" in extra:
+            out["decisions"] = [h for h in dec if not re.search(r"تظلم|شكوى|شكوي", h["snippet"])]
+        if "complaints" in extra:
+            out["complaints"] = [h for h in dec if re.search(r"تظلم|شكوى|شكوي", h["snippet"])]
+        if "events" in extra:
+            ev = [{"date": r["date"], "text": f"{r['kind']}: {r['number']} - {r['subject'][:90]}"} for r in uniq]
+            ev += [{"date": h.get("mdate") or "", "text": f"محضر الجهاز {h.get('meeting') or ''}: {(h.get('decision') or h['snippet'])[:120]}"} for h in dec]
+            out["events"] = sorted(ev, key=lambda e: e["date"] or "", reverse=True)[:150]
+    return out
 
 
 def match_item(number, org, sess=None):
@@ -2152,7 +2345,8 @@ def serve(open_browser=True):
             "/api/watch": "watch", "/api/open-file": "fawaz", "/api/accounts": "admin", "/api/projects": "projects",
             "/api/summary": "summary", "/api/ocr-image": "scan", "/api/routines": "routines", "/api/routines/run": "run",
             "/api/routines/send": "send", "/api/routines/copy": "share", "/api/routines/recipients": "admin",
-            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin", "/api/match": "dir",
+            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin", "/api/match": "dir", "/api/out": "",
+            "/api/suggest": "", "/api/companies": "any:dir,awards", "/api/company": "any:dir,awards", "/api/zatoona": "zatoona",
             ("POST", "/api/settings"): "admin", ("POST", "/api/gazette-account"): "watch", ("POST", "/api/capt-account"): "dir"}
     OPEN = {"/", "/api/me", "/api/login", "/api/logout", "/api/forgot"}
 
@@ -2277,6 +2471,20 @@ def serve(open_browser=True):
                     return self.send(refine(rows, q, "news")[:300] if filtering(q) else rows)
                 if u.path == "/api/projects":
                     return self.send(projects_view(q, auth.master_mode()))
+                if u.path == "/api/out":                     # a report / summary / document the program made
+                    f = out_file(q.get("path", ""))
+                    if not f:
+                        return self.send({"error": "file not allowed"}, 403)
+                    return self.send(f.read_bytes(), ctype=OUT_TYPES.get(f.suffix.lower(), "application/octet-stream"))
+                if u.path == "/api/suggest":                 # spelling: "did you mean ..."
+                    return self.send(suggest(q.get("q", "")))
+                if u.path == "/api/companies":               # the companies tab: similar names first
+                    return self.send(company_names(q.get("q", "")))
+                if u.path == "/api/company":
+                    return self.send(company_view(q.get("name", ""), set(filter(None, q.get("extra", "").split(","))), self.sess))
+                if u.path == "/api/zatoona":
+                    import zatoona
+                    return self.send(zatoona.status(q.get("job", "")))
                 if u.path == "/api/match":                    # a tender we know by number + client -> its directory item
                     return self.send({"id": match_item(q.get("number", ""), q.get("org", ""), self.sess)})
                 if u.path == "/api/routines":
@@ -2338,6 +2546,9 @@ def serve(open_browser=True):
                     return self.send({"ok": True}, headers=[("Set-Cookie", f"{auth.COOKIE}=; Path=/; Max-Age=0")])
                 if u.path == "/api/forgot":
                     return self.send({"msg": auth.forgot(body.get("u", ""))})
+                if u.path == "/api/zatoona":                  # الزتونة: Claude digs out what our data does not have
+                    import zatoona
+                    return self.send(zatoona.start(body.get("q", ""), self.sess.get("u", ""), hint=body.get("hint", "")))
                 if u.path == "/api/ocr-image":                # scan a picture -> words to search with
                     return self.send({"text": ocr_image(body.get("image", ""))})
                 if u.path.startswith("/api/routines/"):
@@ -2373,8 +2584,6 @@ def serve(open_browser=True):
                     import tender_summary
                     self.item_ok(body["id"])
                     r = tender_summary.make_bnb(int(body["id"]), lambda m: state["log"].append(m))
-                    if r.get("pdf"):
-                        os.startfile(r["pdf"])
                     return self.send(r)
                 if u.path == "/api/summary/send":             # e-mail a tender's summary to the chosen addresses
                     import routines
@@ -2388,20 +2597,21 @@ def serve(open_browser=True):
                     import tender_summary
                     self.item_ok(body["id"])
                     r = tender_summary.summarize(int(body["id"]), lambda m: state["log"].append(m))
-                    if body.get("open", True):
-                        os.startfile(r["path"])
                     return self.send({k: r[k] for k in ("path", "folder", "files", "pages", "found")})
                 if u.path in ("/api/report", "/api/docs/download"):
                     self.item_ok(body["id"])
                 if u.path == "/api/report":
                     p = build_pdf(int(body["id"]), body.get("hits"))
-                    os.startfile(p)
-                    return self.send({"name": p.name})
+                    return self.send({"name": p.name, "path": str(p)})
                 if u.path == "/api/awards/report":
                     rec = next((r for r in ct.read_excel_rows() if r["row"] == int(body["row"])), None) if body.get("row") else None
                     p, _ = ct.build_report(rec, body.get("hits", []), body.get("query", ""))
-                    os.startfile(p)
-                    return self.send({"name": p.name})
+                    return self.send({"name": p.name, "path": str(p)})
+                if u.path == "/api/reveal":                   # open the folder of a file the program made
+                    f = out_file(body.get("path", ""))
+                    if f:
+                        subprocess.Popen(["explorer", "/select,", str(f)])
+                    return self.send({"ok": bool(f)})
                 if u.path == "/api/open-folder":
                     OUT.mkdir(exist_ok=True)
                     os.startfile(OUT)
@@ -2421,8 +2631,7 @@ def serve(open_browser=True):
                     return self.send({"status": "running"})
                 if u.path == "/api/docs/download":
                     r = download_docs(int(body["id"]))
-                    if any(ok for _n, ok, _x in r["files"]):
-                        os.startfile(r["folder"])
+                    r["paths"] = [str(Path(r["folder"]) / n) for n, ok, _x in r["files"] if ok]
                     return self.send(r)
                 if u.path == "/api/gazette-account":      # Kuwait Al-Youm subscription (DPAPI-encrypted)
                     import gazette_online as go
@@ -2451,7 +2660,7 @@ def serve(open_browser=True):
                     return self.send({"ok": True})
                 if u.path == "/api/settings":
                     if "auto_update_minutes" in body:
-                        cfg.save_setting("auto_update_minutes", max(0, int(body["auto_update_minutes"])))
+                        cfg.save_setting("auto_update_minutes", max(0.0, float(body["auto_update_minutes"])))
                     return self.send({"auto_minutes": auto_minutes()})
                 self.send({"error": "not found"}, 404)
             except PermissionError as e:
@@ -2514,6 +2723,17 @@ def main(argv):
         except Exception as e:      # noqa: BLE001
             res = {"ok": False, "error": f"{type(e).__name__}: {e}"}
         Path(args[0] if args else "crypto test.json").write_text(json.dumps(res), encoding="utf-8")
+    elif cmd == "diag":                            # the document / summary / PDF features inside the installed program
+        import traceback, tender_summary
+        iid = int(args[0]) if args else 0
+        res = {"version": cfg.build_info().get("version")}
+        for name, fn in (("docs", lambda: download_docs(iid)), ("summary", lambda: {k: v for k, v in tender_summary.summarize(iid).items() if k != "html"}),
+                         ("pdf", lambda: str(build_pdf(iid)))):
+            try:
+                res[name] = {"ok": True, "result": fn()}
+            except Exception:                          # noqa: BLE001
+                res[name] = {"ok": False, "error": traceback.format_exc()[-1500:]}
+        Path(args[1] if len(args) > 1 else "diag.json").write_text(json.dumps(res, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
     elif cmd == "outlook-test":                   # diagnostics for the installed program (it has no console)
         import fawaz_watch
         m = fawaz_watch.outlook_items()

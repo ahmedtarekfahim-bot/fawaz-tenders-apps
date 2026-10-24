@@ -74,7 +74,7 @@ def export(out_dir, award_rows=None, meetings=None):
                       "ch": (r["changed"] or "")[:16], "ev": ev, "chg": chg,
                       "dc": [[d.get("label", ""), d.get("url", ""), d.get("date", ""), d.get("src", "")]
                              for d in json.loads(r["docs"] or "[]") if str(d.get("url", "")).startswith("http")],
-                      "bd": next(({"m": b["meeting"], "d": b["meeting_date"], "r": json.loads(b["rows"] or "[]")}
+                      "bd": next(({"m": b["meeting"], "d": gd.iso(gd.any_date(b["meeting_date"])) or b["meeting_date"], "r": json.loads(b["rows"] or "[]")}
                                   for b in sorted(sheets.get(r["numkey"] or "~", []), key=lambda b: -gd.org_sim(r["org"], b["org"]))
                                   if gd.org_sim(r["org"], b["org"]) >= 0.6), None)})
     news = [{"c": n["country"], "d": n["date"], "src": n["source"], "t": n["title"], "u": n["url"], "cat": n["cats"],
@@ -230,6 +230,15 @@ def build_feed(log=print):
         skeys["routines"] = rkeys
     except Exception as e:                              # noqa: BLE001
         log(f"الروتينات المشفرة: {e}")
+    try:                                                # the key that signs phone requests (documents, PDF, summary, الزتونة ...)
+        import phone_lock
+        CMD_PERMS = {"routines", "docs", "pdf", "summary", "zatoona", "send", "run", "share"}
+        cu = {"users": {u: d for u, d in users.get("users", {}).items() if set(accounts.perms_of(d)) & CMD_PERMS}}
+        enc, ckeys = accounts.seal_private(json.dumps({"rkey": phone_lock.routines_key()}).encode(), cu, "any")
+        (data / "cmd.enc").write_text(json.dumps(enc), encoding="utf-8")
+        skeys["cmd"] = ckeys
+    except Exception as e:                              # noqa: BLE001
+        log(f"مفتاح أوامر الموبايل: {e}")
     (data / "skeys.json").write_text(json.dumps(skeys), encoding="utf-8")
     return meta
 

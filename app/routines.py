@@ -21,7 +21,7 @@ TASKS = HOME / ".claude" / "scheduled-tasks"
 WORK = Path(r"D:\شغل فواز")
 ADHAM = Path(cfg.S.get("adham_reports_dir") or r"D:\1-Work\1-Masharea Tenders\1- Kuwait\0-Reports")
 RUN_LOG = cfg.LOCAL / "routine runs.json"
-DOC_EXT = {".xlsx", ".xlsm", ".xls", ".docx", ".doc", ".pdf", ".html", ".pptx", ".csv", ".txt"}
+DOC_EXT = {".xlsx", ".xlsm", ".xls", ".docx", ".doc", ".pdf", ".html", ".pptx", ".csv", ".txt", ".md"}
 
 # id -> what it is, where its reports land (glob patterns, newest first), how it runs
 REGISTRY = [
@@ -46,6 +46,9 @@ REGISTRY = [
      "when": "تلقائي مع التحديث", "out": [(Path(cfg.S.get("gazette_pdf_dir") or r"D:\Download 2026"), "1[0-9][0-9][0-9].pdf")]},
     {"id": "tender-summaries", "title": "ملخصات المناقصات", "icon": "📝", "kind": "builtin",
      "when": "بزرار من تفاصيل أي مناقصة", "out": [(cfg.GULF_DIR / "مستندات المناقصات", "*/ملخص المناقصة.html")]},
+    {"id": "zatoona", "title": "الزتونة (بحث Claude)", "icon": "🫒", "kind": "builtin",
+     "when": "بزرار 🫒 جنب البحث", "out": [(cfg.CAPT_DIR / "تقارير المناقصات", "*الزتونة*.md"),
+                                           (cfg.CAPT_DIR / "تقارير المناقصات", "*.md")]},
     {"id": "directory-reports", "title": "تقارير PDF من الدليل", "icon": "🖨", "kind": "builtin",
      "when": "بزرار اعمل PDF من أي مناقصة", "out": [(cfg.GULF_DIR / "تقارير الدليل", "*.pdf"),
                                                     (cfg.CAPT_DIR / "تقارير المناقصات", "*.pdf")]},
@@ -111,6 +114,9 @@ def claude_exe():
     # the Claude desktop app is a packaged app: outside it, its folder really is under Packages\Claude_*
     apps += [p / "LocalCache" / "Roaming" / "Claude" / "claude-code"
              for p in (Path(os.environ.get("LOCALAPPDATA", "")) / "Packages").glob("Claude_*")]
+    # newer Claude apps keep it in %LOCALAPPDATA%\Claude-Data\claude_<id>\claude-code (and may move it again)
+    apps += list((Path(os.environ.get("LOCALAPPDATA", "")) / "Claude-Data").glob("*/claude-code"))
+    apps += list(Path(os.environ.get("LOCALAPPDATA", "")).glob("*Claude*/claude-code"))
     found = []
     for f in (x for app in apps for x in app.glob("*/*/claude.exe")):
         try:

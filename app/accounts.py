@@ -25,10 +25,11 @@ COUNTRIES = {"KW": "الكويت", "SA": "السعودية", "AE": "الإمار
 # what an account may DO - every button / option on its own (checked on the PC and for phone commands)
 ACTIONS = {"filters": "الفلاتر والترتيب", "print": "الطباعة", "scan": "البحث بصورة", "docs": "تحميل مستندات المناقصة",
            "pdf": "تقارير PDF", "summary": "ملخص المناقصة", "bnb": "فورمة BNB", "send": "الإرسال بالإيميل",
-           "share": "فتح / مشاركة / نسخ التقارير", "run": "تشغيل الروتينات"}
+           "share": "فتح / مشاركة / نسخ التقارير", "run": "تشغيل الروتينات", "zatoona": "الزتونة (بحث Claude)",
+           "analysis": "التحليل البياني", "companies": "تبويب الشركات"}
 ALL = {**FEATURES, **ACTIONS}
 DEFAULT_PERMS = ["dir", "news", "awards", "watch"]
-DEFAULT_ACTIONS = ["filters", "print", "scan", "docs", "pdf", "summary"]
+DEFAULT_ACTIONS = ["filters", "print", "scan", "docs", "pdf", "summary", "analysis", "companies"]
 b64 = lambda x: base64.b64encode(x).decode()
 unb64 = base64.b64decode
 
@@ -261,7 +262,7 @@ def seal_private(raw, users_pub, need="fawaz"):
     fk = os.urandom(32)
     users = users_pub.get("users", {})
     return seal_bytes(raw, fk), {u: wrap_for(d["pub"], fk) for u, d in users.items()
-                                 if is_live(d) and need in perms_of(d) and d.get("pub")}
+                                 if is_live(d) and (need == "any" or need in perms_of(d)) and d.get("pub")}
 
 
 def _parts(data_dir):
@@ -308,9 +309,9 @@ def seal_dir(data_dir, users_pub, fawaz_keys=None, sealed=None):
     for u, w in (fawaz_keys or {}).items():
         if u in live and "fawaz" in perms_of(live[u]):
             keys[uid(u)]["private"] = w
-    for part, need in (("projects", "projects"), ("routines", "routines")):    # other parts sealed on the PC: {part: {user: wrapped key}}
+    for part, need in (("projects", "projects"), ("routines", "routines"), ("cmd", "any")):   # parts sealed on the PC
         for u, w in ((sealed or {}).get(part) or {}).items():
-            if u in live and need in perms_of(live[u]):
+            if u in live and (need == "any" or need in perms_of(live[u])):
                 keys[uid(u)][part] = w
     (data_dir / "keys.json").write_text(json.dumps({"v": 2, "keys": keys}), encoding="utf-8")
     pub = {}

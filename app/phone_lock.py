@@ -88,22 +88,69 @@ def routines_key():
 
 
 _done = set()
+NEEDS = {"run": ["routines", "run"], "send": ["routines", "send"], "get": ["routines", "share"], "summary": ["summary", "send"],
+         "docs": ["docs"], "pdf": ["pdf"], "sum": ["summary"], "zt": ["zatoona"]}
+
+
+def upload_file(f, sig, log=print):
+    """a file for the phone: sealed with the routines key, posted as a short-lived ntfy attachment named after the request"""
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    import os
+    raw = Path(f).read_bytes() if not isinstance(f, (bytes, bytearray)) else bytes(f)
+    if len(raw) > 14_000_000:
+        raise ValueError("الملف أكبر من 14 ميجا - ابعته بالإيميل")
+    key = hashlib.sha256((routines_key() + "|file").encode()).digest()
+    iv = os.urandom(12)
+    req = urllib.request.Request(f"{NTFY}{topic()}-files", data=iv + AESGCM(key).encrypt(iv, raw, None), method="PUT",
+                                 headers={"Filename": sig[:16] + ".bin", "Title": "file"})
+    urllib.request.urlopen(req, timeout=180).read()
+
+
+def _phone_job(kind, arg, sig, user, log):
+    """documents (zipped) / PDF report / summary / الزتونة for the phone"""
+    import gulf_directory as gd
+    try:
+        if kind == "docs":
+            import io, zipfile
+            r = gd.download_docs(int(arg))
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                for n, ok, _x in r["files"]:
+                    if ok:
+                        z.write(Path(r["folder"]) / n, n)
+            upload_file(buf.getvalue(), sig, log)
+        elif kind == "pdf":
+            upload_file(gd.build_pdf(int(arg)), sig, log)
+        elif kind == "sum":
+            import tender_summary
+            upload_file(tender_summary.summarize(int(arg), log)["path"], sig, log)
+        elif kind == "zt":
+            import zatoona, base64
+            q = base64.urlsafe_b64decode(arg.encode()).decode("utf-8")
+            job = zatoona.start(q, user, wait=True)
+            upload_file(Path(job["path"]), sig, log)
+        log(f"الموبايل ({user}): اتبعتله {kind}")
+    except Exception as e:                      # noqa: BLE001
+        log(f"طلب الموبايل ({kind}) ما اتنفذش: {e}")
+        try:
+            upload_file(("خطأ: " + str(e)).encode("utf-8"), sig, log)
+        except Exception:                       # noqa: BLE001
+            pass
 
 
 def _command(msg, hooks, log):
     """a signed command from the phone -> True when it was one (handled or refused)"""
     parts = msg.split("|")
-    if len(parts) != 5 or parts[0] not in ("run", "send", "summary", "get"):
+    if len(parts) != 5 or parts[0] not in ("run", "send", "summary", "get", "docs", "pdf", "sum", "zt"):
         return False
     kind, user, arg, ts, sig = parts
     import accounts
     good = hmac.new(routines_key().encode(), f"{kind}|{user}|{arg}|{ts}".encode(), hashlib.sha256).hexdigest()[:32]
     d = accounts.load()["users"].get(accounts.norm_name(user))
     if not (hmac.compare_digest(good, sig) and ts.isdigit() and abs(time.time() - int(ts)) < 600 and sig not in _done
-            and d and accounts.is_live(d) and "routines" in accounts.perms_of(d)
-            and {"run": ["run"], "send": ["send"], "summary": ["summary", "send"], "get": ["share"]}[kind][0] in accounts.perms_of(d)
-            and (kind != "summary" or "send" in accounts.perms_of(d))
-            and (kind == "summary" or accounts.routine_ok(d, arg.split(",")[0]))):
+            and d and accounts.is_live(d)
+            and all(p in accounts.perms_of(d) for p in NEEDS[kind])
+            and (kind not in ("run", "send", "get") or accounts.routine_ok(d, arg.split(",")[0]))):
         log(f"طلب من الموبايل اترفض ({kind} - {user})")
         return True
     _done.add(sig)
@@ -119,6 +166,8 @@ def _command(msg, hooks, log):
             frm = lst["senders"][int(f[0])] if f and f[0] != "" else None
             err = routines.send([r["reports"][int(k)]["path"]], [to], sender_addr=frm)
             log(f"الموبايل ({user}): " + (f"الإرسال ما تمش: {err}" if err else f"اتبعت {r['reports'][int(k)]['name']} على {to}"))
+        elif kind in ("docs", "pdf", "sum", "zt"):
+            threading.Thread(target=_phone_job, args=(kind, arg, sig, user, log), daemon=True).start()
         elif kind == "get":                      # the phone opens / shares a report: sealed upload, gone in hours
             rid, k = arg.split(",")[:2]
             r = next(x for x in routines.listing()["routines"] if x["id"] == rid)

@@ -150,6 +150,81 @@ a{color:#0b5aa5}
   .ptitle{display:block;padding:0 4px 10px;border-bottom:2px solid var(--brand2);margin-bottom:8px}
   .ptitle b{font-size:17px;color:var(--brand)}
 }
+
+/* ===================================================== crystal theme (v2.1) */
+body[data-mode=companies] main{grid-template-columns:minmax(300px,32%) 1fr}
+body{background:radial-gradient(1100px 600px at 8% -12%,rgba(110,160,255,.55),transparent 60%),
+  radial-gradient(900px 520px at 108% 6%,rgba(255,168,90,.38),transparent 62%),
+  radial-gradient(800px 600px at 50% 120%,rgba(120,210,220,.35),transparent 60%),
+  linear-gradient(160deg,#e9f0fb 0%,#dde8f7 45%,#f5eee6 100%) fixed}
+header{background:linear-gradient(120deg,rgba(13,36,70,.92),rgba(27,72,130,.86) 55%,rgba(44,104,170,.82));
+  backdrop-filter:blur(14px) saturate(160%);-webkit-backdrop-filter:blur(14px) saturate(160%);
+  border-bottom:1px solid rgba(255,255,255,.25);box-shadow:0 6px 24px rgba(13,36,70,.35),inset 0 1px 0 rgba(255,255,255,.25);position:relative}
+header::after{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,#f7b267,#e07a1f,#f7b267);opacity:.9}
+.tabsbar,.fpanel{background:rgba(255,255,255,.55);backdrop-filter:blur(16px) saturate(170%);-webkit-backdrop-filter:blur(16px) saturate(170%);
+  border-bottom:1px solid rgba(255,255,255,.7)}
+.bar{background:transparent}
+.col,.card,.fpanel .fgrid input,.fpanel .fgrid select,.sbox,.chip,.menu .mbox,.res .tno{
+  background:rgba(255,255,255,.62);backdrop-filter:blur(18px) saturate(175%);-webkit-backdrop-filter:blur(18px) saturate(175%);
+  border:1px solid rgba(255,255,255,.78)}
+.col{position:relative;border-radius:18px;box-shadow:0 10px 34px rgba(31,63,120,.16),inset 0 1px 0 rgba(255,255,255,.95)}
+.col::before{content:"";position:absolute;inset:0;border-radius:18px;pointer-events:none;
+  background:linear-gradient(125deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,0) 32%,rgba(255,255,255,0) 70%,rgba(255,255,255,.25) 100%)}
+.col h3{background:rgba(255,255,255,.55);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.8)}
+.res{border-bottom:1px solid rgba(20,50,92,.07);transition:background .15s,transform .15s}
+.res:hover{background:rgba(255,255,255,.75);transform:translateX(-2px)}
+.res.sel{background:linear-gradient(90deg,rgba(255,242,229,.95),rgba(255,255,255,.6));border-right:4px solid var(--brand2)}
+.sbox{border-radius:14px;box-shadow:0 6px 20px rgba(31,63,120,.12),inset 0 1px 0 #fff}
+button{border-radius:10px;background:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.85);box-shadow:0 2px 8px rgba(31,63,120,.10),inset 0 1px 0 #fff}
+button.pri{background:linear-gradient(180deg,#f8a54c 0%,#e07a1f 55%,#cf6a12 100%);border-color:#d8741c;color:#fff;
+  box-shadow:0 6px 18px rgba(224,122,31,.38),inset 0 1px 0 rgba(255,255,255,.55);position:relative;overflow:hidden}
+button.pri::after{content:"";position:absolute;top:0;left:-60%;width:40%;height:100%;transform:skewX(-20deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);transition:left .6s}
+button.pri:hover::after{left:120%}
+.ib.zt{background:linear-gradient(180deg,#9ccf6a,#5f9e35);color:#fff;border-color:#5f9e35;box-shadow:0 6px 16px rgba(95,158,53,.35),inset 0 1px 0 rgba(255,255,255,.5)}
+header button,.menu summary{background:rgba(255,255,255,.14)!important;border:1px solid rgba(255,255,255,.35)!important;color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.ctry{background:rgba(255,255,255,.08);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.ctry button{background:transparent!important;box-shadow:none;border:0}
+.ctry button.on{background:linear-gradient(180deg,#fff,#e8f0fb)!important;color:var(--brand)}
+.tabsbar .seg button{background:transparent;box-shadow:none;border:0}
+.tabsbar .seg button.on{background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.6));color:var(--brand);
+  box-shadow:0 -2px 12px rgba(31,63,120,.10);border-bottom:3px solid var(--brand2)}
+.chip{border-radius:20px;box-shadow:0 2px 8px rgba(31,63,120,.08),inset 0 1px 0 #fff}
+.chip.on{background:linear-gradient(180deg,#f8a54c,#e07a1f);border-color:#e07a1f;color:#fff}
+.card.glass{background:linear-gradient(135deg,rgba(255,255,255,.85),rgba(255,255,255,.55))}
+th{background:rgba(234,241,251,.85)}
+table{background:rgba(255,255,255,.55);border-radius:10px;overflow:hidden}
+.tick{font-size:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:20px;padding:4px 12px;white-space:nowrap;max-width:360px;overflow:hidden;text-overflow:ellipsis}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#9fb3c8;margin-inline-end:6px;vertical-align:middle}
+.dot.on{background:#3ee07a;box-shadow:0 0 0 0 rgba(62,224,122,.7);animation:pulse 1.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(62,224,122,.7)}70%{box-shadow:0 0 0 9px rgba(62,224,122,0)}100%{box-shadow:0 0 0 0 rgba(62,224,122,0)}}
+.dym{margin:8px 12px;padding:8px 12px;border-radius:12px;background:linear-gradient(90deg,rgba(255,236,214,.95),rgba(255,255,255,.7));
+  border:1px solid rgba(224,122,31,.35);display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px}
+.dym a{background:#fff;border:1px solid rgba(224,122,31,.4);border-radius:20px;padding:2px 10px;text-decoration:none;color:var(--brand)}
+.overlay{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(12,28,56,.42);
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px)}
+.ovbox{width:min(1150px,95vw);height:90vh;display:flex;flex-direction:column;border-radius:20px;padding:14px 16px;
+  background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(246,250,255,.82));border:1px solid rgba(255,255,255,.9);
+  box-shadow:0 30px 80px rgba(12,28,56,.35),inset 0 1px 0 #fff;overflow:hidden}
+.ovtop{display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:1px solid rgba(20,50,92,.1);margin-bottom:10px}
+.ovtop b{font-size:16px;color:var(--brand)}.ovtop .sp{flex:1}
+#ovb{flex:1;overflow:auto;display:flex;flex-direction:column}
+.ovframe{flex:1;min-height:65vh;width:100%;border:1px solid rgba(20,50,92,.12);border-radius:12px;background:#fff}
+.acts2{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.busy{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:60px 10px;color:var(--muted)}
+.spin{width:46px;height:46px;border-radius:50%;border:4px solid rgba(224,122,31,.2);border-top-color:#e07a1f;animation:sp 0.9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.anagrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:12px}
+.anacard{background:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.9);border-radius:14px;padding:10px 12px;box-shadow:0 6px 20px rgba(31,63,120,.10)}
+.anacard h4{margin:2px 0 8px}
+.abar{display:grid;grid-template-columns:140px 1fr 70px;gap:8px;align-items:center;font-size:12.5px;margin:5px 0}
+.ak{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.at{height:12px;border-radius:8px;background:rgba(20,50,92,.08);overflow:hidden}
+.at i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#f8a54c,#e07a1f);box-shadow:inset 0 1px 0 rgba(255,255,255,.6)}
+.abar b{text-align:end;font-variant-numeric:tabular-nums}
+.zrow{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.zrow input{flex:1;min-width:220px;font:inherit;padding:8px 12px;border:1px solid rgba(20,50,92,.15);border-radius:10px;background:#fff}
+.mdv{line-height:1.8}.mdv h2{color:var(--brand);font-size:18px}.mdv h3{color:var(--brand2);font-size:15.5px;margin:16px 0 6px}.mdv table{margin:6px 0}.mdv hr{border:0;border-top:1px solid rgba(20,50,92,.12)}
+@media print{body.povl>*:not(#ov){display:none!important}body.povl #ov{position:static;display:block!important;background:#fff}body.povl .ovbox{height:auto;box-shadow:none;border:0;width:100%}body.povl .ovtop,body.povl .acts2{display:none}}
 </style>
 </head>
 <body>
@@ -157,10 +232,11 @@ a{color:#0b5aa5}
   <div class="brand"><b>GCC Tenders</b><small>مناقصات ومشاريع الخليج</small></div>
   <div class="ctry" id="ctry"><button data-c="" class="on">الكل</button><button data-c="KW">الكويت</button><button data-c="SA">السعودية</button><button data-c="AE">الإمارات</button></div>
   <span class="sp"></span>
+  <span class="tick" id="tick" title="التحديث التلقائي">⟳ ...</span>
   <button id="btnUpdate" title="يجيب الجديد من المواقع دلوقتي">⟳ تحديث دلوقتي</button>
   <span class="me" id="me" style="display:none"></span>
   <details class="menu" id="menu"><summary title="الإعدادات">⚙</summary><div class="mbox">
-    <label id="autoRow">تحديث تلقائي <select id="auto"><option value="5">كل 5 دقايق</option><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
+    <label id="autoRow">تحديث تلقائي <select id="auto"><option value="0.5">باستمرار (كل 30 ثانية)</option><option value="5">كل 5 دقايق</option><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
     <button onclick="post('/api/open-folder')">📁 فولدر التقارير</button>
     <button id="btnOut" style="display:none">🚪 تسجيل خروج</button></div></details>
 </header>
@@ -174,12 +250,14 @@ a{color:#0b5aa5}
   <div style="text-align:center"><a href="#" id="lforgot">نسيت كلمة السر؟</a></div>
   <p style="margin:10px 0 0;font-size:11.5px">نفس حساب تطبيق الموبايل. الحسابات بيعملها الأدمن.</p>
 </form></div>
-<nav class="tabsbar"><div class="seg" id="mode"><button data-m="items" class="on">المناقصات والمشاريع</button><button data-m="news">الأخبار</button><button data-m="awards">ترسيات ومحاضر الكويت</button><button data-m="projects">شغل المشاريع</button><button data-m="routines">الروتينات والتقارير</button><button data-m="watch">متابعة فواز و KJAC</button></div></nav>
+<nav class="tabsbar"><div class="seg" id="mode"><button data-m="items" class="on">المناقصات والمشاريع</button><button data-m="news">الأخبار</button><button data-m="awards">ترسيات ومحاضر الكويت</button><button data-m="companies">الشركات</button><button data-m="projects">شغل المشاريع</button><button data-m="routines">الروتينات والتقارير</button><button data-m="watch">متابعة فواز و KJAC</button></div></nav>
 <div class="bar">
   <div class="sbox"><input type="search" id="q" placeholder="اكتب عنوان المناقصة أو رقمها أو الجهة..." autofocus><button class="pri" id="go">بحث</button></div>
   <button class="ib" id="bfil" title="فلترة وترتيب">⚙ فلترة <span class="fcount" id="fcount" style="display:none"></span></button>
   <button class="ib" id="bscan" title="بحث بصورة: صوّر أو اختار صورة فيها اسم المناقصة (أو Ctrl+V لصورة منسوخة)">📷 صورة</button><input type="file" id="fscan" accept="image/*" hidden>
   <button class="ib" id="bprint" title="طباعة النتايج والتفاصيل">🖨 طباعة</button>
+  <button class="ib" id="bana" title="تحليل بياني للنتايج اللي على الشاشة">📊 تحليل</button>
+  <button class="ib zt" id="bzt" title="الزتونة: Claude يدوّر بره داتا البرنامج ويطلّع تقرير مختصر بالمصادر">🫒 الزتونة</button>
   <span class="only-awards" style="display:none"><select id="ayear"><option value="">كل السنين</option></select><label class="chk"><input type="checkbox" id="amin"> في المحاضر</label><label class="chk"><input type="checkbox" id="agz"> في الكويت اليوم</label><button class="ib" onclick="post('/api/open-excel')" title="افتح إكسيل الترسيات">📗</button></span>
   <span class="stat2" id="stat">...</span>
 </div>
@@ -211,6 +289,7 @@ a{color:#0b5aa5}
 </main>
 <div id="modal" onclick="this.style.display='none'"><img id="mimg" alt=""></div>
 <div id="toast"></div>
+<div class="overlay" id="ov"><div class="ovbox"><div class="ovtop"><b id="ovt"></b><span class="sp"></span><button id="ovprint">🖨 طباعة</button><button id="ovx">✕</button></div><div id="ovb"></div></div></div>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -229,7 +308,7 @@ async function post(u,b={}){const r=await fetch(u,{method:'POST',headers:{'Conte
 // ---------------------------------------------------------------- login + permissions (same accounts as the phone app)
 let ME=null;
 const can=p=>!!ME&&(p==='admin'?ME.admin:(ME.perms.includes(p)||(p==='awards'&&ME.perms.includes('watch'))));
-const MODE_NEED={items:'dir',news:'news',awards:'awards',projects:'projects',routines:'routines',watch:'watch'};
+const MODE_NEED0=1;const MODE_NEED={items:'dir',news:'news',awards:'awards',companies:'companies',projects:'projects',routines:'routines',watch:'watch'};
 // the filter bar (every tab): period, order, company, client
 function FX(){const o={dfrom:$('#fdfrom').value,dto:$('#fdto').value,sort:$('#fsort').value,company:$('#fco').value.trim(),client:$('#fcl').value.trim(),dby:mode==='items'?$('#fdby').value:''};
   Object.keys(o).forEach(k=>{if(!o[k])delete o[k]});return o}
@@ -264,6 +343,7 @@ function applyMe(me){
   $('#autoRow').style.display=can('admin')?'':'none';
   $('#bfil').style.display=can('filters')?'':'none';if(!can('filters'))$('#fbar').classList.remove('open');
   $('#bscan').style.display=can('scan')?'':'none';$('#bprint').style.display=can('print')?'':'none';
+  $('#bana').style.display=can('analysis')?'':'none';$('#bzt').style.display=can('zatoona')?'':'none';
   if(!can('fawaz'))wsec='conews';
   const first=[...document.querySelectorAll('#mode button')].find(b=>b.style.display!=='none');
   if(!first){$('#results').innerHTML='<div class="empty">الحساب ده مالوش أي صلاحية - كلّم الأدمن</div>';return false}
@@ -292,7 +372,7 @@ async function status_(first){
       for(let y=new Date().getFullYear();y>=2006;y--)$('#ayear').insertAdjacentHTML('beforeend',`<option>${y}</option>`);}
     $('#orgs').innerHTML=s.orgs.map(o=>`<option value="${esc(o)}">`).join('');
     document.querySelectorAll('#ctry button').forEach(b=>{const n=b.dataset.c?(s.countries[b.dataset.c]||0):Object.values(s.countries).reduce((a,b)=>a+b,0);b.textContent=(b.dataset.c?CN[b.dataset.c]:'الكل')+' ('+n.toLocaleString('en')+')'});
-    if(mode!=='watch'&&mode!=='projects'&&mode!=='routines')$('#chips').innerHTML=mode!=='items'?'':`<span class="chip fresh ${fresh?'on':''}" data-f="1">المستجدات (آخر 3 أيام)<b>${s.fresh}</b></span><span class="chip ${status||fresh?'':'on'}" data-s="">الكل<b>${s.total}</b></span>`+STATUSES.filter(x=>s.status[x]).map(x=>`<span class="chip ${status===x?'on':''}" data-s="${x}">${x}<b>${s.status[x]}</b></span>`).join('');
+    if(!['watch','projects','routines','companies'].includes(mode))$('#chips').innerHTML=mode!=='items'?'':`<span class="chip fresh ${fresh?'on':''}" data-f="1">المستجدات (آخر 3 أيام)<b>${s.fresh}</b></span><span class="chip ${status||fresh?'':'on'}" data-s="">الكل<b>${s.total}</b></span>`+STATUSES.filter(x=>s.status[x]).map(x=>`<span class="chip ${status===x?'on':''}" data-s="${x}">${x}<b>${s.status[x]}</b></span>`).join('');
     document.querySelectorAll('.chip[data-s]').forEach(c=>c.onclick=()=>{status=c.dataset.s;fresh=0;status_();search()});
     document.querySelectorAll('.chip[data-f]').forEach(c=>c.onclick=()=>{fresh=fresh?0:3;status='';status_();search()});
     updateBadges(s);
@@ -300,6 +380,10 @@ async function status_(first){
     // the log shows while an update runs (or after one that failed), then hides again
     if(s.update==='running'||s.update==='error'){$('#log').style.display='block';$('#log').textContent=s.log.join('\n');$('#log').scrollTop=1e9}
     else $('#log').style.display='none';
+    const step=[...(s.log||[])].reverse().find(x=>/^⟳/.test(x));const hm=t=>t?t.replace('T',' ').slice(11,16):'';
+    $('#tick').innerHTML=s.update==='running'?`<i class="dot on"></i>${esc((step||'⟳ بيحدّث...').replace('⟳ ',''))}`
+      :`<i class="dot"></i>آخر تحديث ${hm(s.last_run&&s.last_run.finished)}${s.next?' · الجاي '+hm(s.next):''}`;
+    $('#tick').title=(s.log||[]).slice(-6).join('\n');
     if(s.update==='running'){$('#btnUpdate').textContent='جاري التحديث...';clearTimeout(window._st);window._st=setTimeout(status_,3000)}
     else $('#btnUpdate').textContent='تحديث دلوقتي';
     // every finished update (automatic or manual) refreshes what is on screen by itself
@@ -314,8 +398,8 @@ $('#auto').onchange=async()=>{const v=+$('#auto').value;await post('/api/setting
   toast(v?`التحديث التلقائي بقى ${$('#auto').selectedOptions[0].textContent}`:'التحديث التلقائي اتقفل');status_()};
 document.querySelectorAll('#ctry button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#ctry button').forEach(x=>x.classList.toggle('on',x===b));country=b.dataset.c;status='';status_();search()});
 document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#mode button').forEach(x=>x.classList.toggle('on',x===b));mode=b.dataset.m;
-  openTab(mode);
-  $('.only-items').style.display=['awards','watch','projects','routines'].includes(mode)?'none':'contents';$('.fdbyl').style.display=mode==='items'?'':'none';$('.only-awards').style.display=mode==='awards'?'contents':'none';status_();search()});
+  openTab(mode);document.body.dataset.mode=mode;
+  $('.only-items').style.display=['awards','watch','projects','routines','companies'].includes(mode)?'none':'contents';$('.fdbyl').style.display=mode==='items'?'':'none';$('.only-awards').style.display=mode==='awards'?'contents':'none';status_();search()});
 let deb;$('#q').addEventListener('input',()=>{clearTimeout(deb);deb=setTimeout(search,450)});
 $('#q').addEventListener('keydown',e=>{if(e.key==='Enter')search()});
 $('#go').onclick=search;['#cat','#days','#fawaz','#org','#ayear','#amin','#agz'].forEach(s=>$(s).onchange=search);
@@ -331,8 +415,10 @@ async function search(keep){
     if(mode==='watch')return searchWatch(q,keep);
     if(mode==='projects')return searchProjects(q,keep);
     if(mode==='routines')return searchRoutines(q,keep);
+    if(mode==='companies')return searchCompanies(q,keep);
     const p=new URLSearchParams({q,status,country,fresh,cat:$('#cat').value,org:$('#org').value,days:$('#days').value,fawaz:$('#fawaz').checked?1:0,fuzzy:q&&q===SCANQ?1:0,...FX()});
     const res=await get('/api/search?'+p);if(q!==lastQ)return;
+    LAST={kind:'items',rows:res};if(!keep)didYouMean(q,res.length);
     $('#lh').textContent=`النتائج (${res.length}${res.length>=250&&!fxCount()?'+':''})`;
     $('#results').innerHTML=res.length?res.map(r=>{
       const left=r.status==='مطروحة'&&r.closing?Math.round((new Date(r.closing)-new Date(today))/864e5):null;
@@ -348,7 +434,7 @@ async function search(keep){
   }catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
 }
 async function searchNews(q){
-  const res=await get(`/api/news?q=${encodeURIComponent(q)}&country=${country}&fawaz=${$('#fawaz').checked?1:0}${fxq()}`);
+  const res=await get(`/api/news?q=${encodeURIComponent(q)}&country=${country}&fawaz=${$('#fawaz').checked?1:0}${fxq()}`);LAST={kind:'news',rows:res};didYouMean(q,res.length);
   $('#lh').textContent=`الأخبار (${res.length})`;
   $('#results').innerHTML=res.length?res.map(n=>`<div class="res ${n.seen_at&&n.seen_at>HL.news?'unread':''}"><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div>
     <div class="m"><span>${dmy(n.date)}</span>${country?'':`<span class="cc">${CN[n.country]||''}</span>`}<span>${esc(n.source)}</span><span>${esc(n.cats)}</span>${n.fawaz?'<span class="fzb">نطاق فواز</span>':''}</div>
@@ -374,7 +460,7 @@ async function searchAwards(q){
   if($('#amin').checked){hits=await get('/api/awards/minutes?q='+encodeURIComponent(q));current=null;
     $('#lh').textContent=`صفحات المحاضر (${hits.length})`;$('#results').innerHTML=hits.length?`<div class="pad">${hitsHtml(hits,true)}</div>`:'<div class="empty">ملقتش صفحات</div>';wirePrev();
     $('#detail').innerHTML=`<div class="pad">علّم الصفحات واضغط الزرار</div><div class="actions"><button class="pri" onclick="awardsPdf(null)">اعمل PDF واحد</button></div>`;return}
-  const res=await get(`/api/awards/search?q=${encodeURIComponent(q)}&year=${$('#ayear').value}${fxq()}`);if(q!==lastQ)return;
+  const res=await get(`/api/awards/search?q=${encodeURIComponent(q)}&year=${$('#ayear').value}${fxq()}`);if(q!==lastQ)return;LAST={kind:'awards',rows:res};didYouMean(q,res.length);
   $('#lh').textContent=`ترسيات الكويت (${res.length})`;
   $('#results').innerHTML=res.length?res.map(r=>`<div class="res ${r.row<3+(HL.awardsNew||0)?'unread':''}" data-row="${r.row}"><div class="t">${esc(r.subject)}</div>
     <div class="m"><span class="tno">${esc(r.tno)}</span><span>${esc(r.org)}</span><span>${dmy(r.date)}</span></div>
@@ -453,14 +539,15 @@ async function loadDocs(id){
   if($('#capt-save'))$('#capt-save').onclick=async()=>{const u=$('#capt-u').value.trim(),pw=$('#capt-p').value;if(!u||!pw)return toast('اكتب الإيميل وكلمة السر');
     toast('بيدخل على الجهاز المركزي...');const r=await post('/api/capt-account',{user:u,password:pw});toast(r.msg,7000);if(r.ok)loadDocs(id)};
 }
-async function downloadDocs(id){
-  toast('بحمّل المستندات...',8000);
-  try{const r=await post('/api/docs/download',{id});const ok=r.files.filter(f=>f[1]).length;
-    toast(ok?`اتحمّل ${ok} ملف في فولدر المناقصة واتفتح`+(r.locked.length?` - ${r.locked.length} محتاج دخول/شراء`:''):(r.locked.length?'المستندات محتاجة حساب الجهاز المركزي أو شراء':'مفيش مستندات قابلة للتحميل'),9000)}
-  catch(e){toast('خطأ: '+e.message,7000)}}
+async function downloadDocs(id){busy('📥 بحمّل مستندات المناقصة...');
+  try{const r=await post('/api/docs/download',{id});const ok=r.paths||[];
+    if(ok.length)showFiles(`📥 اتحمّل ${ok.length} ملف`,ok,r.locked.length?`${r.locked.length} ملف محتاج دخول / شراء`:'');
+    else{closeOv();toast(r.locked.length?'المستندات محتاجة حساب الجهاز المركزي أو شراء':'مفيش مستندات قابلة للتحميل للمناقصة دي',9000)}}
+  catch(e){closeOv();toast('خطأ: '+e.message,7000)}}
 async function makePdf(){
   const sel=[...document.querySelectorAll('.hit input:checked')].map(c=>hits[+c.dataset.i]);toast('بعمل الـ PDF...');
-  try{const r=await post('/api/report',{id:current.id,hits:sel});toast('اتعمل واتفتح: '+r.name,6000)}catch(e){toast('خطأ: '+e.message,6000)}
+  busy('🖨 بعمل تقرير الـ PDF...');
+  try{const r=await post('/api/report',{id:current.id,hits:sel});showFile('🖨 تقرير PDF',r.path,r.name)}catch(e){closeOv();toast('خطأ: '+e.message,6000)}
 }
 // ---------------------------------------------------------------- unread badges
 // HL = the "read up to here" point of each tab when it was opened: newer rows stay coloured while
@@ -658,9 +745,30 @@ function wireOpen(root){root.querySelectorAll('[data-open]').forEach(a=>a.onclic
   if(u.startsWith('http'))openOfficial(u);else post('/api/open',{url:u}).then(r=>{if(r.ok===false)toast('الملف ده على جهاز الأدمن بس')}).catch(x=>toast('خطأ: '+x.message))})}
 function goMode(m){const b=document.querySelector(`#mode button[data-m="${m}"]`);if(b&&b.style.display!=='none')b.click()}
 // ---------------------------------------------------------------- ملخص المناقصة
-async function summaryOf(id){toast('بحمّل ملفات المناقصة وبقراها (والممسوح كمان) - ممكن ياخد دقيقة أو اتنين...',120000);
-  try{const r=await post('/api/summary',{id});toast(r.files.length?`الملخص جاهز واتفتح: لقيت ${r.found} من 12 بند في ${r.files.length} ملف (${r.pages} صفحة)`:'الملخص اتفتح من بيانات الإعلان بس - مفيش ملفات منشورة للمناقصة دي على المواقع',9000)}
-  catch(e){toast('الملخص ما اتعملش: '+e.message,9000)}}
+async function summaryOf(id){busy('📝 بحمّل ملفات المناقصة وبقراها (والممسوح كمان)... ممكن ياخد دقيقة أو اتنين');
+  try{const r=await post('/api/summary',{id});
+    showFile('📝 ملخص المناقصة',r.path,r.files.length?`لقيت ${r.found} من 12 بند في ${r.files.length} ملف (${r.pages} صفحة)`:'مفيش ملفات منشورة للمناقصة دي على المواقع - الملخص من بيانات الإعلان بس')}
+  catch(e){closeOv();toast('الملخص ما اتعملش: '+e.message,9000)}}
+// a file the program made, shown in the window: PDF / HTML inside, the rest as a list
+function outUrl(p){return '/api/out?path='+encodeURIComponent(p)}
+function showFile(title,path,note,more){const ext=(path.split('.').pop()||'').toLowerCase();
+  $('#ovt').textContent=title;
+  $('#ovb').innerHTML=`${note?`<p class="snip" style="max-height:none;margin:0 0 8px">${esc(note)}</p>`:''}
+    <div class="acts2"><button data-rev="${esc(path)}">📁 افتح الفولدر</button><button data-ext="${esc(path)}">↗ افتح بره البرنامج</button>${(more||'')}</div>
+    ${['pdf','html'].includes(ext)?`<iframe id="ovf" src="${outUrl(path)}" class="ovframe"></iframe>`:`<p>الملف اتحفظ: <b>${esc(path.split(/[\\/]/).pop())}</b></p>`}`;
+  openOv();wireOutBtns()}
+function showFiles(title,paths,note){$('#ovt').textContent=title;
+  $('#ovb').innerHTML=`${note?`<p class="snip" style="max-height:none">${esc(note)}</p>`:''}<table>${paths.map(p=>`<tr><td>${esc(p.split(/[\\/]/).pop())}</td><td style="white-space:nowrap">${/\.(pdf|html)$/i.test(p)?`<a href="#" data-view="${esc(p)}">عرض</a> · `:''}<a href="#" data-ext="${esc(p)}">فتح</a> · <a href="#" data-rev="${esc(p)}">الفولدر</a></td></tr>`).join('')}</table>`;
+  openOv();wireOutBtns()}
+function wireOutBtns(){$('#ovb').querySelectorAll('[data-rev]').forEach(b=>b.onclick=e=>{e.preventDefault();post('/api/reveal',{path:b.dataset.rev})});
+  $('#ovb').querySelectorAll('[data-ext]').forEach(b=>b.onclick=e=>{e.preventDefault();post('/api/open',{url:b.dataset.ext})});
+  $('#ovb').querySelectorAll('[data-view]').forEach(b=>b.onclick=e=>{e.preventDefault();showFile($('#ovt').textContent,b.dataset.view,'')})}
+function openOv(){$('#ov').style.display='flex'}
+function closeOv(){$('#ov').style.display='none';$('#ovb').innerHTML=''}
+function busy(msg){$('#ovt').textContent='⏳';$('#ovb').innerHTML=`<div class="busy"><div class="spin"></div><p>${esc(msg)}</p></div>`;openOv()}
+$('#ovx').onclick=closeOv;$('#ov').onclick=e=>{if(e.target.id==='ov')closeOv()};
+$('#ovprint').onclick=()=>{const f=$('#ovf');if(f&&f.contentWindow){try{f.contentWindow.focus();f.contentWindow.print();return}catch(e){}}
+  const w=$('#ovb').innerHTML;document.body.classList.add('povl');window.print();document.body.classList.remove('povl')};
 // ---------------------------------------------------------------- الروتينات والتقارير
 let RT=null,rsel='';
 const KIND={claude:'بيعمله Claude',builtin:'البرنامج بيعمله'};
@@ -720,8 +828,9 @@ function recipientsBox(){const L=(RT&&RT.recipients)||[];
   $('#radd').onclick=()=>{const v=$('#rnew').value.trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v))return toast('اكتب إيميل صحيح');save([...L,v])};
   document.querySelectorAll('[data-rdel]').forEach(a=>a.onclick=e=>{e.preventDefault();save(L.filter((_,i)=>i!==+a.dataset.rdel))});
 }
-async function bnbOf(id){toast('بعمل الملخص وبعدها فورمة الـ BNB من القالب... ممكن ياخد دقيقتين',150000);
-  try{const r=await post('/api/bnb',{id});toast(`اتعملت ${r.bnb} (Word + PDF) في فولدر 04 - BNB ونسخة جنب ملفات المناقصة`,10000)}catch(e){toast('الـ BNB ما اتعملتش: '+e.message,10000)}}
+async function bnbOf(id){busy('📄 بعمل الملخص وبعدها فورمة الـ BNB من القالب... ممكن ياخد دقيقتين');
+  try{const r=await post('/api/bnb',{id});showFile(`📄 ${r.bnb}`,r.pdf,'اتعملت في فولدر 04 - BNB (Word + PDF) ونسخة جنب ملفات المناقصة',`<button data-ext="${esc(r.doc)}">📘 افتح الـ Word</button>`)}
+  catch(e){closeOv();toast('الـ BNB ما اتعملتش: '+e.message,10000)}}
 async function sendSummary(id){try{if(!RT)await loadRT()}catch(e){}
   const box=document.createElement('div');box.className='card';box.style.cssText='margin:10px 14px;border-color:var(--brand2)';
   box.innerHTML=`${fromSel('smfrom')}<b>✉ ابعت ملخص المناقصة على:</b>${recpBoxes('smto')}<button class="pri" id="smgo">اعمل الملخص وابعته</button>`;
@@ -729,6 +838,95 @@ async function sendSummary(id){try{if(!RT)await loadRT()}catch(e){}
   $('#smgo').onclick=async()=>{const to=checked('.smto');if(!to.length)return toast('اختار إيميل');toast('بعمل الملخص...',150000);
     try{const r=await post('/api/summary',{id,open:false});const x=await post('/api/summary/send',{id,path:r.path,to,from:$('#smfrom')?$('#smfrom').value:undefined});toast(x.ok?`الملخص اتبعت على ${to.join('، ')}`:'ما اتبعتش: '+x.msg,9000);box.remove()}
     catch(e){toast('خطأ: '+e.message,9000)}}}
+// ---------------------------------------------------------------- تقصد؟ (spelling)
+let LAST={kind:'',rows:[]};
+async function didYouMean(q,n){if(!q||q===SCANQ)return;let r;try{r=await get('/api/suggest?q='+encodeURIComponent(q))}catch(e){return}
+  if(!r.suggestions||!r.suggestions.length||q!==$('#q').value.trim())return;
+  const bar=document.createElement('div');bar.className='dym';
+  bar.innerHTML=`<span>✍ تقصد:</span>${r.suggestions.map(x=>`<a href="#" data-dym="${esc(x)}">${esc(x)}</a>`).join('')}`;
+  $('#results').prepend(bar);bar.querySelectorAll('[data-dym]').forEach(a=>a.onclick=e=>{e.preventDefault();$('#q').value=a.dataset.dym;search()});
+  if(!n){toast(`مفيش نتايج لـ «${q}» - بدوّر بـ «${r.suggestions[0]}»`,6000);$('#q').value=r.suggestions[0];search()}}
+// ---------------------------------------------------------------- الشركات
+let CO={name:'',extra:new Set(),data:null};
+const COX=[['news','📰 الأخبار'],['decisions','🏛 قرارات وتوصيات الجهاز'],['complaints','⚖ الشكاوى والتظلمات'],['events','🕒 تسلسل الأحداث']];
+function coxChips(){return COX.map(([k,l])=>`<span class="chip ${CO.extra.has(k)?'on':''}" data-cox="${k}">${l}</span>`).join('')}
+function wireCox(root){root.querySelectorAll('[data-cox]').forEach(c=>c.onclick=()=>{const k=c.dataset.cox;CO.extra.has(k)?CO.extra.delete(k):CO.extra.add(k);
+  $('#chips').innerHTML='<span class="snip">إضافات (اختياري):</span>'+coxChips();wireCox($('#chips'));if(CO.name)openCompany(CO.name)})}
+async function searchCompanies(q){
+  $('#chips').innerHTML='<span class="snip">إضافات (اختياري):</span>'+coxChips();wireCox($('#chips'));
+  if(!q){$('#lh').textContent='الشركات';$('#results').innerHTML='<div class="empty">اكتب اسم الشركة (ولو فيه غلطة إملائية) - هتظهرلك الأسماء القريبة تختار منها</div>';return}
+  const list=await get('/api/companies?q='+encodeURIComponent(q));if(q!==lastQ)return;
+  $('#lh').textContent=`شركات قريبة من «${q}» (${list.length})`;
+  $('#results').innerHTML=list.length?list.map((c,i)=>`<div class="res" data-co="${i}"><div class="t">${esc(c.name)}</div><div class="m"><span class="wk">${c.count} مرة في الداتا</span>${c.variants.length>1?`<span>${c.variants.length} طريقة كتابة</span>`:''}${c.score<1?'<span class="snip">قريبة</span>':''}</div></div>`).join('')
+    :'<div class="empty">ملقتش شركة قريبة - جرّب جزء من الاسم أو دوّر بالزتونة 🫒</div>';
+  document.querySelectorAll('.res[data-co]').forEach(el=>el.onclick=()=>{sel(el);openCompany(list[+el.dataset.co].name)});
+  if(list.length===1)document.querySelector('.res[data-co]').click()}
+async function openCompany(name){CO.name=name;$('#detail').innerHTML='<div class="empty">بجمع العقود والمناقصات...</div>';
+  let d;try{d=await get(`/api/company?name=${encodeURIComponent(name)}&extra=${[...CO.extra].join(',')}`)}catch(e){$('#detail').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`;return}
+  CO.data=d;LAST={kind:'company',rows:d.rows};
+  const won=d.rows.filter(r=>r.role==='فائز').length;
+  let h=`<div class="pad"><div class="card glass"><b style="font-size:16px">${esc(name)}</b><div class="m"><span>${d.rows.length} عقد / مناقصة</span><span class="fzb">${won} ترسية</span><span>${d.rows.length-won} مشاركة</span></div>
+    <div class="chips" style="padding:8px 0 0">${coxChips()}</div></div>
+    <h4>العقود والمناقصات (من الأحدث للأقدم)</h4>${d.rows.length?`<table><tr><th>التاريخ</th><th>النوع</th><th>الرقم</th><th>الجهة</th><th>الموضوع</th><th>القيمة / الترتيب</th></tr>${d.rows.map(r=>`<tr ${r.id?`data-it="${r.id}" style="cursor:pointer"`:r.row?`data-aw="${r.row}" style="cursor:pointer"`:''}><td style="white-space:nowrap">${dmy(r.date)}</td><td>${esc(r.kind)}</td><td><span class="tno">${esc(r.number||'')}</span></td><td>${esc(r.org)}</td><td>${esc((r.subject||'').slice(0,120))}</td><td class="money">${esc(r.value||'')}${r.role!=='فائز'?`<div class="snip">${esc(r.role)}</div>`:''}</td></tr>`).join('')}</table>`:'<p class="snip">مفيش عقود أو مناقصات للشركة دي في الداتا - جرّب الزتونة 🫒</p>'}`;
+  if(d.news)h+=`<h4>📰 الأخبار (${d.news.length})</h4>`+(d.news.map(n=>`<div class="hit"><div><b>${dmy(n.date)}</b> · ${esc(n.source)}<div><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div></div></div>`).join('')||'<p class="snip">مفيش</p>');
+  if(d.decisions)h+=`<h4>🏛 قرارات وتوصيات الجهاز (${d.decisions.length})</h4>`+(d.decisions.map(x=>`<div class="hit"><div><b>محضر ${esc(x.meeting||'')} ${dmy(x.mdate)}</b><div class="snip" style="max-height:none">${esc(x.decision||x.snippet)}</div></div></div>`).join('')||'<p class="snip">مفيش</p>');
+  if(d.complaints)h+=`<h4>⚖ الشكاوى والتظلمات (${d.complaints.length})</h4>`+(d.complaints.map(x=>`<div class="hit"><div><b>محضر ${esc(x.meeting||'')} ${dmy(x.mdate)}</b><div class="snip" style="max-height:none">${esc(x.snippet)}</div></div></div>`).join('')||'<p class="snip">مفيش</p>');
+  if(d.events)h+=`<h4>🕒 تسلسل الأحداث</h4><table>${d.events.map(e=>`<tr><td style="white-space:nowrap">${dmy(e.date)}</td><td>${esc(e.text)}</td></tr>`).join('')}</table>`;
+  $('#detail').innerHTML=h+'</div>';wireOff($('#detail'));wireCox($('#detail'));
+  $('#detail').querySelectorAll('[data-it]').forEach(t=>t.onclick=()=>detail(+t.dataset.it));
+  $('#detail').querySelectorAll('[data-aw]').forEach(t=>t.onclick=()=>{goMode('awards');awardDetail(+t.dataset.aw)})}
+// ---------------------------------------------------------------- 📊 التحليل البياني (of whatever is on screen)
+function bars(title,pairs,fmt){if(!pairs.length)return '';const mx=Math.max(...pairs.map(p=>p[1]))||1;
+  return `<div class="anacard"><h4>${title}</h4>${pairs.map(([k,v])=>`<div class="abar"><span class="ak" title="${esc(k)}">${esc(k)}</span><span class="at"><i style="width:${Math.max(2,v/mx*100)}%"></i></span><b>${fmt?fmt(v):v.toLocaleString('en')}</b></div>`).join('')}</div>`}
+function topN(rows,f,n){const c={};rows.forEach(r=>{const k=f(r);if(k)c[k]=(c[k]||0)+1});return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,n||10)}
+function sumBy(rows,f,v,n){const c={};rows.forEach(r=>{const k=f(r),x=money(v(r));if(k&&x)c[k]=(c[k]||0)+x});return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,n||10)}
+function money(v){const m=String(v||'').replace(/,/g,'').match(/\d+(\.\d+)?/);return m?+m[0]:0}
+function analysis(){const k=LAST.kind,R=LAST.rows||[];if(!R.length)return toast('مفيش نتايج على الشاشة تتحلل - دوّر الأول');
+  const F={items:{d:r=>r.publish||r.award_date,org:r=>r.org,st:r=>r.status,w:r=>r.winner,v:r=>r.value,c:r=>CN[r.country]},
+    news:{d:r=>r.date,org:r=>r.source,st:r=>r.cats&&r.cats.split(',')[0],c:r=>CN[r.country]},
+    awards:{d:r=>r.date,org:r=>r.org,w:r=>r.winner,v:r=>r.total},
+    company:{d:r=>r.date,org:r=>r.org,st:r=>r.kind,v:r=>r.value}}[k]||{d:r=>r.date};
+  const fmt=v=>v>=1e6?(v/1e6).toFixed(1)+' م':v>=1e3?(v/1e3).toFixed(0)+' ألف':v.toFixed(0);
+  let h=`<p class="snip" style="max-height:none">${R.length.toLocaleString('en')} صف من "${esc((document.querySelector('#mode button.on')||{}).textContent||'')}"${$('#q').value.trim()?' · بحث: '+esc($('#q').value.trim()):''}</p><div class="anagrid">`;
+  if(F.st)h+=bars('حسب الحالة / النوع',topN(R,F.st));
+  if(F.c)h+=bars('حسب الدولة',topN(R,F.c));
+  h+=bars('حسب الشهر (آخر 12)',topN(R,r=>String(F.d(r)||'').slice(0,7).match(/^\d{4}-\d\d$/)?String(F.d(r)).slice(0,7):'',99).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,12).reverse());
+  if(F.org)h+=bars('أكتر الجهات',topN(R,F.org,10));
+  if(F.w)h+=bars('أكتر الشركات فوزاً',topN(R,F.w,10));
+  if(F.v&&F.w)h+=bars('أكبر الشركات بالقيمة (د.ك)',sumBy(R,F.w,F.v,10),fmt);
+  if(F.v&&F.org)h+=bars('القيمة حسب الجهة',sumBy(R,F.org,F.v,10),fmt);
+  $('#ovt').textContent='📊 التحليل البياني';$('#ovb').innerHTML=h+'</div>';openOv()}
+$('#bana').onclick=analysis;
+// ---------------------------------------------------------------- 🫒 الزتونة
+function md2html(md){const e=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[([^\]]+)\]\(<?([^)>]+)>?\)/g,(m,t,u)=>/^https?:/.test(u)?`<a href="#" data-off="${u}">${t}</a>`:`<a href="#" data-ext="${u}">${t}</a>`);
+  const L=md.split(/\r?\n/);let h='',i=0;
+  while(i<L.length){const l=L[i];
+    if(/^\|/.test(l)){const rows=[];while(i<L.length&&/^\|/.test(L[i])){if(!/^\|\s*-/.test(L[i]))rows.push(L[i].replace(/^\||\|$/g,'').split('|'));i++}
+      h+='<table>'+rows.map((r,j)=>'<tr>'+r.map(c=>j?`<td>${e(c.trim())}</td>`:`<th>${e(c.trim())}</th>`).join('')+'</tr>').join('')+'</table>';continue}
+    if(/^#{1,4} /.test(l)){const n=l.match(/^#+/)[0].length;h+=`<h${n+1}>${e(l.replace(/^#+ /,''))}</h${n+1}>`}
+    else if(/^---+$/.test(l.trim()))h+='<hr>';
+    else if(/^\s*[-*] /.test(l)){h+='<ul>';while(i<L.length&&/^\s*[-*] /.test(L[i])){h+=`<li>${e(L[i].replace(/^\s*[-*] /,''))}</li>`;i++}h+='</ul>';continue}
+    else if(l.trim())h+=`<p>${e(l)}</p>`;i++}
+  return h}
+let ZT=null;
+async function zatoona(q){q=(q||$('#q').value).trim();
+  let rec={};try{rec=await get('/api/zatoona')}catch(e){}
+  $('#ovt').textContent='🫒 الزتونة';
+  $('#ovb').innerHTML=`<p class="snip" style="max-height:none">لما مش لاقي حاجة في داتا البرنامج: Claude بيدوّر في موقع الجهاز المركزي والجريدة والأخبار وملفاتنا، ويطلّع تقرير مختصر بالمصادر (بياخد من دقيقتين لـ 10).</p>
+    <div class="zrow"><input id="ztq" value="${esc(q)}" placeholder="مثلاً: هـ ط 241 الطريق الإقليمي - أو اسم شركة"><input id="zth" placeholder="ملاحظة (اختياري): عاوز الترسية بس، أو الأسعار..."><button class="pri" id="ztgo">🫒 هات الزتونة</button></div>
+    <div id="ztout">${rec.running?`<div class="busy"><div class="spin"></div><p>شغالة دلوقتي على «${esc(rec.running.q)}»...</p></div>`:''}</div>
+    ${(rec.recent||[]).length?`<h4>زتونات قبل كده</h4><table>${rec.recent.map(f=>`<tr><td><a href="#" data-zf="${esc(f.path)}">${esc(f.name)}</a></td><td>${esc(f.at.replace('T',' '))}</td></tr>`).join('')}</table>`:''}`;
+  openOv();
+  $('#ztgo').onclick=async()=>{const r=await post('/api/zatoona',{q:$('#ztq').value.trim(),hint:$('#zth').value.trim()});if(r.state==='error'||!r.id)return toast(r.msg,9000);ZT=r.id;pollZt()};
+  $('#ovb').querySelectorAll('[data-zf]').forEach(a=>a.onclick=async e=>{e.preventDefault();const t=await (await fetch(outUrl(a.dataset.zf))).text();showMd(a.textContent,t,a.dataset.zf)});
+  if(rec.running){ZT=rec.running.id;pollZt()}}
+async function pollZt(){if(!ZT)return;const j=await get('/api/zatoona?job='+ZT).catch(()=>null);if(!j)return;
+  if(j.state==='running'){if($('#ztout'))$('#ztout').innerHTML=`<div class="busy"><div class="spin"></div><p>Claude بيدوّر على «${esc(j.q)}» من ${Math.floor(j.elapsed/60)}:${String(j.elapsed%60).padStart(2,'0')} دقيقة...</p></div>`;setTimeout(pollZt,5000);return}
+  ZT=null;if(j.state==='done')showMd('🫒 الزتونة: '+j.q,j.md,j.path);else{if($('#ztout'))$('#ztout').innerHTML=`<p class="snip" style="color:var(--warn)">${esc(j.msg)}</p>`;toast(j.msg,9000)}}
+function showMd(title,md,path){$('#ovt').textContent=title;
+  $('#ovb').innerHTML=`<div class="acts2"><button data-rev="${esc(path)}">📁 الفولدر</button><button id="ztcopy">📋 نسخ</button><button id="ztnew">🫒 زتونة جديدة</button></div><div class="mdv">${md2html(md)}</div>`;
+  openOv();wireOutBtns();wireOff($('#ovb'));$('#ztcopy').onclick=()=>navigator.clipboard.writeText(md).then(()=>toast('اتنسخ'));$('#ztnew').onclick=()=>zatoona('')}
+$('#bzt').onclick=()=>zatoona();
 // ---------------------------------------------------------------- البحث بصورة
 const STOPW=new Set(['في','من','على','الى','إلى','عن','مع','او','أو','و','ال','هذا','هذه','التي','الذي','ذلك','تم','رقم','لسنة','بشأن','the','and','of','for','to','in','on','no']);
 async function scanImage(dataUrl){$('#scanbox').style.display='flex';$('#scanbody').innerHTML=`<img src="${dataUrl}"><p class="snip">بقرا الكلام اللي في الصورة...</p>`;

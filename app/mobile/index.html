@@ -141,6 +141,26 @@ th{background:var(--accent-soft);color:var(--ink);font-weight:600}
 .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.acts button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:6px 11px;font:inherit;font-size:13px}
 .acts button.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 .ptitle{display:none}
+/* crystal (v2.1) */
+html,body{background:radial-gradient(700px 420px at 0% -5%,rgba(110,160,255,.5),transparent 60%),radial-gradient(600px 400px at 110% 10%,rgba(255,168,90,.35),transparent 60%),
+  radial-gradient(600px 500px at 50% 115%,rgba(120,210,220,.35),transparent 60%),linear-gradient(160deg,#e9f0fb,#dde8f7 45%,#f5eee6) fixed}
+header{background:linear-gradient(120deg,rgba(13,36,70,.94),rgba(27,72,130,.88) 55%,rgba(44,104,170,.85));backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 6px 24px rgba(13,36,70,.35),inset 0 1px 0 rgba(255,255,255,.25)}
+.card,.kv,.panel,.tile,.search input,.sbtn,.chip,#fpanel,.tabs{background:rgba(255,255,255,.64);backdrop-filter:blur(16px) saturate(170%);-webkit-backdrop-filter:blur(16px) saturate(170%);border:1px solid rgba(255,255,255,.8)}
+.card,.tile,.panel{position:relative;box-shadow:0 8px 26px rgba(31,63,120,.14),inset 0 1px 0 #fff}
+.card::before,.tile::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(125deg,rgba(255,255,255,.55),rgba(255,255,255,0) 35%)}
+.chip.on,.big,.acts button.pri{background:linear-gradient(180deg,#f8a54c,#e07a1f 55%,#cf6a12)!important;color:#fff!important;border-color:#d8741c!important;box-shadow:0 6px 16px rgba(224,122,31,.35),inset 0 1px 0 rgba(255,255,255,.5)}
+#fpanel .tools .zt,.zt{background:linear-gradient(180deg,#9ccf6a,#5f9e35)!important;color:#fff!important;border-color:#5f9e35!important}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#9fb3c8;margin-inline-end:5px;vertical-align:middle}
+.dot.on{background:#3ee07a;animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(62,224,122,.7)}70%{box-shadow:0 0 0 8px rgba(62,224,122,0)}100%{box-shadow:0 0 0 0 rgba(62,224,122,0)}}
+.dym{margin:0 4px 8px;padding:8px 10px;border-radius:12px;background:linear-gradient(90deg,rgba(255,236,214,.95),rgba(255,255,255,.75));border:1px solid rgba(224,122,31,.35);font-size:13px}
+.dym a{display:inline-block;margin:3px;background:#fff;border:1px solid rgba(224,122,31,.4);border-radius:20px;padding:2px 10px;text-decoration:none;color:var(--brand)}
+.anacard{background:rgba(255,255,255,.75);border-radius:14px;padding:10px 12px;margin-bottom:10px;border:1px solid rgba(255,255,255,.9)}
+.abar{display:grid;grid-template-columns:110px 1fr 56px;gap:6px;align-items:center;font-size:12px;margin:5px 0}
+.ak{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.at{height:11px;border-radius:8px;background:rgba(20,50,92,.08);overflow:hidden}
+.at i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#f8a54c,#e07a1f)}.abar b{text-align:end}
+.mdv{line-height:1.8}.mdv table{margin:6px 0}
+#fpanel .tools{grid-template-columns:1fr 1fr}
 @media (min-width:900px){header,.search,.chips,#install,#bioOffer{padding-inline:max(14px,calc(50vw - 520px))}
   .list{max-width:1060px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:0 12px;align-items:start}
   .list>.note,.list>.empty,.list>.more,.list>.hello,.list>.tiles,.list>.panel{grid-column:1/-1}
@@ -157,14 +177,14 @@ th{background:var(--accent-soft);color:var(--ink);font-weight:600}
     <span class="upd" id="upd"></span><span id="who" title="خروج"></span><button id="lang" title="Language">EN</button></div>
   <div class="ctry" id="ctry"><button data-c="" class="on">الكل</button><button data-c="KW">الكويت</button><button data-c="SA">السعودية</button><button data-c="AE">الإمارات</button></div>
 </header>
-<nav class="tabs" id="tabs"><button data-t="home" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>الرئيسية<span class="bdg"></span></button><button data-t="dir"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>الدليل<span class="bdg"></span></button><button data-t="news"><svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M7 9h7M7 13h7M7 16h4"/></svg>الأخبار<span class="bdg"></span></button><button data-t="awards"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5L7 21l5-3 5 3-1.5-7.5"/></svg>الترسيات<span class="bdg"></span></button><button data-t="projects"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></svg>المشاريع<span class="bdg"></span></button><button data-t="routines"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>الروتينات<span class="bdg"></span></button><button data-t="watch"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>فواز<span class="bdg"></span></button></nav>
+<nav class="tabs" id="tabs"><button data-t="home" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>الرئيسية<span class="bdg"></span></button><button data-t="dir"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>الدليل<span class="bdg"></span></button><button data-t="news"><svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M7 9h7M7 13h7M7 16h4"/></svg>الأخبار<span class="bdg"></span></button><button data-t="awards"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5L7 21l5-3 5 3-1.5-7.5"/></svg>الترسيات<span class="bdg"></span></button><button data-t="companies"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>الشركات<span class="bdg"></span></button><button data-t="projects"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></svg>المشاريع<span class="bdg"></span></button><button data-t="routines"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>الروتينات<span class="bdg"></span></button><button data-t="watch"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>فواز<span class="bdg"></span></button></nav>
 <div id="bioOffer">👆 تدخل بالبصمة المرة الجاية بدل كلمة السر؟ <button class="off" id="bioYes">أيوه</button> <button class="off" id="bioNo">لا</button></div>
 <div id="install">ثبّت التطبيق على الشاشة الرئيسية: <button class="off" id="btnInstall">تثبيت</button></div>
 <div class="search"><div class="srow"><input type="search" id="q" placeholder="ابحث بالعنوان أو الرقم أو الجهة...">
   <button class="sbtn" id="bfil" title="فلترة وأدوات">⚙<i id="fcount" style="display:none"></i></button></div>
   <input type="file" id="fscan" accept="image/*" hidden>
   <div id="fpanel">
-    <div class="tools"><button id="bscan">📷 بحث بصورة</button><button id="bprint">🖨 طباعة</button></div>
+    <div class="tools"><button id="bscan">📷 بحث بصورة</button><button id="bprint">🖨 طباعة</button><button id="bana">📊 تحليل</button><button id="bzt" class="zt">🫒 الزتونة</button></div>
     <div id="fgroup"><div class="ttl">فلترة وترتيب</div>
     <div class="qd"><button data-qd="7">آخر أسبوع</button><button data-qd="30">آخر شهر</button><button data-qd="90">3 شهور</button><button data-qd="y">السنة دي</button></div>
     <div class="g"><label>من تاريخ<input type="date" id="fdfrom"></label><label>لحد تاريخ<input type="date" id="fdto"></label>
@@ -188,7 +208,7 @@ const today=new Date().toISOString().slice(0,10);
 const US=/فواز|fawaz|kjac|الكويتي[ةه] الياباني[ةه]|kuwait japan/i;
 const STATUSES=['مطروحة','اتوافق على طرحها','إعلان مسبق','مقفولة - تحت الدراسة','أسعار معلنة','مترسية','عقد جاري (قرار الجهاز)','ملغاة'];
 const STOP=new Set('في من علي الي عن مع او و ثم بشان لمده لصالح لزوم التابعه الخاصه وذلك ذلك هذه هذا التي الذي كافه جميع بعض عدد لسنه سنه رقم طرح مناقصه عامه الكويت دوله بدوله the of and for to in at'.split(' '));
-let PRJ=null,RTN=null,psheet='',SCANQ='';
+let PRJ=null,RTN=null,RKEY='',psheet='',SCANQ='',LAST={kind:'',rows:[]};
 let D=[],N=[],A=[],MEET={},META={},P=null,tab='home',country='',status='',fz=false,soon=0,fresh=false,shown=150,wsec='feed';
 
 // ---------------------------------------------------------------- language (Arabic / English)
@@ -393,24 +413,25 @@ async function load(silent){
     const got=Object.fromEntries(await Promise.all(names.map(async n=>[n,await open(n)])));
     D=[].concat(...['KW','SA','AE'].map(c=>got['directory_'+c]||[]));
     N=[].concat(...['KW','SA','AE'].map(c=>got['news_'+c]||[]),got.news_co||[]);
-    A=got.awards||[];A.forEach((a,i)=>a.r=i);MEET=got.meetings||{};PRJ=got.projects||null;RTN=got.routines||null}   // own unique key per award (details open by it)
+    A=got.awards||[];A.forEach((a,i)=>a.r=i);MEET=got.meetings||{};PRJ=got.projects||null;RTN=got.routines||null;
+    RKEY=(RTN&&RTN.rkey)||(got.cmd&&got.cmd.rkey)||''}   // own unique key per award (details open by it)
   catch(e){if(/OperationError|decrypt/i.test(String(e))){ACC=null;return showLogin('كلمة السر اتغيرت - ادخل بالجديدة')}
     if(!silent)$('#list').innerHTML='<div class="empty">الداتا ما اتفتحتش - جرّب تاني</div>';return}
   META=meta;META._w=sig;ME=me;
   P=null;if(mine.private){try{P=await aesOpen(await unwrap(ACC.key,mine.private),await getJ('private.enc'))}catch(e){P=null}}
   applyPerms();
-  $('#upd').innerHTML='آخر تحديث<br>'+(META.updated||'').replace('T',' ').slice(5,16);
+  $('#upd').innerHTML=`<i class="dot on"></i>آخر تحديث ${(META.updated||'').replace('T',' ').slice(5,16)}<br><span style="opacity:.8">من ${META.by==='cloud'?'السحابة':'الكمبيوتر'} · بيتشيك كل 30 ثانية</span>`;
   if(HL[tab]===undefined)openTabMarks(tab);else markRead(tab);
   badges();if(!silent||$('#sheet').style.display!=='block')render(silent);
-  if(silent)toast('اتحدّثت الداتا');
+  if(silent)toast('اتحدّثت الداتا ✓');
 }
-setInterval(()=>{if(!document.hidden&&ACC)load(true)},5*60e3);
+setInterval(()=>{if(!document.hidden&&ACC)load(true)},30e3);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ACC)load(true)});
 function visibleP(){return P}
-const TABP={home:'*',dir:'dir',news:'news',awards:'awards',projects:'projects',routines:'routines',watch:'watch'};
+const TABP={home:'*',dir:'dir',news:'news',awards:'awards',companies:'companies',projects:'projects',routines:'routines',watch:'watch'};
 function applyPerms(){
   if(!ME)return;const ACT=['filters','print','scan','docs','pdf','summary','bnb','send','share','run'];
-  if(ME.perms&&!ME.perms.some(p=>ACT.includes(p)))ME.perms=ME.perms.concat(['filters','print','scan','docs','pdf','summary']);   // accounts made before the per-button options
+  if(ME.perms&&!ME.perms.some(p=>ACT.includes(p)))ME.perms=ME.perms.concat(['filters','print','scan','docs','pdf','summary','analysis','companies']);   // accounts made before the per-button options
   const pm=ME.perms||[],cs=ME.countries||['KW','SA','AE'];
   document.querySelectorAll('#tabs button').forEach(b=>b.style.display=TABP[b.dataset.t]==='*'||pm.includes(TABP[b.dataset.t])?'':'none');
   if(TABP[tab]!=='*'&&!pm.includes(TABP[tab])){const f=[...document.querySelectorAll('#tabs button')].find(b=>b.style.display!=='none');
@@ -420,7 +441,8 @@ function applyPerms(){
   const left=ME.expires?Math.round((new Date(ME.expires)-new Date(today))/864e5):null;
   const cn=p=>pm.includes(p);$('#bscan').style.display=cn('scan')?'':'none';$('#bprint').style.display=cn('print')?'':'none';
   $('#fgroup').style.display=cn('filters')?'':'none';$('#bfil').style.display=cn('filters')||cn('scan')||cn('print')?'':'none';
-  $('#fpanel .tools').style.display=cn('scan')||cn('print')?'':'none';
+  $('#bana').style.display=cn('analysis')?'':'none';$('#bzt').style.display=cn('zatoona')?'':'none';
+  $('#fpanel .tools').style.display=cn('scan')||cn('print')||cn('analysis')||cn('zatoona')?'':'none';
   $('#who').innerHTML=esc(ACC.u)+(ME.expires?`<br><span style="opacity:.8">${dmy(ME.expires)}</span>`:'');
   if(left!==null&&left<=7&&!applyPerms.warned){applyPerms.warned=1;toast(`اشتراكك بينتهي بعد ${left} يوم (${dmy(ME.expires)}) - تواصل مع الأدمن للتجديد`,7000)}
 }
@@ -430,6 +452,7 @@ function chips(){
   if(tab==='home'){$('#chips').innerHTML='';return}
   if(tab==='watch')return watchChips();
   if(tab==='projects')return projChips();
+  if(tab==='companies')return coChips();
   if(tab==='routines'){$('#chips').innerHTML='';return}
   const base=D.filter(r=>!country||r.c===country);const cnt={};base.forEach(r=>cnt[r.st]=(cnt[r.st]||0)+1);
   const fr=base.filter(r=>recent(r.fs)||recent(r.ch)).length;
@@ -444,7 +467,7 @@ function chips(){
   document.querySelectorAll('[data-soon]').forEach(c=>c.onclick=()=>{soon=soon?0:7;render()});
 }
 function render(keep){const y=window.scrollY;$('.search').style.display=tab==='home'?'none':'';chips();const q=$('#q').value.trim();
-  if(tab==='home')renderHome();else if(tab==='projects')renderProjects(q);else if(tab==='routines')renderRoutines(q);else if(tab==='news')renderNews(q);else if(tab==='awards')renderAwards(q);else if(tab==='watch')renderWatch(q);else renderDir(q);
+  if(tab==='home')renderHome();else if(tab==='companies')renderCompanies(q);else if(tab==='projects')renderProjects(q);else if(tab==='routines')renderRoutines(q);else if(tab==='news')renderNews(q);else if(tab==='awards')renderAwards(q);else if(tab==='watch')renderWatch(q);else renderDir(q);
   if(keep)window.scrollTo(0,y)}
 function dirCard(r){const left=r.st==='مطروحة'&&r.cl?Math.round((new Date(r.cl)-new Date(today))/864e5):null;
   return `<div class="card ${isNewDir(r)?'unread':''}" data-i="${r.i}"><div class="t">${esc(r.s)}</div>
@@ -465,8 +488,9 @@ function renderDir(q){
   const rank={'مطروحة':0,'اتوافق على طرحها':1,'إعلان مسبق':1,'مقفولة - تحت الدراسة':2,'أسعار معلنة':3,'مترسية':4};
   if(FV().sort){}else if(q)res.sort((a,b)=>b[0]-a[0]||(b[1].cl||'').localeCompare(a[1].cl||''));
   else res.sort((a,b)=>(isNewDir(b[1])-isNewDir(a[1]))||(rank[a[1].st]??9)-(rank[b[1].st]??9)||(a[1].st==='مطروحة'?(a[1].cl||'9').localeCompare(b[1].cl||'9'):(b[1].a||b[1].p||'').localeCompare(a[1].a||a[1].p||'')));
+  LAST={kind:'items',rows:res.map(x=>x[1])};
   const nNew=res.filter(x=>isNewDir(x[1])).length;
-  $('#list').innerHTML=(res.length?`<div class="note" style="margin:0 4px 6px">${res.length} نتيجة${nNew?` · <b style="color:var(--unreadb)">${nNew} جديد/اتغيّر من آخر مرة</b>`:''}</div>`+res.slice(0,shown).map(x=>dirCard(x[1])).join('')+(res.length>shown?'<button class="more" id="more">عرض المزيد</button>':''):'<div class="empty">مفيش نتائج</div>');
+  $('#list').innerHTML=(q?dymBar(q,res.length):'')+(res.length?`<div class="note" style="margin:0 4px 6px">${res.length} نتيجة${nNew?` · <b style="color:var(--unreadb)">${nNew} جديد/اتغيّر من آخر مرة</b>`:''}</div>`+res.slice(0,shown).map(x=>dirCard(x[1])).join('')+(res.length>shown?'<button class="more" id="more">عرض المزيد</button>':''):'<div class="empty">مفيش نتائج</div>');
   if($('#more'))$('#more').onclick=()=>{shown+=150;render()};
   document.querySelectorAll('.card[data-i]').forEach(c=>c.onclick=()=>openItem(+c.dataset.i));
 }
@@ -475,7 +499,7 @@ function renderNews(q){
   if(q)res=res.map(n=>[score(q,tokset(n,o=>o.t),''),n]).filter(x=>x[0]>=.5).sort((a,b)=>b[0]-a[0]||b[1].d.localeCompare(a[1].d)).map(x=>x[1]);
   const isN=n=>HL.news!==undefined&&n.fs&&n.fs>HL.news;
   if(!q)res=res.slice().sort((a,b)=>isN(b)-isN(a));
-  res=PF(res,n=>n.d,n=>n.t,n=>n.t+' '+n.src);
+  res=PF(res,n=>n.d,n=>n.t,n=>n.t+' '+n.src);LAST={kind:'news',rows:res};
   $('#list').innerHTML=res.slice(0,shown).map(n=>newsCard(n,isN(n))).join('')+(res.length>shown?'<button class="more" id="more">عرض المزيد</button>':'')||'<div class="empty">مفيش أخبار</div>';
   if($('#more'))$('#more').onclick=()=>{shown+=150;render()};
 }
@@ -603,6 +627,9 @@ function openItem(i){const r=D.find(x=>x.i===i);if(!r)return;
     h+=`<h3>كشف تفريغ الأسعار (فض العطاءات ${esc(r.bd.m)})</h3><table><tr><th>#</th><th>المقاول</th><th>العرض</th></tr>${rows.map((x,i)=>`<tr><td>${/مستبعد/.test(x[1]+x[2])?'✖':'L'+(i+1)}</td><td class="${US.test(x[0])?'fz':''}">${esc(x[0])}${/مستبعد/.test(x[1]+x[2])?` <span class="note">(${esc(x[2]||x[1])})</span>`:''}</td><td class="money">${esc(x[3]||'-')}</td></tr>`).join('')}</table>`}
   if(r.chg.length)h+=`<h3>التغييرات اللي اترصدت</h3><table><tr><th>الوقت</th><th>البند</th><th>كان</th><th>بقى</th></tr>${r.chg.map(c=>`<tr><td>${esc(c[0].replace('T',' '))}</td><td>${esc(c[1])}</td><td>${esc(c[2])}</td><td><b>${esc(c[3])}</b></td></tr>`).join('')}</table>`;
   if(r.ev.length)h+=`<h3>كل اللي اتنشر عنها</h3>`+r.ev.map(e=>`<div class="ev"><b>${dmy(e[0])} · ${esc(e[1])} · ${esc(e[2])}</b><div>${esc(e[3])}${e[4]?` <a class="off" href="${esc(e[4])}" target="_blank" rel="noopener">المصدر ↗</a>`:''}</div></div>`).join('');
+  if(RKEY){const pm=(ME&&ME.perms)||[];const b=[];if(pm.includes('docs'))b.push(`<button class="pri" data-pc="docs">📥 المستندات</button>`);
+    if(pm.includes('pdf'))b.push(`<button data-pc="pdf">🖨 تقرير PDF</button>`);if(pm.includes('summary'))b.push(`<button data-pc="sum">📝 الملخص</button>`);
+    if(b.length)h+=`<h3>من الكمبيوتر</h3><div class="acts">${b.join('')}</div><p class="note">الكمبيوتر بيجهّز الملف ويبعتهولك هنا (لازم يكون شغال).</p>`}
   if(r.c==='KW'){const sim=similarAwards(r.s,-1);if(sim.length)h+=`<h3>ترسيات قديمة لمناقصات شبيهة (مش المناقصة دي - للمقارنة في التسعير)</h3>`+awTable(sim)}
   const nw=N.filter(n=>n.c===r.c).map(n=>[score(r.s,tokset(n,o=>o.t),''),n]).filter(x=>x[0]>=.5).sort((a,b)=>b[0]-a[0]).slice(0,6);
   if(nw.length)h+=`<h3>أخبار قريبة</h3>`+nw.map(([s,n])=>`<div class="ev"><b>${dmy(n.d)} · ${esc(n.src)}</b><div><a href="${esc(n.u)}" target="_blank" rel="noopener">${esc(n.t)}</a></div></div>`).join('');
@@ -612,6 +639,7 @@ function openItem(i){const r=D.find(x=>x.i===i);if(!r)return;
     ${(RTN.senders||[]).length>1?`<select id="smfrom" style="width:100%;font:inherit;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);margin-top:6px">${RTN.senders.map((e,i)=>`<option value="${i}" ${e===RTN.sender?'selected':''}>ابعت من: ${esc(e)}</option>`).join('')}</select>`:''}
     <button class="big" id="smgo">ابعتلي الملخص على الإيميل ده</button>`;
   showSheet(r.k||'مناقصة',h);
+  document.querySelectorAll('[data-pc]').forEach(b=>b.onclick=()=>pcFile(b.dataset.pc,String(r.i),b,{docs:'مستندات '+(r.n||r.i)+'.zip',pdf:'تقرير '+(r.n||r.i)+'.pdf',sum:'ملخص '+(r.n||r.i)+'.html'}[b.dataset.pc]));
   if($('#smgo'))$('#smgo').onclick=async()=>{const ok=await cmd('summary',`${r.i},${$('#smto').value},${$('#smfrom')?$('#smfrom').value:''}`);toast(ok?'الطلب وصل للكمبيوتر - الملخص هيوصلك على الإيميل خلال دقايق':'مفيش اتصال - جرّب تاني',6000)}}
 function openAward(row){const a=A.find(x=>x.r===row);if(!a)return;const m=MEET[a.d];
   let h=`<div style="font-weight:700;font-size:16px;margin-bottom:10px">${esc(a.s)}</div><div class="kv">
@@ -655,6 +683,7 @@ document.querySelectorAll('[data-qd]').forEach(b=>b.onclick=()=>{const d=new Dat
 $('#fclear').onclick=()=>{['#fdfrom','#fdto','#fco','#fcl'].forEach(x=>$(x).value='');$('#fsort').value='';$('#fdby').value='';fxCount();render()};
 // ---------------------------------------------------------------- print
 $('#bprint').onclick=()=>{$('#fpanel').style.display='none';printNow()};
+$('#bana').onclick=()=>{$('#fpanel').style.display='none';analysis()};$('#bzt').onclick=()=>{$('#fpanel').style.display='none';zatoonaM()};
 function printNow(){const open=$('#sheet').style.display==='block';document.body.classList.toggle('psheet',open);
   let t=document.getElementById('ptitle');if(!t){t=document.createElement('div');t.id='ptitle';t.className='ptitle';document.body.prepend(t)}
   const f=FV();t.innerHTML=`<b>GCC Tenders - ${esc(open?$('#stitle').textContent:(document.querySelector('#tabs button.on')||{}).textContent||'')}</b><div class="note">${esc([$('#q').value.trim(),f.dfrom&&('من '+dmy(f.dfrom)),f.dto&&('لحد '+dmy(f.dto)),$('#fco').value,$('#fcl').value].filter(Boolean).join(' · '))} · ${new Date().toLocaleString('en-GB')}</div>`;
@@ -703,9 +732,9 @@ function renderProjects(q){if(!PRJ){$('#list').innerHTML='<div class="empty">ت�
       ${no?`<button class="big" id="pjfind">🔎 دوّر عليها في الدليل</button>`:''}<button class="big" onclick="printNow()">🖨 طباعة</button>`);
     if($('#pjfind'))$('#pjfind').onclick=()=>{closeSheet();$('#q').value=no;goTab('dir')}})}
 // ---------------------------------------------------------------- الروتينات والتقارير (signed requests to the PC)
-async function cmd(kind,arg){if(!RTN||!RTN.rkey)return false;const n=await ntfy();if(!n)return false;
+async function cmd(kind,arg){if(!RKEY)return false;const n=await ntfy();if(!n)return false;
   const ts=Math.floor(Date.now()/1000),u=ACC.u,msg=`${kind}|${u}|${arg}|${ts}`;
-  const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(RTN.rkey),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const k=await crypto.subtle.importKey('raw',new TextEncoder().encode(RKEY),{name:'HMAC',hash:'SHA-256'},false,['sign']);
   const sig=[...new Uint8Array(await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(msg)))].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32);
   try{await fetch('https://ntfy.sh/'+n.topic,{method:'POST',body:msg+'|'+sig});return sig}catch(e){return false}}
 const RSTAT={running:'شغال',done:'خلص',error:'وقف بخطأ'},KIND={claude:'بيعمله Claude',builtin:'البرنامج بيعمله'};
@@ -733,7 +762,7 @@ async function getReport(r,x,btn){const sig=await cmd('get',`${r.id},${x.k}`);if
     let msgs=[];try{msgs=(await (await fetch(`https://ntfy.sh/${n.topic}-files/json?poll=1&since=${since}`)).text()).split('\n').filter(Boolean).map(l=>JSON.parse(l))}catch(e){}
     const m=msgs.find(m=>m.attachment&&m.attachment.name===name);if(!m)continue;
     try{const buf=new Uint8Array(await (await fetch(m.attachment.url)).arrayBuffer());
-      const key=await crypto.subtle.importKey('raw',await crypto.subtle.digest('SHA-256',new TextEncoder().encode(RTN.rkey+'|file')),'AES-GCM',false,['decrypt']);
+      const key=await crypto.subtle.importKey('raw',await crypto.subtle.digest('SHA-256',new TextEncoder().encode(RKEY+'|file')),'AES-GCM',false,['decrypt']);
       const raw=await crypto.subtle.decrypt({name:'AES-GCM',iv:buf.slice(0,12)},key,buf.slice(12));
       const mime={pdf:'application/pdf',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',xlsm:'application/vnd.ms-excel.sheet.macroEnabled.12',xls:'application/vnd.ms-excel',docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',doc:'application/msword',html:'text/html'}[x.ext]||'application/octet-stream';
       const file=new File([raw],x.name,{type:mime});btn.disabled=false;btn.textContent='📥 افتح / شارك';
@@ -741,6 +770,98 @@ async function getReport(r,x,btn){const sig=await cmd('get',`${r.id},${x.k}`);if
       const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=x.name;a.click();return}
     catch(e){break}}
   btn.disabled=false;btn.textContent='📥 افتح / شارك';toast('الكمبيوتر ما ردش - لازم يكون شغال ومتصل بالنت',7000)}
+// ---------------------------------------------------------------- a file made on the PC for the phone (documents / PDF / summary / الزتونة)
+async function pcFile(kind,arg,btn,name,minutes){const sig=await cmd(kind,arg);if(!sig)return toast('مفيش اتصال - جرّب تاني');
+  const old=btn.textContent;btn.disabled=true;btn.textContent='⏳ الكمبيوتر بيجهّزه...';
+  const n=await ntfy(),since=Math.floor(Date.now()/1000)-5,fname=sig.slice(0,16)+'.bin',tries=Math.round((minutes||4)*60/4);
+  for(let t=0;t<tries;t++){await new Promise(s=>setTimeout(s,4000));
+    let msgs=[];try{msgs=(await (await fetch(`https://ntfy.sh/${n.topic}-files/json?poll=1&since=${since}`)).text()).split('\n').filter(Boolean).map(l=>JSON.parse(l))}catch(e){}
+    const m=msgs.find(m=>m.attachment&&m.attachment.name===fname);if(!m)continue;
+    try{const buf=new Uint8Array(await (await fetch(m.attachment.url)).arrayBuffer());
+      const key=await crypto.subtle.importKey('raw',await crypto.subtle.digest('SHA-256',new TextEncoder().encode(RKEY+'|file')),'AES-GCM',false,['decrypt']);
+      const raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:buf.slice(0,12)},key,buf.slice(12)));
+      btn.disabled=false;btn.textContent=old;
+      const head=new TextDecoder().decode(raw.slice(0,12));if(head.startsWith('خطأ'))return toast(new TextDecoder().decode(raw),9000);
+      if(/\.md$/.test(name))return showMdSheet(name.replace(/\.md$/,''),new TextDecoder().decode(raw));
+      const ext=name.split('.').pop(),mime={pdf:'application/pdf',zip:'application/zip',html:'text/html'}[ext]||'application/octet-stream';
+      const file=new File([raw],name,{type:mime});
+      if(ext==='html'){showSheet(name,`<iframe style="width:100%;height:78vh;border:0;border-radius:12px;background:#fff" srcdoc="${esc(new TextDecoder().decode(raw))}"></iframe>`);return}
+      if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name});return}catch(e){if(e.name==='AbortError')return}}
+      const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=name;a.click();return}
+    catch(e){break}}
+  btn.disabled=false;btn.textContent=old;toast('الكمبيوتر ما ردش - لازم يكون شغال ومتصل بالنت',7000)}
+// ---------------------------------------------------------------- تقصد؟ (spelling, on the phone itself)
+let VOC=null;
+function vocab(){if(VOC)return VOC;VOC=new Map();const add=t=>toks(t).forEach(w=>{if(w.length>2&&!/^\d+$/.test(w))VOC.set(w,(VOC.get(w)||0)+1)});
+  D.forEach(r=>add(r.s+' '+r.o+' '+(r.w||'')));A.slice(-6000).forEach(a=>add(a.s+' '+a.o+' '+(a.w||'')));return VOC}
+function didYouMean(q){const ws=toks(q);if(!ws.length)return [];const V=vocab(),opts=[];
+  const unk=ws.filter(w=>w.length>2&&!/^\d+$/.test(w)&&!V.has(w));if(!unk.length)return [];
+  const near_=w=>{const c=[];for(const [k,n] of V){if(Math.abs(k.length-w.length)<=2&&k[0]===w[0]){const r=near(w,k);if(r>=.72)c.push([r,n,k])}}return c.sort((a,b)=>b[0]-a[0]||b[1]-a[1]).slice(0,3).map(x=>x[2])};
+  const alts={};unk.forEach(w=>alts[w]=near_(w));
+  for(let i=0;i<3;i++){const s=ws.map(w=>alts[w]&&alts[w].length?alts[w][Math.min(i,alts[w].length-1)]:w).join(' ');if(s!==ws.join(' ')&&!opts.includes(s))opts.push(s)}
+  return opts}
+function dymBar(q,n){const o=didYouMean(q);if(!o.length)return '';if(!n&&!dymBar.auto){dymBar.auto=1;setTimeout(()=>{$('#q').value=o[0];toast(`مفيش نتايج - بدوّر بـ «${o[0]}»`,5000);render();dymBar.auto=0},10)}
+  return `<div class="dym">✍ تقصد: ${o.map(x=>`<a href="#" data-dym="${esc(x)}">${esc(x)}</a>`).join('')}</div>`}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-dym]');if(!a)return;e.preventDefault();$('#q').value=a.dataset.dym;shown=150;render()});
+// ---------------------------------------------------------------- الشركات (contracts and tenders of one company, newest first)
+let CO={name:'',extra:new Set()};
+const coKey=s=>norm(s).replace(/\b(شركه|مؤسسه|مجموعه|للتجاره|التجاره|العامه|والمقاولات|المقاولات|ذ م م|ذمم|ش م ك|co|company|wll|ltd|llc|trading|contracting|general)\b/g,' ').replace(/\s+/g,' ').trim();
+function coIndex(){if(coIndex.c&&coIndex.n===D.length+A.length)return coIndex.c;const m=new Map();const add=n=>{n=String(n||'').trim();if(n.length>3){const k=coKey(n).slice(0,40);if(!k)return;const g=m.get(k)||{name:n,n:0,names:new Map()};g.n++;g.names.set(n,(g.names.get(n)||0)+1);m.set(k,g)}};
+  A.forEach(a=>add(a.w));D.forEach(r=>{add(r.w);(r.bd&&r.bd.r||[]).forEach(x=>add(x[0]))});
+  m.forEach(g=>{g.name=[...g.names.entries()].sort((a,b)=>b[1]-a[1])[0][0]});coIndex.c=m;coIndex.n=D.length+A.length;return m}
+function coChips(){$('#chips').innerHTML='<span class="note" style="align-self:center">إضافات:</span>'+[['news','📰 الأخبار'],['events','🕒 تسلسل الأحداث']].map(([k,l])=>`<span class="chip ${CO.extra.has(k)?'on':''}" data-cox="${k}">${l}</span>`).join('');
+  document.querySelectorAll('[data-cox]').forEach(c=>c.onclick=()=>{const k=c.dataset.cox;CO.extra.has(k)?CO.extra.delete(k):CO.extra.add(k);render()})}
+function renderCompanies(q){const qk=coKey(q);
+  if(!qk){$('#list').innerHTML='<div class="empty">اكتب اسم الشركة (ولو فيه غلطة) وهتظهرلك الأسماء القريبة تختار منها</div>';return}
+  const hits=[];coIndex().forEach((g,k)=>{let sc=k.includes(qk)||qk.split(' ').every(w=>k.includes(w))?1:0;
+    if(!sc){const kw=k.split(' '),per=qk.split(' ').map(w=>Math.max(...kw.map(x=>near(w,x))));sc=Math.max(...per)>=.85?per.reduce((a,b)=>a+b,0)/per.length:0}
+    if(sc>=.72)hits.push([sc,g])});
+  hits.sort((a,b)=>b[0]-a[0]||b[1].n-a[1].n);
+  $('#list').innerHTML=`<div class="note" style="margin:0 4px 6px">${hits.length} شركة قريبة من «${esc(q)}» - اختار</div>`+hits.slice(0,40).map(([sc,g],i)=>`<div class="card" data-co="${i}"><div class="t">${esc(g.name)}</div><div class="m"><span class="wk">${g.n} مرة</span>${sc<1?'<span>قريبة</span>':''}</div></div>`).join('');
+  document.querySelectorAll('[data-co]').forEach(c=>c.onclick=()=>openCompanyM(hits[+c.dataset.co][1]))}
+function openCompanyM(g){const keys=new Set([...g.names.keys()].map(coKey));const has=s=>{const k=coKey(s||'');return [...keys].some(x=>x&&k.includes(x.slice(0,30)))};
+  const rows=[];A.forEach(a=>{if(has(a.w))rows.push({d:a.d,k:'ترسية',n:a.n,o:a.o,s:a.s,v:a.v,r:a.r})});
+  D.forEach(r=>{if(r.w&&has(r.w))rows.push({d:r.a||r.p,k:'عقد / ترسية',n:r.n,o:r.o,s:r.s,v:r.v,i:r.i});
+    (r.bd&&r.bd.r||[]).forEach((x,j)=>{if(has(x[0]))rows.push({d:r.bd.d||r.cl,k:`مشاركة (${j+1} من ${r.bd.r.length})`,n:r.n,o:r.o,s:r.s,v:x[3]||'',i:r.i})})});
+  rows.sort((a,b)=>String(b.d||'').localeCompare(String(a.d||'')));LAST={kind:'company',rows};
+  let h=`<div class="kv"><div>الشركة</div><div><b>${esc(g.name)}</b></div><div>العقود والمناقصات</div><div>${rows.length}</div></div>
+    <div class="chips" style="padding:10px 0">${[['news','📰 الأخبار'],['events','🕒 تسلسل الأحداث']].map(([k,l])=>`<span class="chip ${CO.extra.has(k)?'on':''}" data-coxi="${k}">${l}</span>`).join('')}</div>
+    <h3>العقود والمناقصات (الأحدث الأول)</h3>`+(rows.map(r=>`<div class="card" ${r.i?`data-oi="${r.i}"`:r.r!==undefined?`data-oa="${r.r}"`:''}><div class="t">${esc(r.s)}</div><div class="m"><span>${dmy(r.d)}</span><span class="wk">${esc(r.k)}</span>${r.n?`<span class="tno">${esc(r.n)}</span>`:''}<span>${esc(r.o)}</span>${r.v?`<span class="money">${esc(r.v)}</span>`:''}</div></div>`).join('')||'<p class="note">مفيش عقود للشركة دي في الداتا.</p>');
+  if(CO.extra.has('news')){const nw=N.filter(n=>has(n.t)).slice(0,40);h+=`<h3>📰 الأخبار (${nw.length})</h3>`+(nw.map(n=>newsCard(n,0)).join('')||'<p class="note">مفيش</p>')}
+  if(CO.extra.has('events'))h+=`<h3>🕒 تسلسل الأحداث</h3><table>${rows.map(r=>`<tr><td>${dmy(r.d)}</td><td>${esc(r.k)}: ${esc((r.s||'').slice(0,80))}</td></tr>`).join('')}</table>`;
+  showSheet('الشركات',h);
+  document.querySelectorAll('[data-coxi]').forEach(c=>c.onclick=()=>{const k=c.dataset.coxi;CO.extra.has(k)?CO.extra.delete(k):CO.extra.add(k);openCompanyM(g)});
+  document.querySelectorAll('[data-oi]').forEach(c=>c.onclick=()=>openItem(+c.dataset.oi));document.querySelectorAll('[data-oa]').forEach(c=>c.onclick=()=>openAward(+c.dataset.oa))}
+// ---------------------------------------------------------------- 📊 التحليل البياني
+function bars(title,pairs,fmt){if(!pairs.length)return '';const mx=Math.max(...pairs.map(p=>p[1]))||1;
+  return `<div class="anacard"><h3>${title}</h3>${pairs.map(([k,v])=>`<div class="abar"><span class="ak">${esc(k)}</span><span class="at"><i style="width:${Math.max(3,v/mx*100)}%"></i></span><b>${fmt?fmt(v):v.toLocaleString('en')}</b></div>`).join('')}</div>`}
+function topN(R,f,n){const c={};R.forEach(r=>{const k=f(r);if(k)c[k]=(c[k]||0)+1});return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,n||8)}
+function sumBy(R,f,v,n){const c={};R.forEach(r=>{const k=f(r),x=money(v(r));if(k&&x)c[k]=(c[k]||0)+x});return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,n||8)}
+function analysis(){const R=LAST.rows||[];if(!R.length)return toast('مفيش نتايج على الشاشة تتحلل');
+  const F={items:{d:r=>r.p||r.a,o:r=>r.o,st:r=>r.st,w:r=>r.w,v:r=>r.v,c:r=>CN[r.c]},news:{d:r=>r.d,o:r=>r.src,c:r=>CN[r.c]},
+    awards:{d:r=>r.d,o:r=>r.o,w:r=>r.w,v:r=>r.v},company:{d:r=>r.d,o:r=>r.o,st:r=>r.k.split(' (')[0],v:r=>r.v}}[LAST.kind]||{d:r=>r.d};
+  const fmt=v=>v>=1e6?(v/1e6).toFixed(1)+' م':v>=1e3?(v/1e3).toFixed(0)+' ألف':v.toFixed(0);
+  let h=`<p class="note">${R.length} صف</p>`;
+  if(F.st)h+=bars('حسب الحالة / النوع',topN(R,F.st));if(F.c)h+=bars('حسب الدولة',topN(R,F.c));
+  h+=bars('حسب الشهر',topN(R,r=>/^\d{4}-\d\d/.test(String(F.d(r)||''))?String(F.d(r)).slice(0,7):'',99).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,12).reverse());
+  if(F.o)h+=bars('أكتر الجهات',topN(R,F.o));if(F.w)h+=bars('أكتر الشركات فوزاً',topN(R,F.w));
+  if(F.v&&F.w)h+=bars('أكبر الشركات بالقيمة',sumBy(R,F.w,F.v),fmt);if(F.v&&F.o)h+=bars('القيمة حسب الجهة',sumBy(R,F.o,F.v),fmt);
+  showSheet('📊 التحليل البياني',h)}
+// ---------------------------------------------------------------- 🫒 الزتونة (Claude on the PC)
+function md2html(md){const e=t=>esc(t).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[([^\]]+)\]\(<?([^)>]+)>?\)/g,(m,t,u)=>/^https?:/.test(u)?`<a href="${u}" target="_blank" rel="noopener">${t}</a>`:t);
+  const L=md.split(/\r?\n/);let h='',i=0;while(i<L.length){const l=L[i];
+    if(/^\|/.test(l)){const rows=[];while(i<L.length&&/^\|/.test(L[i])){if(!/^\|\s*-/.test(L[i]))rows.push(L[i].replace(/^\||\|$/g,'').split('|'));i++}
+      h+='<table>'+rows.map((r,j)=>'<tr>'+r.map(c=>j?`<td>${e(c.trim())}</td>`:`<th>${e(c.trim())}</th>`).join('')+'</tr>').join('')+'</table>';continue}
+    if(/^#{1,4} /.test(l))h+=`<h3>${e(l.replace(/^#+ /,''))}</h3>`;else if(/^---+$/.test(l.trim()))h+='<hr>';
+    else if(/^\s*[-*] /.test(l)){h+='<ul>';while(i<L.length&&/^\s*[-*] /.test(L[i])){h+=`<li>${e(L[i].replace(/^\s*[-*] /,''))}</li>`;i++}h+='</ul>';continue}
+    else if(l.trim())h+=`<p>${e(l)}</p>`;i++}return h}
+function showMdSheet(title,md){showSheet('🫒 '+title,`<div class="mdv">${md2html(md)}</div><button class="big" onclick="printNow()">🖨 طباعة</button>`)}
+function zatoonaM(){const q=$('#q').value.trim();
+  showSheet('🫒 الزتونة',`<p class="note">لما مش لاقي حاجة في الداتا: Claude على الكمبيوتر بيدوّر في موقع الجهاز المركزي والجريدة والأخبار، ويبعتلك تقرير مختصر بالمصادر (من دقيقتين لـ 10 - سيب الصفحة دي مفتوحة).</p>
+    <input id="ztq" value="${esc(q)}" placeholder="رقم المناقصة أو اسمها أو اسم شركة" style="width:100%;font:inherit;padding:11px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);margin:6px 0">
+    <button class="big" id="ztgo">🫒 هات الزتونة</button>`);
+  $('#ztgo').onclick=()=>{const v=$('#ztq').value.trim();if(v.length<2)return toast('اكتب اللي عاوز تدوّر عليه');
+    const b64=btoa(unescape(encodeURIComponent(v))).replace(/\+/g,'-').replace(/\//g,'_');pcFile('zt',b64,$('#ztgo'),v+'.md',26)}}
 function setH(){document.documentElement.style.setProperty('--hh',$('#hdr').offsetHeight+'px')}
 window.addEventListener('resize',setH);setH();
 let deferred;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('#install').style.display='block'});
