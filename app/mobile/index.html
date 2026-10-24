@@ -420,12 +420,12 @@ async function load(silent){
   META=meta;META._w=sig;ME=me;
   P=null;if(mine.private){try{P=await aesOpen(await unwrap(ACC.key,mine.private),await getJ('private.enc'))}catch(e){P=null}}
   applyPerms();
-  $('#upd').innerHTML=`<i class="dot on"></i>آخر تحديث ${(META.updated||'').replace('T',' ').slice(5,16)}<br><span style="opacity:.8">من ${META.by==='cloud'?'السحابة':'الكمبيوتر'} · بيتشيك كل 30 ثانية</span>`;
+  $('#upd').innerHTML=`<i class="dot on"></i>آخر تحديث ${(META.updated||'').replace('T',' ').slice(5,16)}<br><span style="opacity:.8">من ${META.by==='cloud'?'السحابة':'الكمبيوتر'} · بيتشيك كل 5 دقايق</span>`;
   if(HL[tab]===undefined)openTabMarks(tab);else markRead(tab);
   badges();if(!silent||$('#sheet').style.display!=='block')render(silent);
   if(silent)toast('اتحدّثت الداتا ✓');
 }
-setInterval(()=>{if(!document.hidden&&ACC)load(true)},30e3);
+setInterval(()=>{if(!document.hidden&&ACC)load(true)},5*60e3);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ACC)load(true)});
 function visibleP(){return P}
 const TABP={home:'*',dir:'dir',news:'news',awards:'awards',companies:'companies',projects:'projects',routines:'routines',watch:'watch'};

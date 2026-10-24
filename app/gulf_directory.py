@@ -44,11 +44,13 @@ PORT = 8766
 
 
 def auto_minutes():
-    """minutes between automatic updates (0 = off, 0.5 = all the time: 30 seconds after the last one ended)"""
+    """minutes between automatic updates (0 = off). Every 30 minutes by default and never less than 15:
+    asking the official sites all the time could get the program blocked"""
     try:
-        return max(0.0, float(cfg.S.get("auto_update_minutes", 0.5)))
+        m = float(cfg.S.get("auto_update_minutes", 30))
     except (TypeError, ValueError):
-        return 0.5
+        return 30
+    return 0 if m <= 0 else max(15.0, m)
 
 
 COUNTRIES = {"KW": "الكويت", "SA": "السعودية", "AE": "الإمارات"}

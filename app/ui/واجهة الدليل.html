@@ -236,7 +236,7 @@ table{background:rgba(255,255,255,.55);border-radius:10px;overflow:hidden}
   <button id="btnUpdate" title="يجيب الجديد من المواقع دلوقتي">⟳ تحديث دلوقتي</button>
   <span class="me" id="me" style="display:none"></span>
   <details class="menu" id="menu"><summary title="الإعدادات">⚙</summary><div class="mbox">
-    <label id="autoRow">تحديث تلقائي <select id="auto"><option value="0.5">باستمرار (كل 30 ثانية)</option><option value="5">كل 5 دقايق</option><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
+    <label id="autoRow">تحديث تلقائي <select id="auto"><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة (الأأمن)</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
     <button onclick="post('/api/open-folder')">📁 فولدر التقارير</button>
     <button id="btnOut" style="display:none">🚪 تسجيل خروج</button></div></details>
 </header>
@@ -376,7 +376,7 @@ async function status_(first){
     document.querySelectorAll('.chip[data-s]').forEach(c=>c.onclick=()=>{status=c.dataset.s;fresh=0;status_();search()});
     document.querySelectorAll('.chip[data-f]').forEach(c=>c.onclick=()=>{fresh=fresh?0:3;status='';status_();search()});
     updateBadges(s);
-    if(document.activeElement!==$('#auto'))$('#auto').value=String(s.auto_minutes??5);
+    if(document.activeElement!==$('#auto'))$('#auto').value=String(s.auto_minutes??30);
     // the log shows while an update runs (or after one that failed), then hides again
     if(s.update==='running'||s.update==='error'){$('#log').style.display='block';$('#log').textContent=s.log.join('\n');$('#log').scrollTop=1e9}
     else $('#log').style.display='none';
