@@ -96,8 +96,27 @@ def xlsx_info(f):
     return res
 
 
-def read_folder(folder):
-    """every document in the folder (zips opened) -> ([(file, page, text)], boq notes, file list)"""
+def _tender_part(text, number, org=""):
+    """a gazette page / a meeting's minutes carry many tenders: keep only the part about this one -
+    the whole number (all its parts, in either order), or a one-part number with the client's name next to it"""
+    import capt_tool as ct
+    nums = ct.num_parts(number)
+    if not nums:
+        return ""
+    t = unicodedata.normalize("NFKC", text)
+    if len(nums) >= 2:
+        hits = list(ct.num_regex(nums).finditer(t))
+    else:
+        ow = [w for w in ct.words(org) if len(w) > 3][:3]
+        hits = [m for m in re.finditer(rf"(?<!\d){re.escape(nums[0])}(?!\d)", t)
+                if ow and any(w in ct.norm(t[max(0, m.start() - 400):m.start() + 400]) for w in ow)]
+    parts = [t[max(0, m.start() - 450):m.start() + 850] for m in hits[:2]]
+    return "\n...\n".join(parts)
+
+
+def read_folder(folder, only=None, number="", org=""):
+    """the tender's own documents in its folder (zips opened) -> ([(file, page, text)], boq notes, file list).
+    only = the files downloaded for THIS tender (anything else lying in the folder is ignored)"""
     folder = Path(folder)
     for z in list(folder.glob("*.zip")):
         dest = folder / z.stem
@@ -108,9 +127,12 @@ def read_folder(folder):
             except Exception:                      # noqa: BLE001
                 pass
     pages, boq, files, budget = [], [], [], [OCR_PAGES]
+    allowed_dirs = {Path(n).stem for n in (only or ()) if n.lower().endswith(".zip")}
     for f in sorted(folder.rglob("*")):
-        if not f.is_file() or f.name.startswith(("~$", "ملخص")):
+        if not f.is_file() or f.name.startswith(("~$", "ملخص", "BNB", "bnb spec")):
             continue
+        if only is not None and f.name not in only and not (set(f.relative_to(folder).parts[:-1]) & allowed_dirs):
+            continue                                   # not one of this tender's documents
         ext = f.suffix.lower()
         try:
             if ext == ".pdf":
@@ -126,6 +148,10 @@ def read_folder(folder):
                 continue
         except Exception:                          # noqa: BLE001 - a damaged / locked file
             continue
+        if f.name.startswith("الكويت اليوم ص") or "محضر" in f.name:    # gazette page / minutes: only this tender's part
+            got = [(p, part) for p, t in got for part in [_tender_part(t, number, org)] if part]
+            if not got:
+                continue
         files.append(f.name)
         pages += [(f.name, p, t) for p, t in got]
     return pages, boq, files
@@ -165,13 +191,16 @@ def summarize(iid, progress=print):
         dl, folder = {"files": [], "locked": [], "error": str(e)}, None
     if folder is None or not folder.exists():
         import tender_docs as td
-        folder = gd.DOCS_OUT / td.safe(f"{it['number']} - {it['subject']}", 90)
+        folder = gd.DOCS_OUT / (td.safe(f"{it['number']} - {it['subject']}", 80) + f" ({iid})")
         folder.mkdir(parents=True, exist_ok=True)
+    only = {n for n, ok, _x in dl.get("files", []) if ok}
     for f in gd.archived_files(iid):               # copies kept while it was open
-        if f.is_file() and not (folder / f.name).exists():
-            shutil.copy2(f, folder / f.name)
+        if f.is_file():
+            if not (folder / f.name).exists():
+                shutil.copy2(f, folder / f.name)
+            only.add(f.name)
     progress("بقرا الملفات (والممسوح بالـ OCR)...")
-    pages, boq, files = read_folder(folder)
+    pages, boq, files = read_folder(folder, only, it["number"] or "", it["org"] or "")
     sections = [(title, find_points(pages, keys)) for title, keys in SECTIONS]
     _last_sections[:] = sections
     facts = [("الجهة", it["org"]), ("رقم المناقصة", it["number"]), ("الموضوع", it["subject"]), ("الحالة", it["status"]),
@@ -195,7 +224,7 @@ def render(it, facts, sections, d, boq, files, dl):
         secs += f"<section><h2>{e(title)}</h2><ul>{body}</ul></section>"
     hist = d.get("history") or []
     if hist:
-        secs += "<section><h2>ترسيات سابقة لنفس الشغل (للتسعير)</h2><table class=t><tr><th>التاريخ</th><th>الجهة</th><th>الفائز</th><th>القيمة</th></tr>" + \
+        secs += "<section><h2>ترسيات قديمة لمناقصات شبيهة (مش المناقصة دي - للمقارنة في التسعير)</h2><table class=t><tr><th>التاريخ</th><th>الجهة</th><th>الفائز</th><th>القيمة</th></tr>" + \
                 "".join(f"<tr><td>{e(str(h.get('date') or ''))}</td><td>{e(h.get('org') or '')}</td><td>{e((h.get('winner') or '')[:70])}</td><td>{e(str(h.get('total') or ''))}</td></tr>" for h in hist[:8]) + "</table></section>"
     bids = d.get("bids")
     if bids and bids.get("rows"):

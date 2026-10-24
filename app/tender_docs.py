@@ -128,7 +128,8 @@ def safe(s, n=70):
 
 def download(item, docs, out_root):
     """save every downloadable doc of an item into its own folder -> (folder, [(name, ok, note)])"""
-    folder = Path(out_root) / safe(f"{item.get('number') or ''} - {item.get('subject') or ''}", 90)
+    # the item id keeps two tenders with a similar number / title out of each other's folder
+    folder = Path(out_root) / (safe(f"{item.get('number') or ''} - {item.get('subject') or ''}", 80) + (f" ({item['id']})" if item.get("id") else ""))
     folder.mkdir(parents=True, exist_ok=True)
     res = []
     op = None

@@ -225,6 +225,48 @@ table{background:rgba(255,255,255,.55);border-radius:10px;overflow:hidden}
 .zrow{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.zrow input{flex:1;min-width:220px;font:inherit;padding:8px 12px;border:1px solid rgba(20,50,92,.15);border-radius:10px;background:#fff}
 .mdv{line-height:1.8}.mdv h2{color:var(--brand);font-size:18px}.mdv h3{color:var(--brand2);font-size:15.5px;margin:16px 0 6px}.mdv table{margin:6px 0}.mdv hr{border:0;border-top:1px solid rgba(20,50,92,.12)}
 @media print{body.povl>*:not(#ov){display:none!important}body.povl #ov{position:static;display:block!important;background:#fff}body.povl .ovbox{height:auto;box-shadow:none;border:0;width:100%}body.povl .ovtop,body.povl .acts2{display:none}}
+
+/* ===================================================== crystal 2 (v2.1.2): aurora background + frosted glass + glowing edges */
+body{background:#0b1430;color:var(--ink)}
+body::before{content:"";position:fixed;inset:-20%;z-index:-2;
+  background:radial-gradient(40% 35% at 15% 20%,rgba(64,196,255,.55),transparent 70%),
+    radial-gradient(35% 30% at 85% 15%,rgba(255,170,64,.45),transparent 70%),
+    radial-gradient(45% 40% at 70% 85%,rgba(170,90,255,.50),transparent 70%),
+    radial-gradient(40% 35% at 20% 85%,rgba(40,220,190,.40),transparent 70%),
+    linear-gradient(135deg,#0a1633 0%,#182a66 40%,#2a1d5e 70%,#0d2a4a 100%);
+  animation:aurora 28s ease-in-out infinite alternate}
+@keyframes aurora{0%{transform:translate(0,0) rotate(0deg) scale(1)}50%{transform:translate(-3%,2%) rotate(4deg) scale(1.05)}100%{transform:translate(3%,-2%) rotate(-3deg) scale(1.02)}}
+header{background:linear-gradient(120deg,rgba(255,255,255,.10),rgba(255,255,255,.04))!important;backdrop-filter:blur(18px) saturate(180%);
+  -webkit-backdrop-filter:blur(18px) saturate(180%);border-bottom:1px solid rgba(255,255,255,.18)!important;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+header::after{background:linear-gradient(90deg,#40c4ff,#aa5aff,#ffaa40,#28dcbe,#40c4ff)!important;background-size:300% 100%!important;animation:shine 8s linear infinite;height:2px!important}
+@keyframes shine{to{background-position:300% 0}}
+.tabsbar{background:rgba(255,255,255,.08)!important;border-bottom:1px solid rgba(255,255,255,.15)!important;backdrop-filter:blur(16px)}
+.tabsbar .seg button{color:rgba(255,255,255,.78)!important}
+.tabsbar .seg button.on{color:#0b1430!important;background:linear-gradient(180deg,#fff,#dbe7ff)!important;box-shadow:0 0 18px rgba(64,196,255,.55)!important;border-bottom:3px solid #ffaa40!important}
+.bar .stat2,.fpanel .qd,.fpanel .qd span{color:rgba(255,255,255,.85)!important}
+.fpanel{background:rgba(255,255,255,.10)!important;border-bottom:1px solid rgba(255,255,255,.15)!important}
+.fgrid label{color:rgba(255,255,255,.85)!important}.fgrid label.chk{color:#fff!important}
+.col,.card,.ovbox,.anacard,.menu .mbox{background:linear-gradient(145deg,rgba(255,255,255,.90),rgba(240,246,255,.80))!important;
+  backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid rgba(255,255,255,.95)!important;
+  box-shadow:0 0 0 1px rgba(64,196,255,.25),0 12px 40px rgba(0,0,0,.35),0 0 30px rgba(120,140,255,.18),inset 0 1px 0 #fff!important}
+.col::before{background:linear-gradient(125deg,rgba(255,255,255,.7) 0%,rgba(255,255,255,0) 30%,rgba(255,255,255,0) 72%,rgba(170,90,255,.12) 100%)!important}
+.col::after{content:"";position:absolute;inset:-1px;border-radius:19px;padding:1px;pointer-events:none;
+  background:linear-gradient(135deg,rgba(64,196,255,.9),rgba(170,90,255,.7),rgba(255,170,64,.8),rgba(40,220,190,.8));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.75}
+.sbox{background:rgba(255,255,255,.95)!important;box-shadow:0 0 0 1px rgba(64,196,255,.35),0 10px 30px rgba(0,0,0,.30),0 0 24px rgba(64,196,255,.25)!important}
+.ib,.chip{background:rgba(255,255,255,.16)!important;color:#fff!important;border:1px solid rgba(255,255,255,.35)!important;backdrop-filter:blur(10px);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 14px rgba(0,0,0,.25)!important}
+.chip b{color:#ffd59a}
+.chip.on,.ib.on{background:linear-gradient(180deg,#ffc06a,#ff8a1f)!important;border-color:#ffb04a!important;color:#1b1030!important;box-shadow:0 0 18px rgba(255,170,64,.6)!important}
+.ib.zt{background:linear-gradient(180deg,#7ef0b2,#22b573)!important;color:#05301c!important;box-shadow:0 0 18px rgba(40,220,150,.55)!important}
+.col .chip,.card .chip,.ovbox .chip{background:rgba(234,241,255,.9)!important;color:var(--ink)!important;border-color:rgba(20,50,92,.15)!important}
+.col .chip.on,.card .chip.on{background:linear-gradient(180deg,#ffc06a,#ff8a1f)!important;color:#1b1030!important}
+button.pri{background:linear-gradient(180deg,#ffc06a 0%,#ff9a2e 50%,#f07a12 100%)!important;color:#1b1030!important;border-color:#ffae4a!important;
+  box-shadow:0 0 20px rgba(255,160,50,.55),inset 0 1px 0 rgba(255,255,255,.7)!important;font-weight:700}
+.chips .snip,.chips span.snip{color:rgba(255,255,255,.8)!important}
+.dym{background:linear-gradient(90deg,rgba(255,236,214,.97),rgba(255,255,255,.9))!important}
+.overlay{background:rgba(5,10,30,.55)!important}
 </style>
 </head>
 <body>
