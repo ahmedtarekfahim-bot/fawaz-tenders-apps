@@ -1621,8 +1621,11 @@ def suggest(q, k=6):
         return {"q": q, "suggestions": [], "unknown": []}
     options = {}
     for t in unknown:
-        near = difflib.get_close_matches(t, known, n=5, cutoff=0.72)
-        near.sort(key=lambda x: (-difflib.SequenceMatcher(None, t, x).ratio(), -w[x]))
+        near = difflib.get_close_matches(t, known, n=8, cutoff=0.72)
+        if near:                                       # the closest few, the most used word of them first
+            rat = {x: difflib.SequenceMatcher(None, t, x).ratio() for x in near}
+            best = max(rat.values())
+            near = sorted([x for x in near if rat[x] >= best - 0.12], key=lambda x: (-w[x], -rat[x])) +                    sorted([x for x in near if rat[x] < best - 0.12], key=lambda x: -rat[x])
         options[t] = near[:4]
     alts = []
     for i in range(4):
@@ -1630,7 +1633,8 @@ def suggest(q, k=6):
         s = " ".join(cand)
         if s != " ".join(words_q) and s not in alts:
             alts.append(s)
-    return {"q": q, "unknown": unknown, "options": options, "suggestions": alts[:k]}
+    sure = all(options.get(t) and difflib.SequenceMatcher(None, t, options[t][0]).ratio() >= 0.8 for t in unknown)
+    return {"q": q, "unknown": unknown, "options": options, "suggestions": alts[:k], "sure": sure}
 
 
 def _co_key(name):
@@ -2292,6 +2296,7 @@ def serve(open_browser=True):
         if state["update"] == "running":
             return
         state["update"], state["log"] = "running", ([reason] if reason else [])
+        state["run_started"] = time.time()
 
         def job():
             try:
@@ -2321,15 +2326,21 @@ def serve(open_browser=True):
                     threading.Thread(target=phone_lock.poll, args=(lambda m: state["log"].append(m), state.get("hooks")), daemon=True).start()
                 except Exception:        # noqa: BLE001
                     pass
-            every = auto_minutes()
-            if not every:
-                state["next"] = None
-            elif state["update"] != "running":
-                age = last_run_age_hours() * 60
-                if age >= every:
-                    start_update(f"تحديث تلقائي (آخر تحديث من {age:.0f} دقيقة)" if age < 1e8 else "أول تحديث")
-                    age = 0
-                state["next"] = (datetime.datetime.now() + datetime.timedelta(minutes=every - age)).isoformat(timespec="minutes")
+            try:                         # one bad moment (a locked file, no internet) must never stop the schedule
+                every = auto_minutes()
+                if not every:
+                    state["next"] = None
+                elif state["update"] != "running":
+                    age = last_run_age_hours() * 60
+                    if age >= every:
+                        start_update(f"تحديث تلقائي (آخر تحديث من {age:.0f} دقيقة)" if age < 1e8 else "أول تحديث")
+                        age = 0
+                    state["next"] = (datetime.datetime.now() + datetime.timedelta(minutes=every - age)).isoformat(timespec="minutes")
+                elif state.get("run_started") and time.time() - state["run_started"] > 3 * 3600:
+                    state["update"] = "error"            # an update stuck for 3 hours: let the next one start
+                    state["log"].append("التحديث اللي فات علّق - هيبدأ واحد جديد")
+            except Exception as e:       # noqa: BLE001
+                state["log"].append(f"الجدولة: {e}")
             time.sleep(20)
 
     import http.cookies

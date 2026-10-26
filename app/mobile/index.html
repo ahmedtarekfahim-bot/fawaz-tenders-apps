@@ -194,6 +194,21 @@ header{background:linear-gradient(120deg,rgba(255,255,255,.12),rgba(255,255,255,
 #sheet{background:linear-gradient(160deg,#eef3ff,#f7f1ff)!important}
 .empty{color:rgba(255,255,255,.85)!important}
 #sheet .empty{color:var(--muted)!important}
+
+/* crystal 3 (v2.1.3): readable - dark text on light glass */
+:root{--ink:#0d1b33;--muted:#3d4d66}
+.note,.hello span,.hello b,.chips .note,.empty{color:#3d4d66!important}
+.list>.note,.list>.dym,.list>.empty,.hello{background:rgba(255,255,255,.88);border-radius:12px;padding:6px 10px;display:block}
+.hello{display:flex!important}
+.search{background:rgba(255,255,255,.80)!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:0 0 16px 16px}
+.chips{background:rgba(255,255,255,.80);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:14px;margin:4px 8px 8px}
+.chips:empty{display:none}
+.chip{background:#fff!important;color:#0d1b33!important;border:1px solid rgba(20,50,92,.18)!important}
+.chip b{color:#c45f0c!important}
+.sbtn{background:#fff!important;color:#0d1b33!important;border:1px solid rgba(20,50,92,.18)!important}
+.card .m,.kv div:nth-child(odd){color:#3d4d66}.card .t{color:#0d1b33}
+.tabs{background:rgba(255,255,255,.92)!important;border-top:1px solid rgba(20,50,92,.12)!important}
+.tabs button{color:#3d4d66!important}.tabs button.on{color:#d26a12!important}
 </style>
 </head>
 <body>
@@ -524,8 +539,8 @@ function renderNews(q){
   if(q)res=res.map(n=>[score(q,tokset(n,o=>o.t),''),n]).filter(x=>x[0]>=.5).sort((a,b)=>b[0]-a[0]||b[1].d.localeCompare(a[1].d)).map(x=>x[1]);
   const isN=n=>HL.news!==undefined&&n.fs&&n.fs>HL.news;
   if(!q)res=res.slice().sort((a,b)=>isN(b)-isN(a));
-  res=PF(res,n=>n.d,n=>n.t,n=>n.t+' '+n.src);LAST={kind:'news',rows:res};
-  $('#list').innerHTML=res.slice(0,shown).map(n=>newsCard(n,isN(n))).join('')+(res.length>shown?'<button class="more" id="more">عرض المزيد</button>':'')||'<div class="empty">مفيش أخبار</div>';
+  res=PF(res,n=>n.d,n=>n.t,n=>n.t+' '+n.src);LAST={kind:'news',rows:res};const dymN=q?dymBar(q,res.length):'';
+  $('#list').innerHTML=dymN+res.slice(0,shown).map(n=>newsCard(n,isN(n))).join('')+(res.length>shown?'<button class="more" id="more">عرض المزيد</button>':'')||'<div class="empty">مفيش أخبار</div>';
   if($('#more'))$('#more').onclick=()=>{shown+=150;render()};
 }
 function newsCard(n,un){return `<div class="card ${un?'unread':''}"><div class="t"><a href="${esc(n.u)}" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">${esc(n.t)}</a></div>
@@ -821,12 +836,23 @@ function vocab(){if(VOC)return VOC;VOC=new Map();const add=t=>toks(t).forEach(w=
   D.forEach(r=>add(r.s+' '+r.o+' '+(r.w||'')));A.slice(-6000).forEach(a=>add(a.s+' '+a.o+' '+(a.w||'')));return VOC}
 function didYouMean(q){const ws=toks(q);if(!ws.length)return [];const V=vocab(),opts=[];
   const unk=ws.filter(w=>w.length>2&&!/^\d+$/.test(w)&&!V.has(w));if(!unk.length)return [];
-  const near_=w=>{const c=[];for(const [k,n] of V){if(Math.abs(k.length-w.length)<=2&&k[0]===w[0]){const r=near(w,k);if(r>=.72)c.push([r,n,k])}}return c.sort((a,b)=>b[0]-a[0]||b[1]-a[1]).slice(0,3).map(x=>x[2])};
+  const near_=w=>{const c=[];for(const [k,n] of V){if(Math.abs(k.length-w.length)<=2&&k[0]===w[0]){const r=near(w,k);if(r>=.72)c.push([r,n,k])}}if(!c.length)return [];const best=Math.max(...c.map(x=>x[0]));   // the closest few, the most used word first
+    return c.filter(x=>x[0]>=best-.12).sort((a,b)=>b[1]-a[1]).concat(c.filter(x=>x[0]<best-.12).sort((a,b)=>b[0]-a[0])).slice(0,3).map(x=>x[2])};
   const alts={};unk.forEach(w=>alts[w]=near_(w));
   for(let i=0;i<3;i++){const s=ws.map(w=>alts[w]&&alts[w].length?alts[w][Math.min(i,alts[w].length-1)]:w).join(' ');if(s!==ws.join(' ')&&!opts.includes(s))opts.push(s)}
   return opts}
-function dymBar(q,n){const o=didYouMean(q);if(!o.length)return '';if(!n&&!dymBar.auto){dymBar.auto=1;setTimeout(()=>{$('#q').value=o[0];toast(`مفيش نتايج - بدوّر بـ «${o[0]}»`,5000);render();dymBar.auto=0},10)}
-  return `<div class="dym">✍ تقصد: ${o.map(x=>`<a href="#" data-dym="${esc(x)}">${esc(x)}</a>`).join('')}</div>`}
+let ASIS='',CORR=null;
+function dymBar(q,n){let h='';
+  if(CORR&&CORR.to===q){h=`<div class="dym">✍ صححت «<b>${esc(CORR.from)}</b>» لـ «<b>${esc(q)}</b>» · <a href="#" data-asis="${esc(CORR.from)}">دوّر بـ «${esc(CORR.from)}» زي ما هي</a></div>`}
+  else if(q!==ASIS){const o=didYouMean(q);
+    if(o.length){if(!dymBar.busy){dymBar.busy=1;setTimeout(()=>{CORR={from:q,to:o[0]};$('#q').value=o[0];render();dymBar.busy=0},10)}
+      return `<div class="dym">✍ بصحّح لـ «${esc(o[0])}»...</div>`}}
+  const pm=(ME&&ME.perms)||[];
+  if(pm.includes('companies')&&q.length>=3){const qk=coKey(q),cs=[];coIndex().forEach(g=>{const k=coKey(g.name);if(qk&&(k.includes(qk)||qk.split(' ').every(w=>k.includes(w))))cs.push(g)});
+    cs.sort((a,b)=>b.n-a.n);if(cs.length)h+=`<div class="dym">🏢 شركات بالاسم ده: ${cs.slice(0,6).map((g,i)=>`<a href="#" data-copm="${esc(g.name)}">${esc(g.name)} (${g.n})</a>`).join('')}</div>`}
+  return h}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-asis]');if(a){e.preventDefault();ASIS=a.dataset.asis;CORR=null;$('#q').value=ASIS;render();return}
+  const c=e.target.closest('[data-copm]');if(c){e.preventDefault();const name=c.dataset.copm;const g=[...coIndex().values()].find(x=>x.name===name);goTab('companies');$('#q').value=name;render();if(g)openCompanyM(g)}});
 document.addEventListener('click',e=>{const a=e.target.closest('[data-dym]');if(!a)return;e.preventDefault();$('#q').value=a.dataset.dym;shown=150;render()});
 // ---------------------------------------------------------------- الشركات (contracts and tenders of one company, newest first)
 let CO={name:'',extra:new Set()};

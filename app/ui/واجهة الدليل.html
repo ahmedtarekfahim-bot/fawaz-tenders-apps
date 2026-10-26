@@ -267,6 +267,27 @@ button.pri{background:linear-gradient(180deg,#ffc06a 0%,#ff9a2e 50%,#f07a12 100%
 .chips .snip,.chips span.snip{color:rgba(255,255,255,.8)!important}
 .dym{background:linear-gradient(90deg,rgba(255,236,214,.97),rgba(255,255,255,.9))!important}
 .overlay{background:rgba(5,10,30,.55)!important}
+
+/* ===================================================== crystal 3 (v2.1.3): readable - dark text on light glass everywhere */
+:root{--ink:#0d1b33;--muted:#3d4d66}
+.tabsbar{background:rgba(255,255,255,.86)!important;border-bottom:1px solid rgba(255,255,255,.95)!important}
+.tabsbar .seg button{color:#2a3a55!important;font-weight:600}
+.tabsbar .seg button.on{color:#0b1430!important}
+.bar,.chips{background:rgba(255,255,255,.80);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);margin:0 12px;border-radius:14px}
+.bar{margin-top:8px;padding:8px 12px!important}
+.chips{margin-top:6px;padding:6px 12px!important}
+.chips:empty{display:none}
+.bar .stat2{color:#3d4d66!important}
+.fpanel{background:rgba(255,255,255,.90)!important;margin:6px 12px 0;border-radius:14px}
+.fgrid label,.fpanel .qd,.fpanel .qd span{color:#3d4d66!important}.fgrid label.chk{color:#0d1b33!important}
+.ib,.chip{background:rgba(255,255,255,.95)!important;color:#0d1b33!important;border:1px solid rgba(20,50,92,.18)!important;
+  box-shadow:0 2px 8px rgba(13,27,51,.12),inset 0 1px 0 #fff!important}
+.chip b{color:#c45f0c!important}
+.chip.on b{color:#3a1d00!important}
+.chips .snip,.chips span.snip{color:#3d4d66!important}
+.ib.zt{color:#04301b!important}
+.res .t{color:#0d1b33}.res .m,.snip,.kv div:nth-child(odd){color:#3d4d66}
+.col h3{color:#0d1b33}
 </style>
 </head>
 <body>
@@ -882,12 +903,23 @@ async function sendSummary(id){try{if(!RT)await loadRT()}catch(e){}
     catch(e){toast('خطأ: '+e.message,9000)}}}
 // ---------------------------------------------------------------- تقصد؟ (spelling)
 let LAST={kind:'',rows:[]};
-async function didYouMean(q,n){if(!q||q===SCANQ)return;let r;try{r=await get('/api/suggest?q='+encodeURIComponent(q))}catch(e){return}
-  if(!r.suggestions||!r.suggestions.length||q!==$('#q').value.trim())return;
-  const bar=document.createElement('div');bar.className='dym';
-  bar.innerHTML=`<span>✍ تقصد:</span>${r.suggestions.map(x=>`<a href="#" data-dym="${esc(x)}">${esc(x)}</a>`).join('')}`;
-  $('#results').prepend(bar);bar.querySelectorAll('[data-dym]').forEach(a=>a.onclick=e=>{e.preventDefault();$('#q').value=a.dataset.dym;search()});
-  if(!n){toast(`مفيش نتايج لـ «${q}» - بدوّر بـ «${r.suggestions[0]}»`,6000);$('#q').value=r.suggestions[0];search()}}
+let ASIS='',CORRECTED=null;
+async function didYouMean(q,n){if(!q||q===SCANQ)return;await new Promise(r=>setTimeout(r,30));   // after the list is drawn
+  if(CORRECTED&&CORRECTED.to===q){const C=CORRECTED;CORRECTED=null;const b=document.createElement('div');b.className='dym';
+    b.innerHTML=`<span>✍ صححت «<b>${esc(C.from)}</b>» لـ «<b>${esc(q)}</b>»</span>${(C.alts||[]).filter(x=>x!==q).map(x=>`<a href="#" data-dym="${esc(x)}">${esc(x)}</a>`).join('')}<a href="#" data-asis="1">دوّر بـ «${esc(C.from)}» زي ما هي</a>`;
+    $('#results').prepend(b);b.querySelector('[data-asis]').onclick=e=>{e.preventDefault();ASIS=C.from;$('#q').value=C.from;search()};
+    b.querySelectorAll('[data-dym]').forEach(a=>a.onclick=e=>{e.preventDefault();ASIS=a.dataset.dym;$('#q').value=a.dataset.dym;search()})}
+  else if(q!==ASIS){let r;try{r=await get('/api/suggest?q='+encodeURIComponent(q))}catch(e){r=null}
+    if(r&&r.suggestions&&r.suggestions.length&&q===$('#q').value.trim()){
+      if(r.sure||!n){CORRECTED={from:q,to:r.suggestions[0],alts:r.suggestions};$('#q').value=r.suggestions[0];return search()}
+      const bar=document.createElement('div');bar.className='dym';
+      bar.innerHTML=`<span>✍ تقصد:</span>${r.suggestions.map(x=>`<a href="#" data-dym="${esc(x)}">${esc(x)}</a>`).join('')}`;
+      $('#results').prepend(bar);bar.querySelectorAll('[data-dym]').forEach(a=>a.onclick=e=>{e.preventDefault();$('#q').value=a.dataset.dym;search()})}}
+  // the words look like a company: offer the names to choose from
+  if(can('companies')&&q.length>=3){let cs=[];try{cs=(await get('/api/companies?q='+encodeURIComponent(q))).filter(c=>c.score>=0.85).slice(0,6)}catch(e){}
+    if(cs.length&&q===$('#q').value.trim()){const b=document.createElement('div');b.className='dym co';
+      b.innerHTML=`<span>🏢 شركات بالاسم ده:</span>${cs.map((c,i)=>`<a href="#" data-cop="${i}">${esc(c.name)} <small>(${c.count})</small></a>`).join('')}`;
+      $('#results').prepend(b);b.querySelectorAll('[data-cop]').forEach(a=>a.onclick=e=>{e.preventDefault();const c=cs[+a.dataset.cop];goMode('companies');$('#q').value=c.name;lastQ=c.name;searchCompanies(c.name).then(()=>openCompany(c.name))})}}}
 // ---------------------------------------------------------------- الشركات
 let CO={name:'',extra:new Set(),data:null};
 const COX=[['news','📰 الأخبار'],['decisions','🏛 قرارات وتوصيات الجهاز'],['complaints','⚖ الشكاوى والتظلمات'],['events','🕒 تسلسل الأحداث']];

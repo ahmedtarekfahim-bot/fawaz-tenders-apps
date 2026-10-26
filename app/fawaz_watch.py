@@ -167,7 +167,10 @@ def outlook_items(days=150):
                 it = None
             scanned += 1
             try:
-                s, snd = str(cur.Subject or ""), str(cur.SenderName or "")
+                if getattr(cur, "Class", 43) != 43:     # delivery reports / meeting items: not an e-mail
+                    continue
+                s = str(cur.Subject or "")
+                snd = f"{getattr(cur, 'SenderName', '') or ''} {getattr(cur, 'SenderEmailAddress', '') or ''}"
                 if who not in snd.lower() or subj not in s.lower():
                     continue
                 r0 = cur.ReceivedTime                   # Outlook local time, kept as shown in Outlook
