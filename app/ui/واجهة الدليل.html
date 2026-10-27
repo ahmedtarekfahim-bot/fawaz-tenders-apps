@@ -288,6 +288,37 @@ button.pri{background:linear-gradient(180deg,#ffc06a 0%,#ff9a2e 50%,#f07a12 100%
 .ib.zt{color:#04301b!important}
 .res .t{color:#0d1b33}.res .m,.snip,.kv div:nth-child(odd){color:#3d4d66}
 .col h3{color:#0d1b33}
+
+/* ===================================================== light 4 (v2.1.4): every background light, text black / dark blue / red only */
+:root{--ink:#0a0f1c;--muted:#16336b;--brand:#16336b;--brand2:#16336b;--warn:#b3121b;--ok:#16336b}
+body{background:linear-gradient(160deg,#eef3fc 0%,#f6f0fb 50%,#fdf3e8 100%) fixed!important;color:#0a0f1c}
+body::before{opacity:.15!important}
+header{background:linear-gradient(120deg,#ffffff,#eaf1fd)!important;color:#0a0f1c!important;border-bottom:3px solid #16336b!important;box-shadow:0 4px 16px rgba(22,51,107,.15)!important}
+header::after{display:none}
+header *,.brand b,.brand small{color:#0a0f1c!important}
+header button,.menu summary,.tick{background:#ffffff!important;color:#16336b!important;border:1px solid #c5d3ec!important}
+.ctry{background:#fff!important;border:1px solid #c5d3ec!important}.ctry button{color:#16336b!important}.ctry button.on{background:#16336b!important;color:#fff!important}
+.tabsbar,.bar,.chips,.fpanel{background:rgba(255,255,255,.95)!important}
+.tabsbar .seg button{color:#16336b!important}.tabsbar .seg button.on{color:#b3121b!important;background:#fff!important;border-bottom:3px solid #b3121b!important;box-shadow:none!important}
+.col,.card,.ovbox,.anacard,.menu .mbox,table{background:#ffffff!important;color:#0a0f1c!important}
+.col::after,.col::before{display:none!important}
+.res .t,.kv div,h3,.col h3{color:#0a0f1c!important}
+.res .m,.snip,.kv div:nth-child(odd),.stat2,.fgrid label,.fpanel .qd,.empty{color:#16336b!important}
+h4{color:#16336b!important;border-right-color:#b3121b!important}
+th{background:#e6eefb!important;color:#16336b!important}
+.money{color:#16336b!important}
+.urgent,.flag-chg{color:#b3121b!important}
+.wk,.st,.chip,.ib,.tno,.cc{background:#ffffff!important;color:#16336b!important;border:1px solid #c5d3ec!important;box-shadow:none!important}
+.st-cancel,.st-soon{color:#b3121b!important}
+.chip.on,.ib.on,button.pri{background:#16336b!important;color:#ffffff!important;border-color:#16336b!important;box-shadow:none!important}
+button.pri::after{display:none}
+.ib.zt{background:#16336b!important;color:#fff!important}
+.chip b{color:#b3121b!important}.chip.on b{color:#fff!important}
+.fz,.fzb{background:#fff1a8!important;color:#0a0f1c!important}
+.off,a{color:#16336b!important}
+.res.unread{background:#fff8e6!important;border-right:4px solid #b3121b!important}
+.res.sel{background:#e6eefb!important;border-right:4px solid #16336b!important}
+.dym{background:#fff8e6!important;color:#0a0f1c!important}
 </style>
 </head>
 <body>
@@ -435,7 +466,7 @@ async function status_(first){
       for(let y=new Date().getFullYear();y>=2006;y--)$('#ayear').insertAdjacentHTML('beforeend',`<option>${y}</option>`);}
     $('#orgs').innerHTML=s.orgs.map(o=>`<option value="${esc(o)}">`).join('');
     document.querySelectorAll('#ctry button').forEach(b=>{const n=b.dataset.c?(s.countries[b.dataset.c]||0):Object.values(s.countries).reduce((a,b)=>a+b,0);b.textContent=(b.dataset.c?CN[b.dataset.c]:'الكل')+' ('+n.toLocaleString('en')+')'});
-    if(!['watch','projects','routines','companies'].includes(mode))$('#chips').innerHTML=mode!=='items'?'':`<span class="chip fresh ${fresh?'on':''}" data-f="1">المستجدات (آخر 3 أيام)<b>${s.fresh}</b></span><span class="chip ${status||fresh?'':'on'}" data-s="">الكل<b>${s.total}</b></span>`+STATUSES.filter(x=>s.status[x]).map(x=>`<span class="chip ${status===x?'on':''}" data-s="${x}">${x}<b>${s.status[x]}</b></span>`).join('');
+    if(!['watch','projects','routines','companies','news'].includes(mode))$('#chips').innerHTML=mode!=='items'?'':`<span class="chip fresh ${fresh?'on':''}" data-f="1">المستجدات (آخر 3 أيام)<b>${s.fresh}</b></span><span class="chip ${status||fresh?'':'on'}" data-s="">الكل<b>${s.total}</b></span>`+STATUSES.filter(x=>s.status[x]).map(x=>`<span class="chip ${status===x?'on':''}" data-s="${x}">${x}<b>${s.status[x]}</b></span>`).join('');
     document.querySelectorAll('.chip[data-s]').forEach(c=>c.onclick=()=>{status=c.dataset.s;fresh=0;status_();search()});
     document.querySelectorAll('.chip[data-f]').forEach(c=>c.onclick=()=>{fresh=fresh?0:3;status='';status_();search()});
     updateBadges(s);
@@ -496,9 +527,15 @@ async function search(keep){
     if(q){const f=document.querySelector('.res[data-id]');if(f)f.click()}
   }catch(e){$('#results').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
 }
+let NG='press';
+const NGS=[['press','📰 أخبار الجرايد'],['official','🏛 الجهاز المركزي والكويت اليوم'],['all','الكل']];
 async function searchNews(q){
-  const res=await get(`/api/news?q=${encodeURIComponent(q)}&country=${country}&fawaz=${$('#fawaz').checked?1:0}${fxq()}`);LAST={kind:'news',rows:res};didYouMean(q,res.length);
-  $('#lh').textContent=`الأخبار (${res.length})`;
+  $('#chips').innerHTML=NGS.map(([k,l])=>`<span class="chip ${NG===k?'on':''}" data-ng="${k}">${l}</span>`).join('');
+  document.querySelectorAll('[data-ng]').forEach(c=>c.onclick=()=>{NG=c.dataset.ng;search()});
+  const res=await get(`/api/news?q=${encodeURIComponent(q)}&country=${country}&fawaz=${$('#fawaz').checked?1:0}${NG==='all'?'':'&group='+NG}${fxq()}`);LAST={kind:'news',rows:res};didYouMean(q,res.length);
+  $('#lh').textContent=`${NGS.find(x=>x[0]===NG)[1]} (${res.length})`;
+  if(NG==='official'){$('#results').innerHTML=res.length?res.map(n=>`<div class="res" data-it="${n.item_id}"><div class="m"><span class="wk">${esc(n.source)}</span><span>${dmy(n.date)}</span>${n.number?`<span class="tno">${esc(n.number)}</span>`:''}<span>${esc(n.org)}</span></div><div class="t">${esc(n.title)}</div><div class="snip">${esc(n.summary)}</div></div>`).join(''):'<div class="empty">مفيش حاجة</div>';
+    document.querySelectorAll('.res[data-it]').forEach(el=>el.onclick=()=>{sel(el);detail(+el.dataset.it)});$('#detail').innerHTML='<div class="empty">دوس على أي بند يفتح المناقصة بتاعته</div>';return}
   $('#results').innerHTML=res.length?res.map(n=>`<div class="res ${n.seen_at&&n.seen_at>HL.news?'unread':''}"><div class="t"><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div>
     <div class="m"><span>${dmy(n.date)}</span>${country?'':`<span class="cc">${CN[n.country]||''}</span>`}<span>${esc(n.source)}</span><span>${esc(n.cats)}</span>${n.fawaz?'<span class="fzb">نطاق فواز</span>':''}</div>
     ${n.summary?`<div class="snip">${esc(n.summary)}</div>`:''}</div>`).join(''):'<div class="empty">مفيش أخبار</div>';
@@ -571,7 +608,7 @@ async function detail(id){
     if(d.news.length)h+=`<h4>أخبار قريبة من الموضوع</h4>${d.news.map(n=>`<div class="m"><span>${dmy(n.date)}</span><span>${esc(n.source)}</span><a href="#" data-off="${esc(n.url)}">${esc(n.title)}</a></div>`).join('')}`;
     if(r.country==='KW')h+=`<h4>من محاضر الجهاز المركزي (${d.hits.length})</h4>`+(d.hits.length?hitsHtml(d.hits,false):'<p class="snip">مفيش صفحات محاضر مطابقة.</p>');
     h+=`<h4>📥 مستندات المناقصة</h4><div id="docs-box"><p class="snip">بدوّر على المستندات في المواقع الرسمية...</p></div>`;
-    h+=`</div><div class="actions">${can('pdf')?'<button class="pri" onclick="makePdf()">اعمل PDF واحد</button>':''}${can('docs')?`<button onclick="downloadDocs(${r.id})">📥 حمّل كل المستندات</button>`:''}${can('summary')?`<button onclick="summaryOf(${r.id})" title="يحمّل ملفات المناقصة ويقراها (والممسوح كمان) ويطلّع ملخص بالحاجات المهمة للتسعير - من غير BNB ومن غير إيميل">📝 ملخص المناقصة</button>`:''}${can('bnb')?`<button onclick="bnbOf(${r.id})" title="فورمة BNB من القالب بتاع الشركة (الفورمة زي ما هي) ببيانات الإعلان ونقط الملخص">📄 BNB</button>`:''}${can('summary')&&can('send')?`<button onclick="sendSummary(${r.id})" title="يعمل الملخص ويبعته على الإيميلات اللي تختارها">✉ ابعت الملخص</button>`:''}${r.official?`<button onclick="openOfficial('${esc(r.official)}')">افتح الإعلان الرسمي ↗</button>`:''}</div>`;
+    h+=`</div><div class="actions">${can('pdf')?'<button class="pri" onclick="makePdf()">اعمل PDF واحد</button>':''}${can('docs')?`<button onclick="downloadDocs(${r.id})">📥 حمّل كل المستندات</button>`:''}${can('summary')?`<button onclick="summaryOf(${r.id})" title="يحمّل ملفات المناقصة ويقراها (والممسوح كمان) ويطلّع ملخص بالحاجات المهمة للتسعير - من غير BNB ومن غير إيميل">📝 ملخص المناقصة</button>`:''}${can('bnb')?`<button onclick="bnbOf(${r.id})" title="فورمة BNB من القالب بتاع الشركة (الفورمة زي ما هي) ببيانات الإعلان ونقط الملخص">📄 BNB</button>`:''}${can('summary')&&can('send')?`<button onclick="sendSummary(${r.id})" title="يعمل الملخص ويبعته على الإيميلات اللي تختارها">✉ ابعت الملخص</button>`:''}${r.official?(/\.pdf$/i.test(r.official)&&/capt/.test(r.official)?`<button onclick="minutesPages(${r.id})">📄 صفحات المحضر بتاعة المناقصة</button><button onclick="openOfficial('${esc(r.official)}')">المحضر كامل ↗</button>`:`<button onclick="openOfficial('${esc(r.official)}')">افتح الإعلان الرسمي ↗</button>`):''}</div>`;
     $('#detail').innerHTML=h;wireOff($('#detail'));wirePrev();loadDocs(r.id);
     document.querySelectorAll('[data-ev]').forEach(a=>a.onclick=e=>{e.preventDefault();const x=d.events[+a.dataset.ev];$('#mimg').src=`/api/page.png?file=${encodeURIComponent(x.file)}&page=${x.page}`;$('#modal').style.display='flex'});
   }catch(e){$('#detail').innerHTML=`<div class="empty">خطأ: ${esc(e.message)}</div>`}
@@ -812,6 +849,8 @@ async function summaryOf(id){busy('📝 بحمّل ملفات المناقصة �
   try{const r=await post('/api/summary',{id});
     showFile('📝 ملخص المناقصة',r.path,r.files.length?`لقيت ${r.found} من 12 بند في ${r.files.length} ملف (${r.pages} صفحة)`:'مفيش ملفات منشورة للمناقصة دي على المواقع - الملخص من بيانات الإعلان بس')}
   catch(e){closeOv();toast('الملخص ما اتعملش: '+e.message,9000)}}
+async function minutesPages(id){busy('📄 بجيب صفحات المحضر اللي فيها المناقصة دي بس...');
+  try{const r=await post('/api/minutes-pages',{id});showFile('📄 صفحات المحضر الخاصة بالمناقصة',r.path,r.name)}catch(e){closeOv();toast(e.message,9000)}}
 // a file the program made, shown in the window: PDF / HTML inside, the rest as a list
 function outUrl(p){return '/api/out?path='+encodeURIComponent(p)}
 function showFile(title,path,note,more){const ext=(path.split('.').pop()||'').toLowerCase();

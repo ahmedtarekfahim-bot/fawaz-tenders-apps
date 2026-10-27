@@ -1809,6 +1809,31 @@ def ocr_image(data_url):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+OFFICIAL_RX = r"الكويت اليوم|الجهاز المركزي|قرارات الجهاز|محضر"
+
+
+def official_news(q="", country="", limit=300):
+    """the official side as news: gazette notices, CAPT board decisions, bid openings, awards - newest first,
+    each one with its tender"""
+    con = db()
+    rows = [dict(r) for r in con.execute(
+        "SELECT e.date, e.source, e.etype, e.text, e.url, i.id AS item_id, i.subject, i.org, i.number, i.country, i.official "
+        "FROM events e JOIN items i ON i.id=e.item_id WHERE e.date<>'' AND e.source IN ('جريدة الكويت اليوم','قرارات الجهاز (الكويت اليوم)','فض العطاءات (الجهاز المركزي)','الجهاز المركزي (المطروح)','ترسيات الجهاز المركزي') "
+        "AND (?='' OR i.country=?) ORDER BY e.date DESC LIMIT 4000", (country, country))]
+    con.close()
+    qq = norm(q).split()
+    out = []
+    for r in rows:
+        if qq and not all(w in norm(f"{r['subject']} {r['org']} {r['number']} {r['text']}") for w in qq):
+            continue
+        out.append({"date": r["date"], "source": f"{r['source']} - {r['etype']}".strip(" -"), "title": r["subject"],
+                    "summary": r["text"], "url": r["official"] if str(r["official"]).startswith("http") else "",
+                    "item_id": r["item_id"], "org": r["org"], "number": r["number"], "country": r["country"], "official": 1})
+        if len(out) >= limit:
+            break
+    return out
+
+
 def search_news(q, limit=80, fawaz=False, country=""):
     con = db()
     rows = [dict(r) for r in con.execute("SELECT * FROM news WHERE (?='' OR country=?) ORDER BY date DESC", (country, country))]
@@ -2055,6 +2080,56 @@ def save_capt_docs(iid, r):
     con.close()
 
 
+def tender_pages(pdf_bytes_or_path, number, org=""):
+    """the pages of a big PDF (CAPT minutes, a gazette issue) that carry this tender's number -> new PDF bytes or None"""
+    import pymupdf
+    doc = pymupdf.open(stream=pdf_bytes_or_path, filetype="pdf") if isinstance(pdf_bytes_or_path, (bytes, bytearray)) \
+        else pymupdf.open(pdf_bytes_or_path)
+    nums = ct.num_parts(number)
+    if not nums:
+        return None
+    rx = ct.num_regex(nums) if len(nums) >= 2 else re.compile(rf"(?<!\d){re.escape(nums[0])}(?!\d)")
+    ow = [w for w in words(org) if len(w) > 3][:3]
+    keep = []
+    for i, page in enumerate(doc):
+        t = page.get_text()
+        if not t.strip():
+            continue
+        for m in rx.finditer(t):
+            if len(nums) >= 2 or (ow and any(w in norm(t[max(0, m.start() - 400):m.start() + 400]) for w in ow)):
+                keep.append(i)
+                break
+    if not keep:
+        return None
+    out = pymupdf.open()
+    for i in keep:
+        out.insert_pdf(doc, from_page=i, to_page=i)
+    data = out.tobytes()
+    out.close()
+    doc.close()
+    return data
+
+
+def minutes_pages(iid, url=""):
+    """the official minutes of an item cut down to its own pages -> path of the small PDF"""
+    import tender_docs as td
+    con = db()
+    it = dict(con.execute("SELECT * FROM items WHERE id=?", (iid,)).fetchone())
+    con.close()
+    url = url or it.get("official") or ""
+    if not url.lower().endswith(".pdf"):
+        raise ValueError("مفيش محضر PDF للمناقصة دي")
+    raw = urllib.request.urlopen(urllib.request.Request(urllib.parse.quote(url, safe=":/?&=%#"), headers=td.UA), timeout=120).read()
+    data = tender_pages(raw, it["number"], it["org"])
+    if not data:
+        raise ValueError("رقم المناقصة مش ظاهر في نص المحضر (ممكن يكون ممسوح) - افتح المحضر كامل")
+    folder = DOCS_OUT / (td.safe(f"{it['number']} - {it['subject']}", 80) + f" ({iid})")
+    folder.mkdir(parents=True, exist_ok=True)
+    f = folder / f"صفحات المحضر - {td.safe(it.get('official_label') or 'الجهاز المركزي', 40)}.pdf"
+    f.write_bytes(data)
+    return f
+
+
 def download_docs(iid):
     """download every reachable document of an item into its own folder (gazette: just the page)"""
     import tender_docs as td
@@ -2073,6 +2148,21 @@ def download_docs(iid):
                 res.append((name, True, "صفحة الجريدة"))
             except Exception as e:                   # noqa: BLE001
                 res.append((x["label"], False, str(e)[:100]))
+    # a meeting's whole minutes / a whole gazette issue: keep only the pages about this tender
+    it = d["item"]
+    for i, (name, ok, note) in enumerate(list(res)):
+        f = folder / name
+        if ok and f.suffix.lower() == ".pdf" and ("محضر" in name or "الكويت اليوم" in name) and f.exists():
+            try:
+                data = tender_pages(f.read_bytes(), it["number"], it["org"])
+                if data:
+                    f.write_bytes(data)
+                    res[i] = (name, True, "الصفحات الخاصة بالمناقصة بس")
+                elif "محضر" in name:
+                    f.unlink()
+                    res[i] = (name, False, "المحضر مفيهوش رقم المناقصة")
+            except Exception:                    # noqa: BLE001
+                pass
     locked = [x["label"] for x in d["docs"] if not x.get("url")]
     return {"folder": str(folder), "files": res, "locked": locked, "capt": d["capt"]}
 
@@ -2358,7 +2448,7 @@ def serve(open_browser=True):
             "/api/watch": "watch", "/api/open-file": "fawaz", "/api/accounts": "admin", "/api/projects": "projects",
             "/api/summary": "summary", "/api/ocr-image": "scan", "/api/routines": "routines", "/api/routines/run": "run",
             "/api/routines/send": "send", "/api/routines/copy": "share", "/api/routines/recipients": "admin",
-            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin", "/api/match": "dir", "/api/out": "",
+            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin", "/api/match": "dir", "/api/out": "", "/api/minutes-pages": "dir",
             "/api/suggest": "", "/api/companies": "any:dir,awards", "/api/company": "any:dir,awards", "/api/zatoona": "zatoona",
             ("POST", "/api/settings"): "admin", ("POST", "/api/gazette-account"): "watch", ("POST", "/api/capt-account"): "dir"}
     OPEN = {"/", "/api/me", "/api/login", "/api/logout", "/api/forgot"}
@@ -2476,11 +2566,15 @@ def serve(open_browser=True):
                         int(q.get("days") or 0), limit=100000 if big else (750 if some else 250), country=q.get("country", ""),
                         fresh=int(q.get("fresh") or 0), fuzzy=q.get("fuzzy") == "1"))
                     return self.send(refine(rows, q, "items")[:400] if big else rows[:250])
+                if u.path == "/api/news" and q.get("group") == "official":    # الجهاز المركزي والكويت اليوم
+                    return self.send(refine(self.countries(official_news(q.get("q", ""), q.get("country", ""))), q, "news")[:300])
                 if u.path == "/api/news":
                     rows = self.countries(search_news(q.get("q", ""), limit=100000 if filtering(q) else 80,
                                                       fawaz=q.get("fawaz") == "1", country=q.get("country", "")))
                     if not auth.has(self.sess, "watch"):     # news about the company belong to the Fawaz tab
                         rows = [r for r in rows if not str(r.get("query") or "").startswith("شركة:")]
+                    if q.get("group") == "press":                      # newspapers only
+                        rows = [r for r in rows if not re.search(OFFICIAL_RX, f"{r.get('source', '')} {r.get('title', '')}")]
                     return self.send(refine(rows, q, "news")[:300] if filtering(q) else rows)
                 if u.path == "/api/projects":
                     return self.send(projects_view(q, auth.master_mode()))
@@ -2598,6 +2692,10 @@ def serve(open_browser=True):
                     self.item_ok(body["id"])
                     r = tender_summary.make_bnb(int(body["id"]), lambda m: state["log"].append(m))
                     return self.send(r)
+                if u.path == "/api/minutes-pages":             # the official minutes cut to this tender's pages
+                    self.item_ok(body["id"])
+                    f = minutes_pages(int(body["id"]), body.get("url", ""))
+                    return self.send({"path": str(f), "name": f.name})
                 if u.path == "/api/summary/send":             # e-mail a tender's summary to the chosen addresses
                     import routines
                     self.item_ok(body["id"])

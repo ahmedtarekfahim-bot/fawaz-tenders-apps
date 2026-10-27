@@ -89,7 +89,7 @@ def routines_key():
 
 _done = set()
 NEEDS = {"run": ["routines", "run"], "send": ["routines", "send"], "get": ["routines", "share"], "summary": ["summary", "send"],
-         "docs": ["docs"], "pdf": ["pdf"], "sum": ["summary"], "zt": ["zatoona"]}
+         "docs": ["docs"], "pdf": ["pdf"], "sum": ["summary"], "zt": ["zatoona"], "pages": ["dir"]}
 
 
 def upload_file(f, sig, log=print):
@@ -124,6 +124,8 @@ def _phone_job(kind, arg, sig, user, log):
         elif kind == "sum":
             import tender_summary
             upload_file(tender_summary.summarize(int(arg), log)["path"], sig, log)
+        elif kind == "pages":
+            upload_file(gd.minutes_pages(int(arg)), sig, log)
         elif kind == "zt":
             import zatoona, base64
             q = base64.urlsafe_b64decode(arg.encode()).decode("utf-8")
@@ -141,7 +143,7 @@ def _phone_job(kind, arg, sig, user, log):
 def _command(msg, hooks, log):
     """a signed command from the phone -> True when it was one (handled or refused)"""
     parts = msg.split("|")
-    if len(parts) != 5 or parts[0] not in ("run", "send", "summary", "get", "docs", "pdf", "sum", "zt"):
+    if len(parts) != 5 or parts[0] not in ("run", "send", "summary", "get", "docs", "pdf", "sum", "zt", "pages"):
         return False
     kind, user, arg, ts, sig = parts
     import accounts
@@ -166,7 +168,7 @@ def _command(msg, hooks, log):
             frm = lst["senders"][int(f[0])] if f and f[0] != "" else None
             err = routines.send([r["reports"][int(k)]["path"]], [to], sender_addr=frm)
             log(f"الموبايل ({user}): " + (f"الإرسال ما تمش: {err}" if err else f"اتبعت {r['reports'][int(k)]['name']} على {to}"))
-        elif kind in ("docs", "pdf", "sum", "zt"):
+        elif kind in ("docs", "pdf", "sum", "zt", "pages"):
             threading.Thread(target=_phone_job, args=(kind, arg, sig, user, log), daemon=True).start()
         elif kind == "get":                      # the phone opens / shares a report: sealed upload, gone in hours
             rid, k = arg.split(",")[:2]
