@@ -36,6 +36,8 @@ jobs:
       - run: pip install --quiet openpyxl cryptography
       - name: Collect + build the phone data
         timeout-minutes: 30
+        env:
+          FAWAZ_PUSH_KEY: ${{ secrets.FAWAZ_PUSH_KEY }}
         run: |
           set -o pipefail
           python -u cloud/run_cloud.py state feed site 2>&1 | tee run.log

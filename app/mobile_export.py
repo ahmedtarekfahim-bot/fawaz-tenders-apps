@@ -246,6 +246,12 @@ def build_feed(log=print):
     except Exception as e:                              # noqa: BLE001
         log(f"مفتاح أوامر الموبايل: {e}")
     (data / "skeys.json").write_text(json.dumps(skeys), encoding="utf-8")
+    try:                                                # 🔔 what the cloud needs to notify while this PC is off (sealed)
+        import push
+        (data / "push.enc").write_text(json.dumps(push.feed_blob()), encoding="utf-8")
+        _last_feed["push_now"] = hashlib.sha256(json.dumps(push.load()["users"], sort_keys=True).encode()).hexdigest()
+    except Exception as e:                              # noqa: BLE001
+        log(f"إشعارات السحابة: {e}")
     return meta
 
 
@@ -285,6 +291,7 @@ def build_site(feed_data, site, log=print):
     skeys = json.loads((d / "skeys.json").read_text(encoding="utf-8")) if (d / "skeys.json").exists() else {}
     (d / "users_pub.json").unlink()
     (d / "skeys.json").unlink(missing_ok=True)
+    (d / "push.enc").unlink(missing_ok=True)            # for the cloud only - never on the phone site
     n = accounts.seal_dir(d, users, fkeys, skeys)
     (site / ".nojekyll").write_text("", encoding="utf-8")
     return n
@@ -300,7 +307,7 @@ def _publish(log, force):
     meta = build_feed(log)
     sig = hashlib.sha256(b"".join((FEED / "data" / n).read_bytes() for n in
                                   ("directory.json", "news.json", "awards.json", "users_pub.json"))).hexdigest()
-    sig = hashlib.sha256((sig + _last_feed.get("priv_now", "") + _last_feed.get("proj_now", "") + _last_feed.get("rout_now", "")).encode()).hexdigest()
+    sig = hashlib.sha256((sig + _last_feed.get("priv_now", "") + _last_feed.get("proj_now", "") + _last_feed.get("rout_now", "") + _last_feed.get("push_now", "")).encode()).hexdigest()
     changed = sig != _last_feed.get("sig")
     if force or changed or time.time() - _last_feed.get("at", 0) > 1800:
         if push_dir(FEED, "pc-feed", url, f"pc feed {meta['updated']}", log):

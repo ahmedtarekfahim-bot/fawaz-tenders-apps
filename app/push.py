@@ -11,6 +11,10 @@
     -> filtered per account (its permissions and countries, then its own choices) -> one push per thing,
     at most MAX a run (then one "and N more").
   - the message is encrypted for the phone (RFC 8291, aes128gcm) and signed with this PC's VAPID key.
+  - the cloud (GitHub Actions, every 15 minutes) sends the same notifications when the PC is off: the PC
+    hands it push.enc on pc-feed (VAPID key, notify keys, phones, choices, account rules) sealed with
+    cloud_key() (from the routines key), which the cloud gets as the secret FAWAZ_PUSH_KEY. With that on, the PC leaves the
+    data notifications to the cloud (one sender, no doubles) and keeps reports / program updates.
 """
 import os, json, time, hmac, hashlib, base64, threading, datetime, urllib.request, urllib.parse
 from pathlib import Path
@@ -73,7 +77,7 @@ def vapid():
     """this PC's VAPID key pair (P-256) -> (private key, public key raw b64url)"""
     from cryptography.hazmat.primitives.asymmetric import ec
     from cryptography.hazmat.primitives import serialization
-    pem = cfg.S.get("vapid_key")
+    pem = os.environ.get("FAWAZ_VAPID_PEM") or cfg.S.get("vapid_key")
     if pem:
         k = serialization.load_pem_private_key(pem.encode(), None)
     else:
@@ -180,7 +184,7 @@ def deliver(user, msgs, log=print):
 
 
 # ----------------------------------------------------------------- the phone registers / changes its choices
-def register(user, arg, log=print):
+def register(user, arg, log=print, test_ok=True):
     raw = json.loads(base64.urlsafe_b64decode(arg + "=" * (-len(arg) % 4)).decode("utf-8"))
     with _lock:
         d = load()
@@ -196,8 +200,9 @@ def register(user, arg, log=print):
             e["subs"] = e["subs"][-5:]
         if "p" in raw:
             e["prefs"] = clean_prefs(raw["p"])
+        e["upd"] = datetime.datetime.now().isoformat(timespec="seconds")
         save(d)
-    if raw.get("test") or (sub and not raw.get("off") and not known):     # a new phone: show it works
+    if test_ok and (raw.get("test") or (sub and not raw.get("off") and not known)):     # a new phone: show it works
         deliver(user, [{"t": "🔔 الإشعارات شغالة", "b": "هيوصلك هنا كل جديد حسب اختياراتك", "u": "#", "tag": "test"}], log)
     log(f"إشعارات الموبايل ({user}): " + ("اتقفلت على جهاز" if raw.get("off") else "اتسجلت / اتحدثت"))
 
@@ -317,15 +322,23 @@ def collect_reports(mark):
 
 
 # ----------------------------------------------------------------- who gets what
-def wanted(thing, d, prefs, norm):
+def rules():
+    """each account's permissions as plain data (also handed to the cloud)"""
     import accounts
+    return {u: {"perms": accounts.perms_of(d), "countries": d.get("countries") or ["KW", "SA", "AE"],
+                "rids": [] if d.get("admin") else (d.get("routines") or []), "live": accounts.is_live(d)}
+            for u, d in accounts.load()["users"].items()}
+
+
+def wanted(thing, d, prefs, norm):
     if thing["kind"] not in prefs["kinds"]:
         return False
     if thing["kind"] == "app":
         return True
-    if not accounts.allowed(d, thing["need"], thing["country"] or None):
+    need, cc = thing["need"], thing["country"]
+    if not ((need == "awards" and "watch" in d["perms"]) or (need in d["perms"] and (not cc or cc in d["countries"]))):
         return False
-    if thing.get("rid") and not accounts.routine_ok(d, thing["rid"]):
+    if thing.get("rid") and d["rids"] and thing["rid"] not in d["rids"]:
         return False
     if thing["country"] and prefs["countries"] and thing["country"] not in prefs["countries"]:
         return False
@@ -338,17 +351,31 @@ def wanted(thing, d, prefs, norm):
     return True
 
 
-def dispatch(things, log=print):
-    import accounts
+def dispatch(things, log=print, users=None):
     from capt_tool import norm
     if not things:
         return 0
-    d = load()
-    users = accounts.load()["users"]
+    with _lock:                         # never the same notification twice (PC + cloud, or a value flipping back)
+        d = load()
+        sent = d.setdefault("sent", [])
+        seen = set(sent)
+        fresh = []
+        for t in things:
+            k = hashlib.sha1((t["msg"]["t"] + "|" + t["msg"]["b"]).encode("utf-8")).hexdigest()[:16]
+            if k not in seen:
+                seen.add(k)
+                sent.append(k)
+                fresh.append(t)
+        d["sent"] = sent[-6000:]
+        save(d)
+    things = fresh
+    if not things:
+        return 0
+    users = users if users is not None else rules()
     total = 0
     for u, e in d["users"].items():
         du = users.get(u)
-        if not e["subs"] or not du or not accounts.is_live(du):
+        if not e["subs"] or not du or not du.get("live"):
             continue
         mine = [t["msg"] for t in things if wanted(t, du, e["prefs"], norm)]
         if len(mine) > MAX:
@@ -360,9 +387,9 @@ def dispatch(things, log=print):
     return total
 
 
-def after_update(gd, log=print):
-    """called at the end of each update on the main PC"""
-    if not cfg.S.get("mobile_publish"):
+def after_update(gd, log=print, cloud=None):
+    """called at the end of each update on the main PC (cloud = the cloud's rules, from push.enc)"""
+    if not (cfg.S.get("mobile_publish") or cloud is not None):
         return 0
     with _lock:
         d = load()
@@ -376,11 +403,13 @@ def after_update(gd, log=print):
             save(d)
             return 0
         things, now = collect(gd, mark)
-        rep, newest = collect_reports(mark.get("reports", ""))
+        if cloud is None and cloud_active():
+            things = []                 # the cloud sends the data notifications (the PC only reports / updates)
+        rep, newest = collect_reports(mark.get("reports", "")) if cloud is None else ([], "")
         mark.update(now)
-        mark["reports"] = newest
+        mark["reports"] = newest or mark.get("reports", "")
         save(d)
-    return dispatch(things + rep, log)
+    return dispatch(things + rep, log, cloud)
 
 
 def check_reports(log=print):
@@ -435,7 +464,9 @@ def view(user, is_admin):
 def set_prefs(user, prefs):
     with _lock:
         d = load()
-        user_entry(d, user)["prefs"] = clean_prefs(prefs)
+        e = user_entry(d, user)
+        e["prefs"] = clean_prefs(prefs)
+        e["upd"] = datetime.datetime.now().isoformat(timespec="seconds")
         save(d)
 
 
@@ -445,4 +476,100 @@ def remove_device(user, i):
         e = user_entry(d, user)
         if 0 <= i < len(e["subs"]):
             e["subs"].pop(i)
+            e["upd"] = datetime.datetime.now().isoformat(timespec="seconds")
             save(d)
+
+
+# ----------------------------------------------------------------- the cloud's share (PC off)
+SITE_META = "https://ahmedtarekfahim-bot.github.io/fawaz-tenders-apps/data/meta.json"
+
+
+def cloud_active():
+    """the cloud sent notifications in the last hour -> the PC leaves the data notifications to it"""
+    try:
+        with urllib.request.urlopen(urllib.request.Request(SITE_META + f"?t={int(time.time())}", headers={"Cache-Control": "no-cache"}), timeout=15) as r:
+            at = json.loads(r.read()).get("push_cloud") or ""
+        return bool(at) and (datetime.datetime.now() - datetime.datetime.fromisoformat(at)).total_seconds() < 3600
+    except Exception:                   # noqa: BLE001 - can't tell: the PC sends (better twice than never)
+        return False
+
+
+def cloud_key():
+    """the key push.enc is sealed with (the cloud has it as the secret FAWAZ_PUSH_KEY)"""
+    import phone_lock
+    return hmac.new(phone_lock.routines_key().encode(), b"cloud-push|v1", hashlib.sha256).hexdigest()
+
+
+def feed_blob():
+    """push.enc for pc-feed: everything the cloud needs to notify, sealed with cloud_push_key"""
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    import accounts, gzip
+    d = load()
+    users = {u: e for u, e in d["users"].items() if e.get("subs")}
+    k, _pub = vapid()
+    from cryptography.hazmat.primitives import serialization
+    pem = k.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()).decode()
+    body = {"vapid": pem, "rules": rules(), "users": users, "at": datetime.datetime.now().isoformat(timespec="seconds"),
+            "nk": {u: notify_key(u).hex() for u, du in accounts.load()["users"].items() if accounts.is_live(du)}}
+    raw = gzip.compress(json.dumps(body, ensure_ascii=False).encode("utf-8"))
+    iv = os.urandom(12)
+    return {"iv": base64.b64encode(iv).decode(), "data": base64.b64encode(AESGCM(bytes.fromhex(cloud_key())).encrypt(iv, raw, None)).decode()}
+
+
+def cloud_open(feed_file, key_hex):
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    import gzip
+    enc = json.loads(Path(feed_file).read_text(encoding="utf-8"))
+    raw = AESGCM(bytes.fromhex(key_hex)).decrypt(base64.b64decode(enc["iv"]), base64.b64decode(enc["data"]), None)
+    return json.loads(gzip.decompress(raw).decode("utf-8"))
+
+
+def cloud_run(gd, feed_dir, log=print):
+    """on GitHub Actions after the cloud update: merge the PC's phones, read new registrations from the
+    phone channel, then notify what is new in the cloud's own data"""
+    key = os.environ.get("FAWAZ_PUSH_KEY", "").strip()
+    f = Path(feed_dir) / "push.enc"
+    if not key or not f.exists():
+        log("🔔 إشعارات السحابة: مفيش مفتاح أو push.enc من الكمبيوتر")
+        return None
+    try:
+        pc = cloud_open(f, key)
+    except Exception as e:              # noqa: BLE001
+        log(f"🔔 إشعارات السحابة: push.enc ما اتفتحش ({e})")
+        return None
+    os.environ["FAWAZ_VAPID_PEM"] = pc["vapid"]
+    with _lock:
+        d = load()
+        for u, e in pc["users"].items():                 # the newer side wins per account
+            mine = d["users"].get(u)
+            if not mine or (e.get("upd") or "") >= (mine.get("upd") or ""):
+                d["users"][u] = {"subs": e.get("subs") or [], "prefs": e.get("prefs") or default_prefs(), "upd": e.get("upd", "")}
+        save(d)
+    # registrations made while the PC was off (the phone channel keeps messages about 12 hours)
+    try:
+        import phone_lock
+        topic = json.loads((Path(feed_dir) / "ntfy.json").read_text(encoding="utf-8"))["topic"]
+        since = int(load()["mark"].get("ntfy", 0)) or int(time.time()) - 12 * 3600
+        with urllib.request.urlopen(f"{phone_lock.NTFY}{topic}/json?poll=1&since={since}", timeout=30) as r:
+            msgs = [json.loads(x) for x in r.read().decode("utf-8", "replace").splitlines() if x.strip()]
+        pc_on = (datetime.datetime.now() - datetime.datetime.fromisoformat(pc["at"])).total_seconds() < 2400
+        last = since
+        for m in msgs:
+            last = max(last, int(m.get("time", 0)))
+            parts = str(m.get("message", "")).split("|")
+            if m.get("event") != "message" or len(parts) != 5 or parts[0] != "push":
+                continue
+            _k, user, arg, ts, sig = parts
+            nk = pc["nk"].get(user)
+            good = nk and hmac.compare_digest(hmac.new(bytes.fromhex(nk), f"push|{user}|{arg}|{ts}".encode(), hashlib.sha256).hexdigest()[:32], sig)
+            if good:
+                register(user, arg, log, test_ok=not pc_on)      # the PC answers the test itself when it is on
+        with _lock:
+            d = load()
+            d["mark"]["ntfy"] = last
+            save(d)
+    except Exception as e:              # noqa: BLE001
+        log(f"🔔 قراءة تسجيلات الموبايل: {e}")
+    n = after_update(gd, log, cloud=pc["rules"])
+    log(f"🔔 إشعارات السحابة: {n}")
+    return n

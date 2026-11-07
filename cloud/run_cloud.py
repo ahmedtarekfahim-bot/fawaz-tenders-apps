@@ -237,6 +237,12 @@ def main():
     for extra in ("users_pub.json", "fkeys.json", "private.enc", "ntfy.json", "skeys.json", "projects.enc", "routines.enc", "cmd.enc"):   # from the PC
         if (FEED / extra).exists():
             shutil.copy2(FEED / extra, build / "data" / extra)
+    try:                                                # 🔔 notifications while the PC is off
+        import push
+        if push.cloud_run(gd, FEED, lambda m: print(m, flush=True)) is not None:
+            meta["push_cloud"] = datetime.datetime.now().isoformat(timespec="seconds")
+    except Exception as e:                              # noqa: BLE001
+        print(f"🔔 إشعارات السحابة: {e}", flush=True)
     meta.update(by="cloud", pc_updated=load(FEED / "meta.json", {}).get("updated", ""),
                 sources={k: v for k, v in summary.items() if k != "متابعة فواز"}, seconds=round(time.time() - t0))
     (build / "data" / "meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
