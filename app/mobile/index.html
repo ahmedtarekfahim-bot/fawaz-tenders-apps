@@ -980,6 +980,7 @@ function setH(){document.documentElement.style.setProperty('--hh',$('#hdr').offs
 window.addEventListener('resize',setH);setH();
 let deferred;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('#install').style.display='block'});
 $('#btnInstall').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('#install').style.display='none'};
+try{if(document.referrer&&!sessionStorage.getItem('ref0'))sessionStorage.setItem('ref0',document.referrer)}catch(e){}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 // ---------------------------------------------------------------- 🔔 الإشعارات (Web Push from the PC, works with the app closed)
 const PK={new:'🆕 مناقصات جديدة',award:'🏆 ترسيات',date:'📅 تأجيل ومواعيد',status:'⚠️ إلغاء وتغيير حالة',official:'🏛 الجهاز المركزي والكويت اليوم',news:'📰 أخبار الجرايد',reports:'📊 تقارير جديدة',app:'⬆️ تحديث البرنامج'};
@@ -1005,6 +1006,7 @@ async function bellSheet(){
   const kinds=Object.entries(PK).filter(([k])=>(k!=='news'||pm.includes('news'))&&(k!=='reports'||pm.includes('routines')||pm.includes('projects')));
   showSheet('🔔 الإشعارات',`<div class="pbox ${on?'on':''}">${on?'✅ الإشعارات شغالة على الموبايل ده. بتوصلك لحظة ما الكمبيوتر يلاقي حاجة جديدة، حتى والتطبيق مقفول.':'🔕 الإشعارات مقفولة على الموبايل ده. اختار اللي عاوزه ودوس "شغّل الإشعارات".'}</div>
     ${blocked?`<div class="pbox" style="background:#fff;border-color:#b3121b"><b style="color:#b3121b">إذن الإشعارات مقفول على الموبايل.</b><br>افتحه مرة واحدة:<br>1. اضغط ضغطة طويلة على أيقونة <b>GCC Tenders</b> ← <b>معلومات التطبيق</b> ← <b>الإشعارات</b> ← <b>سماح</b>.<br>2. لو لسه مقفول: ضغطة طويلة على الأيقونة ← <b>Site settings</b> ← <b>Notifications</b> ← <b>Allow</b>.<br>3. اقفل التطبيق وافتحه، وارجع هنا ودوس "شغّل الإشعارات".<br><span class="note">أو شغّلها من Chrome:</span><a class="big" style="display:block;text-align:center;margin-top:8px;text-decoration:none" href="${chromeLink()}">🌐 افتح في Chrome وشغّل الإشعارات</a></div>`:''}
+    <p class="note" dir="ltr" style="font-size:11px;text-align:left">diag: perm=${Notification.permission} · ${matchMedia('(display-mode: standalone)').matches?'standalone':'browser'} · ref=${esc(sessionStorage.getItem('ref0')||'-')} · ${(navigator.userAgent.match(/(Chrome|SamsungBrowser|HeyTapBrowser|MiuiBrowser|OPR)\/[\d.]+/g)||['?']).join(' ')} · sub=${sub?'yes':'no'}</p>
     <h3>عاوز يوصلك إيه؟</h3><div class="pk">${kinds.map(([k,l])=>`<label class="pkr"><input type="checkbox" data-pk="${k}" ${p.kinds.includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
     ${my.length>1?`<h3>من أنهي بلد؟</h3><div class="pk">${my.map(c=>`<label class="pkr"><input type="checkbox" data-pcn="${c}" ${(!p.countries.length||p.countries.includes(c))?'checked':''}> ${CN2[c]}</label>`).join('')}</div>`:''}
     <h3>نطاق</h3><label class="pkr"><input type="checkbox" id="pfz" ${p.fawaz?'checked':''}> اللي في نطاق شغل فواز بس</label>
