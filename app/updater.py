@@ -6,7 +6,7 @@ _build_info.json. latest.json = {"version": "1.0.1", "setup_url": "...exe", "not
 When a newer version exists the setup is downloaded and started silently (/S /restart); it
 closes the running programs, installs over them and starts the directory again.
 """
-import os, sys, json, subprocess, tempfile, urllib.request
+import os, sys, json, time, subprocess, tempfile, urllib.request
 import fawaz_config as cfg
 
 UA = {"User-Agent": "FAWAZ-Tenders-Updater", "Cache-Control": "no-cache"}
@@ -40,8 +40,16 @@ def apply(latest, log=print):
     if not getattr(sys, "frozen", False):
         log(f"نسخة جديدة {latest.get('version')} متاحة (التحديث التلقائي بيشتغل في النسخة المتسطبة بس)")
         return False
+    # both programs check for updates: the first one takes the update, the other leaves it alone
+    flag = os.path.join(tempfile.gettempdir(), f"FAWAZ-Tenders-update-{latest['version']}.lock")
     try:
-        dst = os.path.join(tempfile.gettempdir(), f"FAWAZ-Tenders-Setup-{latest['version']}.exe")
+        if os.path.exists(flag) and time.time() - os.path.getmtime(flag) < 900:
+            return False
+        open(flag, "w").close()
+    except OSError:
+        return False
+    try:
+        dst = os.path.join(tempfile.gettempdir(), f"FAWAZ-Tenders-Setup-{latest['version']}-{os.getpid()}.exe")
         with urllib.request.urlopen(urllib.request.Request(latest["setup_url"], headers=UA), timeout=600) as r, \
                 open(dst, "wb") as f:
             while True:

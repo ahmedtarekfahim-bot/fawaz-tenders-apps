@@ -1371,6 +1371,13 @@ def run_update(progress=print, countries=None):
             summary["نسخة التليفون"] = "اتحدثت"
     except Exception as e:                  # noqa: BLE001
         summary["نسخة التليفون"] = f"خطأ: {e}"
+    try:                                    # 🔔 everything new -> the phones that asked for it
+        import push
+        n_push = push.after_update(sys.modules[__name__], progress)
+        if n_push:
+            summary["إشعارات الموبايل"] = n_push
+    except Exception as e:                  # noqa: BLE001
+        summary["إشعارات الموبايل"] = f"خطأ: {e}"
     con = db()
     con.execute("INSERT INTO runs(started,finished,summary) VALUES(?,?,?)",
                 (started.isoformat(timespec="seconds"), datetime.datetime.now().isoformat(timespec="seconds"),
@@ -2401,7 +2408,19 @@ def serve(open_browser=True):
     def scheduler():
         # periodic update from the internet while the program runs; the interval can change from the window
         last_check = 0
+        try:                             # 🔔 "the program was updated" once per new version
+            import push
+            push.app_version(lambda m: state["log"].append(m))
+        except Exception:                # noqa: BLE001
+            pass
         while True:
+            if cfg.S.get("mobile_publish") and time.time() - state.get("push_rep", 0) >= 300:
+                state["push_rep"] = time.time()        # a routine's new report -> notification
+                try:
+                    import push
+                    threading.Thread(target=push.check_reports, args=(lambda m: state["log"].append(m),), daemon=True).start()
+                except Exception:        # noqa: BLE001
+                    pass
             if time.time() - last_check >= 1800:
                 last_check = time.time()
                 try:                     # installed program: new version on GitHub -> install it
@@ -2448,7 +2467,7 @@ def serve(open_browser=True):
             "/api/watch": "watch", "/api/open-file": "fawaz", "/api/accounts": "admin", "/api/projects": "projects",
             "/api/summary": "summary", "/api/ocr-image": "scan", "/api/routines": "routines", "/api/routines/run": "run",
             "/api/routines/send": "send", "/api/routines/copy": "share", "/api/routines/recipients": "admin",
-            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin", "/api/match": "dir", "/api/out": "", "/api/minutes-pages": "dir",
+            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin", "/api/match": "dir", "/api/out": "", "/api/minutes-pages": "dir", "/api/push": "", "/api/push/prefs": "", "/api/push/test": "", "/api/push/remove": "",
             "/api/suggest": "", "/api/companies": "any:dir,awards", "/api/company": "any:dir,awards", "/api/zatoona": "zatoona",
             ("POST", "/api/settings"): "admin", ("POST", "/api/gazette-account"): "watch", ("POST", "/api/capt-account"): "dir"}
     OPEN = {"/", "/api/me", "/api/login", "/api/logout", "/api/forgot"}
@@ -2509,6 +2528,9 @@ def serve(open_browser=True):
             try:
                 if u.path == "/":
                     return self.send((cfg.res_dir() / "ui" / "واجهة الدليل.html").read_bytes(), ctype="text/html; charset=utf-8")
+                if u.path == "/api/push":                    # 🔔 the phones' notifications: devices + choices
+                    import push
+                    return self.send(push.view(self.sess["u"], bool(self.sess.get("admin"))))
                 if u.path == "/api/me":
                     return self.send({"me": auth.public(self.sess), "owner_pc": auth.master_mode(),
                                       "version": cfg.build_info().get("version")})
@@ -2692,6 +2714,19 @@ def serve(open_browser=True):
                     self.item_ok(body["id"])
                     r = tender_summary.make_bnb(int(body["id"]), lambda m: state["log"].append(m))
                     return self.send(r)
+                if u.path in ("/api/push/prefs", "/api/push/test", "/api/push/remove"):
+                    import push
+                    who = body.get("user") or self.sess["u"]
+                    if who != self.sess["u"] and not self.sess.get("admin"):
+                        return self.send({"error": "مش مسموحلك"}, 403)
+                    if u.path == "/api/push/prefs":
+                        push.set_prefs(who, body.get("prefs"))
+                        return self.send({"ok": True})
+                    if u.path == "/api/push/remove":
+                        push.remove_device(who, int(body.get("i", -1)))
+                        return self.send({"ok": True})
+                    n = push.deliver(who, [{"t": "🔔 تجربة من الكمبيوتر", "b": "الإشعارات واصلة تمام", "u": "#", "tag": "test"}])
+                    return self.send({"ok": bool(n), "sent": n})
                 if u.path == "/api/minutes-pages":             # the official minutes cut to this tender's pages
                     self.item_ok(body["id"])
                     f = minutes_pages(int(body["id"]), body.get("url", ""))

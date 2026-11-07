@@ -77,6 +77,68 @@ def legacy_cleanup(f):
             pass
 
 
+def copy_over(src, dst):
+    """file by file; a file still locked keeps its old copy instead of stopping the whole install"""
+    failed = []
+    for f in src.rglob("*"):
+        to = dst / f.relative_to(src)
+        if f.is_dir():
+            to.mkdir(parents=True, exist_ok=True)
+            continue
+        for _ in range(5):
+            try:
+                to.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(f, to)
+                break
+            except OSError:
+                time.sleep(1)
+        else:
+            failed.append(to)
+    return failed
+
+
+def swap_in(new):
+    """the old folder is never deleted before the new one is in place: rename old -> (old), new -> target;
+    when something keeps the old folder locked, copy over it. Ends with both programs present."""
+    old = TARGET.with_name(APP + " (old)")
+    shutil.rmtree(old, ignore_errors=True)
+    for _ in range(15):
+        try:
+            if TARGET.exists():
+                TARGET.rename(old)
+            new.rename(TARGET)
+            break
+        except OSError:
+            stop_running()
+            time.sleep(1)
+    else:
+        copy_over(new, TARGET)
+    if new.exists() and not TARGET.exists():
+        new.rename(TARGET)
+    missing = [e for e in EXES.values() if not (TARGET / e).exists()]
+    if missing:                         # never leave the user without a program
+        with zipfile.ZipFile(res("payload.zip")) as z:
+            z.extractall(TARGET)
+    shutil.rmtree(new, ignore_errors=True)
+    shutil.rmtree(old, ignore_errors=True)
+    missing = [e for e in EXES.values() if not (TARGET / e).exists()]
+    if missing:
+        raise RuntimeError("ملفات ناقصة بعد التسطيب: " + "، ".join(missing))
+
+
+def one_setup():
+    """only one Setup at a time (both programs may start the same update): -> lock handle or None"""
+    import msvcrt
+    TARGET.parent.mkdir(parents=True, exist_ok=True)
+    fh = open(TARGET.parent / "FAWAZ Tenders setup.lock", "a+")
+    try:
+        msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+        return fh
+    except OSError:
+        fh.close()
+        return None
+
+
 def register(ver):
     import winreg
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, UNINST_KEY) as k:
@@ -100,13 +162,11 @@ def install(autostart=True, log=print):
     shutil.rmtree(new, ignore_errors=True)
     with zipfile.ZipFile(res("payload.zip")) as z:
         z.extractall(new)
-    shutil.rmtree(TARGET, ignore_errors=True)
-    if TARGET.exists():                 # a file still locked: copy over what we can
-        shutil.copytree(new, TARGET, dirs_exist_ok=True)
-        shutil.rmtree(new, ignore_errors=True)
-    else:
-        new.rename(TARGET)
-    shutil.copy2(sys.executable, TARGET / "uninstall.exe")
+    swap_in(new)
+    try:
+        shutil.copy2(sys.executable, TARGET / "uninstall.exe")
+    except OSError:                     # uninstall.exe itself running the update
+        pass
     log("بعمل الاختصارات ...")
     for key in ("gulf", "capt"):
         exe = TARGET / EXES[key]
@@ -203,6 +263,15 @@ def main():
         if messagebox.askyesno("إزالة", "تشيل برنامج ترسيات CAPT ودليل مناقصات الخليج؟\n(الداتا والتقارير هتفضل زي ما هي)"):
             uninstall()
             messagebox.showinfo("إزالة", "اتشال.")
+        return
+    lock = one_setup()
+    if lock is None:                    # another Setup is already installing
+        if "/s" not in args:
+            import tkinter as tk
+            from tkinter import messagebox
+            r = tk.Tk()
+            r.withdraw()
+            messagebox.showinfo("تسطيب", "فيه تسطيب تاني شغال دلوقتي، استنى دقيقة وجرّب تاني.")
         return
     if "/s" in args:
         install(autostart=True, log=lambda m: None)

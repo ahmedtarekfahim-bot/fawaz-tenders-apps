@@ -319,6 +319,7 @@ button.pri::after{display:none}
 .res.unread{background:#fff8e6!important;border-right:4px solid #b3121b!important}
 .res.sel{background:#e6eefb!important;border-right:4px solid #16336b!important}
 .dym{background:#fff8e6!important;color:#0a0f1c!important}
+.pushu label{display:inline-flex!important;flex-direction:row!important;align-items:center;gap:6px;justify-content:flex-start!important;color:#0a0f1c!important}
 </style>
 </head>
 <body>
@@ -331,6 +332,7 @@ button.pri::after{display:none}
   <span class="me" id="me" style="display:none"></span>
   <details class="menu" id="menu"><summary title="الإعدادات">⚙</summary><div class="mbox">
     <label id="autoRow">تحديث تلقائي <select id="auto"><option value="15">كل ربع ساعة</option><option value="30">كل نص ساعة (الأأمن)</option><option value="60">كل ساعة</option><option value="360">كل 6 ساعات</option><option value="0">مقفول</option></select></label>
+    <button onclick="pushPanel()">🔔 إشعارات الموبايل</button>
     <button onclick="post('/api/open-folder')">📁 فولدر التقارير</button>
     <button id="btnOut" style="display:none">🚪 تسجيل خروج</button></div></details>
 </header>
@@ -865,6 +867,30 @@ function showFiles(title,paths,note){$('#ovt').textContent=title;
 function wireOutBtns(){$('#ovb').querySelectorAll('[data-rev]').forEach(b=>b.onclick=e=>{e.preventDefault();post('/api/reveal',{path:b.dataset.rev})});
   $('#ovb').querySelectorAll('[data-ext]').forEach(b=>b.onclick=e=>{e.preventDefault();post('/api/open',{url:b.dataset.ext})});
   $('#ovb').querySelectorAll('[data-view]').forEach(b=>b.onclick=e=>{e.preventDefault();showFile($('#ovt').textContent,b.dataset.view,'')})}
+// 🔔 the phones' notifications: what each account gets (the phone itself turns them on from its 🔔 button)
+const PCN={KW:'الكويت',SA:'السعودية',AE:'الإمارات'};
+async function pushPanel(){$('#menu').open=false;let r;try{r=await get('/api/push')}catch(e){return toast(e.message)}
+  $('#ovt').textContent='🔔 إشعارات الموبايل';
+  $('#ovb').innerHTML=`<p class="snip" style="max-height:none">الإشعارات بتوصل للموبايل لحظة ما التحديث يلاقي حاجة جديدة، حتى والتطبيق مقفول. بتتشغّل من الموبايل نفسه (زرار 🔔 فوق في التطبيق)، ومن هنا تقدر تغيّر نوعها.</p>`+
+    r.users.map((u,ix)=>{const p=u.prefs;return `<div class="card pushu" data-ix="${ix}" style="margin:10px 0;padding:12px">
+      <h4 style="margin:0 0 6px">👤 ${esc(u.user)} <span class="snip" style="font-weight:400">${u.devices.length?`· ${u.devices.length} موبايل مشترك`:'· لسه ما شغّلش الإشعارات من الموبايل'}</span></h4>
+      <div class="fgrid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">${Object.entries(r.kinds).map(([k,l])=>`<label><input type="checkbox" data-k="${k}" ${p.kinds.includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
+      <div style="margin-top:6px">${Object.entries(PCN).filter(([c])=>u.countries.includes(c)).map(([c,l])=>`<label style="margin-inline-end:12px"><input type="checkbox" data-c="${c}" ${!p.countries.length||p.countries.includes(c)?'checked':''}> ${l}</label>`).join('')}
+      <label style="margin-inline-start:12px"><input type="checkbox" data-fz ${p.fawaz?'checked':''}> نطاق فواز بس</label></div>
+      <input data-w placeholder="كلمات معيّنة (اختياري) - مثلاً: تكييف، صيانة" value="${esc(p.words.join('، '))}" style="width:100%;margin-top:6px">
+      ${u.devices.length?`<table style="margin-top:6px">${u.devices.map((d,i)=>`<tr><td>📱 ${esc(d.device)}</td><td>${esc((d.at||'').replace('T',' '))}</td><td><a href="#" data-rm="${i}">شيل</a></td></tr>`).join('')}</table>`:''}
+      <div style="margin-top:8px;display:flex;gap:6px"><button class="pri" data-save>💾 احفظ</button>${u.devices.length?'<button data-test>جرّب إشعار</button>':''}</div></div>`}).join('');
+  openOv();
+  $('#ovb').querySelectorAll('.pushu').forEach(el=>{const u=r.users[+el.dataset.ix].user;
+    const read=()=>{const cs=[...el.querySelectorAll('[data-c]')],on=cs.filter(c=>c.checked).map(c=>c.dataset.c);
+      return {kinds:[...el.querySelectorAll('[data-k]')].filter(c=>c.checked).map(c=>c.dataset.k),countries:on.length<cs.length?on:[],
+        fawaz:el.querySelector('[data-fz]').checked,words:el.querySelector('[data-w]').value.split(/[،,]/).map(w=>w.trim()).filter(Boolean)}};
+    el.querySelector('[data-save]').onclick=async()=>{const p=read();if(!p.kinds.length)return toast('اختار نوع واحد على الأقل');
+      if(![...el.querySelectorAll('[data-c]')].some(c=>c.checked))return toast('اختار بلد واحدة على الأقل');
+      await post('/api/push/prefs',{user:u,prefs:p});toast('اتحفظ ✓ - هيتطبّق من التحديث الجاي')};
+    const t=el.querySelector('[data-test]');if(t)t.onclick=async()=>{const x=await post('/api/push/test',{user:u});toast(x.ok?'اتبعت ✓ - شوف الموبايل':'ما وصلش - الموبايل يشغّل الإشعارات تاني من 🔔',6000)};
+    el.querySelectorAll('[data-rm]').forEach(a=>a.onclick=async e=>{e.preventDefault();if(!confirm('تشيل الموبايل ده من الإشعارات؟'))return;
+      await post('/api/push/remove',{user:u,i:+a.dataset.rm});pushPanel()})})}
 function openOv(){$('#ov').style.display='flex'}
 function closeOv(){$('#ov').style.display='none';$('#ovb').innerHTML=''}
 function busy(msg){$('#ovt').textContent='⏳';$('#ovb').innerHTML=`<div class="busy"><div class="spin"></div><p>${esc(msg)}</p></div>`;openOv()}

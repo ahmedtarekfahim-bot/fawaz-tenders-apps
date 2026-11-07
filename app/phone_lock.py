@@ -143,6 +143,20 @@ def _phone_job(kind, arg, sig, user, log):
 def _command(msg, hooks, log):
     """a signed command from the phone -> True when it was one (handled or refused)"""
     parts = msg.split("|")
+    if len(parts) == 5 and parts[0] == "push":       # 🔔 notifications: signed with the account's own notify key
+        import accounts, push
+        kind, user, arg, ts, sig = parts
+        user = accounts.norm_name(user)
+        d = accounts.load()["users"].get(user)
+        if not (d and accounts.is_live(d) and sig not in _done and push.check(user, arg, ts, sig)):
+            log(f"طلب إشعارات من الموبايل اترفض ({user})")
+            return True
+        _done.add(sig)
+        try:
+            push.register(user, arg, log)
+        except Exception as e:                  # noqa: BLE001
+            log(f"إشعارات الموبايل ({user}): {e}")
+        return True
     if len(parts) != 5 or parts[0] not in ("run", "send", "summary", "get", "docs", "pdf", "sum", "zt", "pages"):
         return False
     kind, user, arg, ts, sig = parts

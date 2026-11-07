@@ -1,5 +1,5 @@
 ﻿# Close the running programs (window + background server) and install the newest Setup silently, then start it again.
-param([string]$setup = "D:\شغل فواز\12 - GCC Tenders - برامج الكمبيوتر\GCC Tenders Setup 2.1.3.exe")
+param([string]$setup = "D:\شغل فواز\12 - GCC Tenders - برامج الكمبيوتر\GCC Tenders Setup 2.1.5.exe")
 $names = "FAWAZ Gulf Directory", "FAWAZ CAPT Awards"
 Get-Process -Name $names -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "closing $($_.Name) ($($_.Id))"; Stop-Process -Id $_.Id -Force }
 Start-Sleep -Seconds 3

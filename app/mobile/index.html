@@ -224,7 +224,15 @@ body::before{opacity:.18!important}
 header,#sheet .top{background:linear-gradient(120deg,#ffffff,#eaf1fd)!important;color:#0a0f1c!important;border-bottom:3px solid #16336b!important;box-shadow:0 4px 16px rgba(22,51,107,.15)!important}
 header *,#sheet .top b{color:#0a0f1c!important}
 .brandname span,header .upd,header .upd span{color:#16336b!important}
-#who,#lang{background:#e6eefb!important;color:#16336b!important;border:1px solid #c5d3ec!important}
+#who,#lang,#bell{background:#e6eefb!important;color:#16336b!important;border:1px solid #c5d3ec!important}
+#bell{border-radius:999px;padding:4px 9px;font-size:15px;margin-inline-start:6px;cursor:pointer}
+.pk{display:grid;grid-template-columns:1fr;gap:6px;margin:6px 0 10px}
+.pkr{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #d5deec;border-radius:12px;padding:10px 12px;color:#0a0f1c!important;font-size:14px}
+.pkr input{width:20px;height:20px;accent-color:#16336b}
+.pin{width:100%;padding:11px;border-radius:12px;border:1px solid #c5d3ec;background:#fff;color:#0a0f1c;font-size:14px;box-sizing:border-box}
+.pbox{background:#fff8e6;border:1px solid #f0d58a;border-radius:12px;padding:10px 12px;color:#0a0f1c;margin-bottom:8px;font-size:14px}
+.pbox.on{background:#e9f3ff;border-color:#16336b}
+.big.pw{background:#fff!important;color:#16336b!important;border:1px solid #16336b!important}
 #sheet .top button{background:#16336b!important;color:#fff!important}
 .ctry button{background:#fff!important;color:#16336b!important;border:1px solid #c5d3ec!important}
 .ctry button.on{background:#16336b!important;color:#fff!important}
@@ -256,7 +264,7 @@ a{color:#16336b!important}
 <body>
 <header id="hdr">
   <div class="row"><div class="logo"><img src="icons/logo.png" alt=""></div><div class="brandname"><b>GCC Tenders</b><span>مناقصات ومشاريع الخليج</span></div>
-    <span class="upd" id="upd"></span><span id="who" title="خروج"></span><button id="lang" title="Language">EN</button></div>
+    <span class="upd" id="upd"></span><button id="bell" title="الإشعارات">🔔</button><span id="who" title="خروج"></span><button id="lang" title="Language">EN</button></div>
   <div class="ctry" id="ctry"><button data-c="" class="on">الكل</button><button data-c="KW">الكويت</button><button data-c="SA">السعودية</button><button data-c="AE">الإمارات</button></div>
 </header>
 <nav class="tabs" id="tabs"><button data-t="home" class="on"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>الرئيسية<span class="bdg"></span></button><button data-t="dir"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>الدليل<span class="bdg"></span></button><button data-t="news"><svg viewBox="0 0 24 24"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M7 9h7M7 13h7M7 16h4"/></svg>الأخبار<span class="bdg"></span></button><button data-t="awards"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.5L7 21l5-3 5 3-1.5-7.5"/></svg>الترسيات<span class="bdg"></span></button><button data-t="companies"><svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 13h18"/></svg>الشركات<span class="bdg"></span></button><button data-t="projects"><svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></svg>المشاريع<span class="bdg"></span></button><button data-t="routines"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>الروتينات<span class="bdg"></span></button><button data-t="watch"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>فواز<span class="bdg"></span></button></nav>
@@ -458,6 +466,7 @@ async function enter(fresh){
   $('#list').innerHTML='<div class="empty">بيفتح الداتا...</div>';
   await load(false);if(!ACC)return;
   if(!pinged){pinged=true;ping('open')}
+  if(/#(i=|news|routines|projects)/.test(location.hash))route();
   if(fresh&&!bioReady()&&window.PublicKeyCredential&&!store.get('bioNo',false))$('#bioOffer').style.display='block'}
 async function bioEnable(){
   try{const c=await navigator.credentials.create({publicKey:{rp:{name:'GCC Tenders'},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:ACC.u,displayName:ACC.u},
@@ -972,6 +981,60 @@ window.addEventListener('resize',setH);setH();
 let deferred;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('#install').style.display='block'});
 $('#btnInstall').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('#install').style.display='none'};
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+// ---------------------------------------------------------------- 🔔 الإشعارات (Web Push from the PC, works with the app closed)
+const PK={new:'🆕 مناقصات جديدة',award:'🏆 ترسيات',date:'📅 تأجيل ومواعيد',status:'⚠️ إلغاء وتغيير حالة',official:'🏛 الجهاز المركزي والكويت اليوم',news:'📰 أخبار الجرايد',reports:'📊 تقارير جديدة',app:'⬆️ تحديث البرنامج'};
+const CN2={KW:'الكويت',SA:'السعودية',AE:'الإمارات'};
+const pushOK=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+const pushPrefs=()=>store.get('pushp',{kinds:Object.keys(PK),countries:[],fawaz:false,words:[]});
+const u8=s=>{s=s.replace(/-/g,'+').replace(/_/g,'/');return b64(s+'='.repeat((4-s.length%4)%4))};
+const devName=()=>{const m=(navigator.userAgent.match(/\(([^)]+)\)/)||[])[1]||'';return (m.split(';').map(x=>x.trim()).filter(x=>x&&!/^(Linux|U|wv|K)$/.test(x)).pop()||'موبايل').slice(0,40)};
+async function pushSend(obj){const n=await ntfy();if(!n||!n.nk||!ACC)return false;
+  const w=n.nk[await uid(ACC.u)];if(!w)return false;
+  const k=await crypto.subtle.importKey('raw',await crypto.subtle.decrypt({name:'RSA-OAEP'},ACC.key,b64(w)),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const arg=b64u(new TextEncoder().encode(JSON.stringify(obj))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  const ts=Math.floor(Date.now()/1000),msg=`push|${ACC.u}|${arg}|${ts}`;
+  const sig=[...new Uint8Array(await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(msg)))].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32);
+  try{await fetch('https://ntfy.sh/'+n.topic,{method:'POST',body:msg+'|'+sig});return true}catch(e){return false}}
+async function pushSub(){const reg=await navigator.serviceWorker.ready;return reg.pushManager.getSubscription()}
+async function bellSheet(){
+  if(!pushOK())return showSheet('🔔 الإشعارات','<div class="empty">الموبايل ده مش بيدعم الإشعارات - حدّث Chrome وافتح التطبيق تاني</div>');
+  const p=pushPrefs(),sub=await pushSub().catch(()=>null),on=!!sub&&Notification.permission==='granted';
+  const my=(ME&&ME.countries)||['KW','SA','AE'],pm=(ME&&ME.perms)||[];
+  const kinds=Object.entries(PK).filter(([k])=>(k!=='news'||pm.includes('news'))&&(k!=='reports'||pm.includes('routines')||pm.includes('projects')));
+  showSheet('🔔 الإشعارات',`<div class="pbox ${on?'on':''}">${on?'✅ الإشعارات شغالة على الموبايل ده. بتوصلك لحظة ما الكمبيوتر يلاقي حاجة جديدة، حتى والتطبيق مقفول.':'🔕 الإشعارات مقفولة على الموبايل ده. اختار اللي عاوزه ودوس "شغّل الإشعارات".'}</div>
+    <h3>عاوز يوصلك إيه؟</h3><div class="pk">${kinds.map(([k,l])=>`<label class="pkr"><input type="checkbox" data-pk="${k}" ${p.kinds.includes(k)?'checked':''}> ${l}</label>`).join('')}</div>
+    ${my.length>1?`<h3>من أنهي بلد؟</h3><div class="pk">${my.map(c=>`<label class="pkr"><input type="checkbox" data-pcn="${c}" ${(!p.countries.length||p.countries.includes(c))?'checked':''}> ${CN2[c]}</label>`).join('')}</div>`:''}
+    <h3>نطاق</h3><label class="pkr"><input type="checkbox" id="pfz" ${p.fawaz?'checked':''}> اللي في نطاق شغل فواز بس</label>
+    <h3>كلمات معيّنة (اختياري)</h3><input id="pwords" class="pin" placeholder="مثلاً: تكييف، صيانة، وزارة الصحة" value="${esc(p.words.join('، '))}">
+    <p class="note">لو كتبت كلمات، هيوصلك بس اللي فيه كلمة منهم (في اسم المناقصة أو الجهة أو الخبر).</p>
+    <button class="big" id="psave">${on?'💾 احفظ الاختيارات':'🔔 شغّل الإشعارات'}</button>
+    ${on?'<button class="big pw" id="ptest">جرّب إشعار</button><p class="note" style="text-align:center"><a href="#" id="poff">اقفل الإشعارات على الموبايل ده</a></p>':''}`);
+  const read=()=>{const cs=[...document.querySelectorAll('[data-pcn]')];const chk=cs.filter(c=>c.checked).map(c=>c.dataset.pcn);
+    return {kinds:[...document.querySelectorAll('[data-pk]')].filter(c=>c.checked).map(c=>c.dataset.pk),
+      countries:cs.length&&chk.length<cs.length?chk:[],fawaz:$('#pfz').checked,words:$('#pwords').value.split(/[،,]/).map(w=>w.trim()).filter(Boolean)}};
+  $('#psave').onclick=async()=>{const np=read();if(!np.kinds.length)return toast('اختار نوع واحد على الأقل');
+    if(document.querySelectorAll('[data-pcn]').length&&![...document.querySelectorAll('[data-pcn]')].some(c=>c.checked))return toast('اختار بلد واحدة على الأقل');
+    $('#psave').disabled=true;$('#psave').textContent='⏳ بيسجّل...';
+    try{let s=sub;
+      if(!on){if(await Notification.requestPermission()!=='granted'){toast('لازم توافق على الإشعارات من الموبايل',6000);return bellSheet()}
+        const n=await ntfy();if(!n||!n.vapid){toast('الكمبيوتر لسه ما نشرش مفتاح الإشعارات - جرّب بعد التحديث الجاي',7000);return bellSheet()}
+        s=await (await navigator.serviceWorker.ready).pushManager.subscribe({userVisibleOnly:true,applicationServerKey:u8(n.vapid)})}
+      store.set('pushp',np);
+      const ok=await pushSend({s:s.toJSON(),p:np,d:devName()});
+      toast(ok?(on?'اتحفظ ✓':'اتسجّل ✓ - هيوصلك إشعار تجربة خلال دقيقة'):'مفيش اتصال - جرّب تاني',6000)}
+    catch(e){toast('الإشعارات ما اتسجلتش: '+(e.message||e.name),7000)}
+    bellSheet()};
+  if($('#ptest'))$('#ptest').onclick=async()=>{const ok=await pushSend({s:sub.toJSON(),test:1});toast(ok?'هيوصلك إشعار خلال دقيقة (الكمبيوتر لازم يكون شغال)':'مفيش اتصال - جرّب تاني',6000)};
+  if($('#poff'))$('#poff').onclick=async e=>{e.preventDefault();if(!confirm('تقفل الإشعارات على الموبايل ده؟'))return;
+    await pushSend({s:sub.toJSON(),off:1});try{await sub.unsubscribe()}catch(x){}toast('اتقفلت');bellSheet()}}
+$('#bell').onclick=()=>{if(ACC)bellSheet()};
+// a tapped notification: open what it is about
+function route(u){u=u||location.hash;const m=String(u).match(/#i=(\d+)/);
+  if(m){closeSheet();openItem(+m[1])}else{const t=(String(u).match(/#(news|routines|projects)/)||[])[1];if(t){closeSheet();goTab(t)}}
+  if(location.hash)history.replaceState(history.state,'',location.pathname+location.search)}
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.go!==undefined&&ACC)route(e.data.go)});
+window.addEventListener('hashchange',()=>{if(ACC&&/#(i=|news|routines|projects)/.test(location.hash))route()});
+
 (async()=>{try{LOGIN_U=(await IDB.get('u'))||''}catch(e){LOGIN_U=''}showLogin();if(LANG==='en')setLang('en');if(bioReady())bioLogin(true)})();
 </script>
 </body>

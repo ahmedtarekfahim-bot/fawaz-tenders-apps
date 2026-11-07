@@ -196,7 +196,13 @@ def build_feed(log=print):
     users = accounts.public_users()
     data = FEED / "data"
     (data / "users_pub.json").write_text(json.dumps(users), encoding="utf-8")
-    (data / "ntfy.json").write_text(json.dumps(ntfy_info()), encoding="utf-8")
+    info = ntfy_info()
+    try:                                                # 🔔 the push key + each account's notify key (wrapped for it)
+        import push
+        info.update(push.phone_info(users))
+    except Exception as e:                              # noqa: BLE001
+        log(f"مفاتيح الإشعارات: {e}")
+    (data / "ntfy.json").write_text(json.dumps(info), encoding="utf-8")
     try:
         bundle = private_bundle()
         raw = json.dumps(bundle, ensure_ascii=False, separators=(",", ":")).encode()
