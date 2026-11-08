@@ -280,7 +280,8 @@ def _parts(data_dir):
     parts["news_co"] = ([n for n in news if n.get("co")], "watch", None)
     parts["awards"] = (load_j("awards.json") or [], "awards", None)
     parts["meetings"] = (load_j("meetings.json") or {}, "awards", None)
-    for n in ("directory.json", "news.json", "awards.json", "meetings.json"):
+    parts["minutes"] = (load_j("minutes_pages.json") or {}, "dir", None)     # the minutes viewer: each tender's pages
+    for n in ("directory.json", "news.json", "awards.json", "meetings.json", "minutes_pages.json"):
         (data_dir / n).unlink(missing_ok=True)
     return {k: (json.dumps(v, ensure_ascii=False, separators=(",", ":")).encode(), need, c)
             for k, (v, need, c) in parts.items()}

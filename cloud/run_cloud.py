@@ -234,7 +234,8 @@ def main():
     build = STATE / "build"
     shutil.rmtree(build, ignore_errors=True)
     meta = me.export(build, award_rows=AW["rows"], meetings=meetings)
-    for extra in ("users_pub.json", "fkeys.json", "private.enc", "ntfy.json", "skeys.json", "projects.enc", "routines.enc", "cmd.enc"):   # from the PC
+    for extra in ("users_pub.json", "fkeys.json", "private.enc", "ntfy.json", "skeys.json", "projects.enc", "routines.enc", "cmd.enc",
+                  "minutes_pages.json"):   # from the PC
         if (FEED / extra).exists():
             shutil.copy2(FEED / extra, build / "data" / extra)
     try:                                                # 🔔 notifications while the PC is off

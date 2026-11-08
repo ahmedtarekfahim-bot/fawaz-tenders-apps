@@ -163,6 +163,34 @@ def push_dir(folder, branch, url, msg, log):
     return True
 
 
+def push_minutes(url, log=print):
+    """the pages of the CAPT minutes that are about tenders (images), each uploaded once to branch 'minutes'
+    (normal commits: only new files go up) - the phone shows them from raw.githubusercontent.com"""
+    import gulf_directory as gd
+    src = gd.MIN_PAGES
+    if not src.exists():
+        return 0
+    repo = cfg.LOCAL / "minutes-repo"
+    if not (repo / ".git").exists():
+        repo.mkdir(parents=True, exist_ok=True)
+        git("init", "-q", "-b", "minutes", cwd=repo)
+        if git("fetch", "-q", "--depth", "1", url, "minutes", cwd=repo).returncode == 0:
+            git("reset", "-q", "--hard", "FETCH_HEAD", cwd=repo)
+    new = [f for f in src.glob("*.jpg") if not (repo / f.name).exists()]
+    if not new:
+        return 0
+    for f in new:
+        shutil.copy2(f, repo / f.name)
+    git("add", "-A", cwd=repo)
+    git("-c", "user.name=FAWAZ Tenders", "-c", "user.email=ahmedtarekfahim@gmail.com", "commit", "-q", "-m", f"{len(new)} minutes", cwd=repo)
+    r = git("push", "-q", url, "minutes", cwd=repo)
+    if r.returncode != 0:
+        log(f"نسخ المحاضر على GitHub: {(r.stderr or r.stdout)[-200:]}")
+        return 0
+    log(f"اترفعت {len(new)} صفحة محضر لعارض الموبايل")
+    return len(new)
+
+
 def cloud_age_minutes():
     """how old the phone data on GitHub Pages is (1e9 = unknown)"""
     try:
@@ -196,6 +224,11 @@ def build_feed(log=print):
     users = accounts.public_users()
     data = FEED / "data"
     (data / "users_pub.json").write_text(json.dumps(users), encoding="utf-8")
+    try:                                                # which pages of each CAPT minutes are about each tender (phone viewer)
+        import gulf_directory as gd
+        (data / "minutes_pages.json").write_text(json.dumps(gd.minutes_index(log), ensure_ascii=False), encoding="utf-8")
+    except Exception as e:                              # noqa: BLE001
+        log(f"صفحات المحاضر: {e}")
     info = ntfy_info()
     try:                                                # 🔔 the push key + each account's notify key (wrapped for it)
         import push
@@ -312,6 +345,10 @@ def _publish(log, force):
     if force or changed or time.time() - _last_feed.get("at", 0) > 1800:
         if push_dir(FEED, "pc-feed", url, f"pc feed {meta['updated']}", log):
             _last_feed.update(sig=sig, at=time.time())
+    try:
+        push_minutes(url, log)
+    except Exception as e:                              # noqa: BLE001
+        log(f"نسخ المحاضر: {e}")
     # 2) accounts changed, first sealed publish, something new and the phone copy is 15+ minutes old, or the
     #    cloud copy is stale -> publish the phone site from here too (GitHub runs the 15-minute cloud job
     #    only every few hours when it is busy)

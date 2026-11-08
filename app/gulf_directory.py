@@ -2087,14 +2087,14 @@ def save_capt_docs(iid, r):
     con.close()
 
 
-def tender_pages(pdf_bytes_or_path, number, org=""):
-    """the pages of a big PDF (CAPT minutes, a gazette issue) that carry this tender's number -> new PDF bytes or None"""
-    import pymupdf
-    doc = pymupdf.open(stream=pdf_bytes_or_path, filetype="pdf") if isinstance(pdf_bytes_or_path, (bytes, bytearray)) \
-        else pymupdf.open(pdf_bytes_or_path)
+def pages_for(doc, number, org=""):
+    """0-based pages of an open PDF that carry this tender's number"""
+    code = re.sub(r"\s", "", str(number or "")).upper()
+    if re.fullmatch(r"(?=.*[A-Z])(?=.*\d)[A-Z0-9]{4,}", code):     # KOC / KNPC style codes: 6AN020
+        return [i for i, page in enumerate(doc) if code in re.sub(r"\s", "", page.get_text()).upper()]
     nums = ct.num_parts(number)
     if not nums:
-        return None
+        return []
     rx = ct.num_regex(nums) if len(nums) >= 2 else re.compile(rf"(?<!\d){re.escape(nums[0])}(?!\d)")
     ow = [w for w in words(org) if len(w) > 3][:3]
     keep = []
@@ -2106,6 +2106,71 @@ def tender_pages(pdf_bytes_or_path, number, org=""):
             if len(nums) >= 2 or (ow and any(w in norm(t[max(0, m.start() - 400):m.start() + 400]) for w in ow)):
                 keep.append(i)
                 break
+    return keep
+
+
+MIN_CACHE = BASE / "محاضر الجهاز - نسخ"
+MIN_PAGES = BASE / "محاضر الجهاز - صفحات"           # <sha1(url)[:16]>-<page>.jpg, uploaded to branch 'minutes' for the phone
+MIN_INDEX = BASE / "minutes pages.json"
+
+
+def minutes_index(progress=print, days=240, max_new_files=12):
+    """{minutes url: {tender number: [1-based pages]}} for the phone's minutes viewer (only that tender's pages);
+    worked out once per tender and kept"""
+    import pymupdf, hashlib
+    import tender_docs as td
+    try:
+        idx = json.loads(MIN_INDEX.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        idx = {}
+    since = (datetime.datetime.now() - datetime.timedelta(days=days)).isoformat(timespec="seconds")
+    con = db()
+    rows = con.execute("SELECT number, org, official FROM items WHERE official LIKE 'https://files.capt.gov.kw/%.pdf' "
+                       "AND (first_seen>=? OR changed>=?)", (since, since)).fetchall()
+    con.close()
+    by = {}
+    for n, o, u in rows:
+        if n:
+            by.setdefault(u, []).append((n, o))
+    changed, fetched = False, 0
+    for url, its in by.items():
+        have = idx.setdefault(url, {})
+        todo = [(n, o) for n, o in its if n not in have]
+        h = hashlib.sha1(url.encode()).hexdigest()[:16]
+        want = {p for ps in have.values() for p in ps}
+        if not todo and all((MIN_PAGES / f"{h}-{p}.jpg").exists() for p in want):
+            continue
+        f = MIN_CACHE / (h + ".pdf")
+        try:
+            if not f.exists():
+                if fetched >= max_new_files:
+                    continue
+                fetched += 1
+                MIN_CACHE.mkdir(parents=True, exist_ok=True)
+                f.write_bytes(urllib.request.urlopen(urllib.request.Request(url, headers=td.UA), timeout=120).read())
+            doc = pymupdf.open(f)
+            for n, o in todo:
+                have[n] = [i + 1 for i in pages_for(doc, n, o)]
+            MIN_PAGES.mkdir(parents=True, exist_ok=True)
+            for p in {p for ps in have.values() for p in ps}:
+                img = MIN_PAGES / f"{h}-{p}.jpg"
+                if not img.exists() and 0 < p <= len(doc):
+                    img.write_bytes(doc[p - 1].get_pixmap(dpi=110, colorspace=pymupdf.csGRAY).tobytes("jpg", jpg_quality=70))
+            doc.close()
+            changed = True
+        except Exception as e:          # noqa: BLE001 - try again next time
+            progress(f"صفحات المحضر: {e}")
+    if changed:
+        MIN_INDEX.write_text(json.dumps(idx, ensure_ascii=False), encoding="utf-8")
+    return {u: {n: p for n, p in m.items() if p} for u, m in idx.items() if any(m.values())}
+
+
+def tender_pages(pdf_bytes_or_path, number, org=""):
+    """the pages of a big PDF (CAPT minutes, a gazette issue) that carry this tender's number -> new PDF bytes or None"""
+    import pymupdf
+    doc = pymupdf.open(stream=pdf_bytes_or_path, filetype="pdf") if isinstance(pdf_bytes_or_path, (bytes, bytearray)) \
+        else pymupdf.open(pdf_bytes_or_path)
+    keep = pages_for(doc, number, org)
     if not keep:
         return None
     out = pymupdf.open()

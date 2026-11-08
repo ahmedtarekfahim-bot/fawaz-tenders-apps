@@ -412,7 +412,7 @@ const IDB={db:null,async open(){if(this.db)return this.db;this.db=await new Prom
   async get(k){const db=await this.open();return new Promise(ok=>{const r=db.transaction('kv').objectStore('kv').get(k);r.onsuccess=()=>ok(r.result);r.onerror=()=>ok(undefined)})},
   async set(k,v){const db=await this.open();return new Promise(ok=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>ok()})},
   async clear(){const db=await this.open();return new Promise(ok=>{const t=db.transaction('kv','readwrite');t.objectStore('kv').clear();t.oncomplete=()=>ok()})}};
-let ACC=null,LOGIN_U='',NT=null,pinged=false,ME=null;
+let ACC=null,LOGIN_U='',NT=null,pinged=false,ME=null,MP={};
 async function uid(u){const h=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('fawaz:'+u));return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,20)}
 const expiredMsg=d=>`اشتراكك انتهى يوم ${dmy(d)} - تواصل مع الأدمن للتجديد`;
 const getJ=async n=>{const r=await fetch('data/'+n+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error(n+' '+r.status);return r.json()};
@@ -504,7 +504,7 @@ async function load(silent){
     const got=Object.fromEntries(await Promise.all(names.map(async n=>[n,await open(n)])));
     D=[].concat(...['KW','SA','AE'].map(c=>got['directory_'+c]||[]));
     N=[].concat(...['KW','SA','AE'].map(c=>got['news_'+c]||[]),got.news_co||[]);
-    A=got.awards||[];A.forEach((a,i)=>a.r=i);MEET=got.meetings||{};PRJ=got.projects||null;RTN=got.routines||null;
+    A=got.awards||[];A.forEach((a,i)=>a.r=i);MEET=got.meetings||{};MP=got.minutes||{};PRJ=got.projects||null;RTN=got.routines||null;
     RKEY=(RTN&&RTN.rkey)||(got.cmd&&got.cmd.rkey)||''}   // own unique key per award (details open by it)
   catch(e){if(/OperationError|decrypt/i.test(String(e))){ACC=null;return showLogin('كلمة السر اتغيرت - ادخل بالجديدة')}
     if(!silent)$('#list').innerHTML='<div class="empty">الداتا ما اتفتحتش - جرّب تاني</div>';return}
@@ -721,7 +721,7 @@ function openItem(i){const r=D.find(x=>x.i===i);if(!r)return;
   let h=`<div style="font-weight:700;font-size:16px;margin-bottom:10px">${esc(r.s)}</div><div class="kv">${F.filter(x=>x[1]).map(x=>`<div>${x[0]}</div><div>${x[1]}</div>`).join('')}</div>`;
   const isMin=r.off&&/\.pdf$/i.test(r.off)&&/capt/.test(r.off);
   if(r.off&&!isMin)h+=`<a class="big" href="${esc(r.off)}" target="_blank" rel="noopener">الإعلان الرسمي ↗ ${esc(r.ol||'')}</a>`;
-  if(isMin)h+=(RKEY?`<button class="big" data-pc="pages">📄 صفحات ${esc(r.ol||'المحضر')} الخاصة بالمناقصة</button>`:'')+`<p class="note" style="text-align:center"><a href="${esc(r.off)}" target="_blank" rel="noopener">أو افتح ${esc(r.ol||'المحضر')} كامل ↗</a></p>`;
+  if(isMin)h+=(minPages(r)?`<button class="big" data-mv>📄 صفحة ${esc(r.ol||'المحضر')} الخاصة بالمناقصة</button>`:(RKEY?`<button class="big" data-pc="pages">📄 صفحات ${esc(r.ol||'المحضر')} الخاصة بالمناقصة</button>`:''))+`<p class="note" style="text-align:center"><a href="${esc(r.off)}" target="_blank" rel="noopener">أو افتح ${esc(r.ol||'المحضر')} كامل ↗</a></p>`;
   {const pm0=(ME&&ME.perms)||[];if(RKEY&&(pm0.includes('docs')||pm0.includes('pdf')||pm0.includes('summary')))h+=`<h3>📥 المستندات والتقارير</h3><div class="acts">${pm0.includes('docs')?'<button class="pri" data-pc="docs">📥 حمّل مستندات المناقصة</button>':''}${pm0.includes('pdf')?'<button data-pc="pdf">🖨 تقرير PDF</button>':''}${pm0.includes('summary')?'<button data-pc="sum">📝 الملخص</button>':''}</div><p class="note">الكمبيوتر بيجهّز الملف ويبعتهولك هنا خلال دقيقة (لازم يكون شغال).</p>`}
   {const cd=(P&&P.cd&&P.cd[r.n+'|'+r.o])||[],docs=(r.dc||[]).concat(cd.map(x=>[x[0],x[1],x[2],'الجهاز المركزي']));
    const site=/capt\.gov\.kw/.test(r.off||'')?'الجهاز المركزي':/etimad/.test(r.off||'')?'منصة اعتماد':/esupply/.test(r.off||'')?'دبي eSupply':/pahw/.test(r.off||'')?'الرعاية السكنية':'الموقع الرسمي';
@@ -742,6 +742,7 @@ function openItem(i){const r=D.find(x=>x.i===i);if(!r)return;
     ${(RTN.senders||[]).length>1?`<select id="smfrom" style="width:100%;font:inherit;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);margin-top:6px">${RTN.senders.map((e,i)=>`<option value="${i}" ${e===RTN.sender?'selected':''}>ابعت من: ${esc(e)}</option>`).join('')}</select>`:''}
     <button class="big" id="smgo">ابعتلي الملخص على الإيميل ده</button>`;
   showSheet(r.k||'مناقصة',h);
+  document.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>minutesView(r));
   document.querySelectorAll('[data-pc]').forEach(b=>b.onclick=()=>pcFile(b.dataset.pc,String(r.i),b,{docs:'مستندات '+(r.n||r.i)+'.zip',pdf:'تقرير '+(r.n||r.i)+'.pdf',sum:'ملخص '+(r.n||r.i)+'.html',pages:'صفحات المحضر '+(r.n||r.i)+'.pdf'}[b.dataset.pc]));
   if($('#smgo'))$('#smgo').onclick=async()=>{const ok=await cmd('summary',`${r.i},${$('#smto').value},${$('#smfrom')?$('#smfrom').value:''}`);toast(ok?'الطلب وصل للكمبيوتر - الملخص هيوصلك على الإيميل خلال دقايق':'مفيش اتصال - جرّب تاني',6000)}}
 function openAward(row){const a=A.find(x=>x.r===row);if(!a)return;const m=MEET[a.d];
@@ -982,6 +983,16 @@ let deferred;window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(
 $('#btnInstall').onclick=async()=>{if(!deferred)return;deferred.prompt();await deferred.userChoice;deferred=null;$('#install').style.display='none'};
 try{if(document.referrer&&!sessionStorage.getItem('ref0'))sessionStorage.setItem('ref0',document.referrer)}catch(e){}
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+// ---------------------------------------------------------------- 📄 the CAPT minutes: only this tender's page(s), drawn by the PC as images
+const MIN_MIRROR='https://raw.githubusercontent.com/ahmedtarekfahim-bot/fawaz-tenders-apps/minutes/';
+const minPages=r=>((MP||{})[r.off]||{})[r.n]||null;
+async function minutesView(r){
+  const pages=minPages(r)||[],full=`<p class="note" style="text-align:center"><a href="${esc(r.off)}" target="_blank" rel="noopener">افتح ${esc(r.ol||'المحضر')} كامل ↗</a></p>`;
+  const h=[...new Uint8Array(await crypto.subtle.digest('SHA-1',new TextEncoder().encode(r.off)))].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+  showSheet('📄 '+(r.ol||'المحضر'),`<div class="note">${esc(r.n||'')} - ${esc(r.s||'')}</div><div class="note" style="margin:6px 0">${pages.length===1?'الصفحة':'الصفحات'} ${pages.join('، ')} من المحضر</div>`+
+    pages.map(p=>`<a href="${MIN_MIRROR}${h}-${p}.jpg" target="_blank" rel="noopener"><img src="${MIN_MIRROR}${h}-${p}.jpg" alt="صفحة ${p}" style="width:100%;border:1px solid #d5deec;border-radius:8px;margin:6px 0;background:#fff" onerror="this.outerHTML='<div class=&quot;empty&quot;>الصفحة لسه بتترفع - جرّب بعد شوية أو افتح المحضر كامل</div>'"></a>`).join('')+'<p class="note" style="text-align:center">دوس على الصفحة تفتح كبيرة وتعمل زووم</p>'+full)}
+
+
 // ---------------------------------------------------------------- 🔔 الإشعارات (Web Push from the PC, works with the app closed)
 const PK={new:'🆕 مناقصات جديدة',award:'🏆 ترسيات',date:'📅 تأجيل ومواعيد',status:'⚠️ إلغاء وتغيير حالة',official:'🏛 الجهاز المركزي والكويت اليوم',news:'📰 أخبار الجرايد',reports:'📊 تقارير جديدة',app:'⬆️ تحديث البرنامج'};
 const CN2={KW:'الكويت',SA:'السعودية',AE:'الإمارات'};
