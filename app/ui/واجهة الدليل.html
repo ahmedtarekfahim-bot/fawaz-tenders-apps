@@ -455,7 +455,13 @@ function openOfficial(url){
     setTimeout(()=>{try{w.location=url}catch(e){}},2500);return}
   window.open(url,'_blank');
 }
-function offLink(r){return r.official?`<a class="off" href="#" data-off="${esc(r.official)}" title="${esc(r.official_label||'')}">الإعلان الرسمي ↗</a>`:''}
+function offLink(r){return r.official?(r.id&&/^https:\/\/files\.capt\.gov\.kw\/.+\.pdf$/i.test(r.official)?`<a class="off" href="#" data-mp="${r.id}" title="${esc(r.official_label||'')}">📄 صفحة المحضر ↗</a>`:`<a class="off" href="#" data-off="${esc(r.official)}" title="${esc(r.official_label||'')}">الإعلان الرسمي ↗</a>`):''}
+// a minutes link whose text says the page -> that page only (one-page PDF in the window)
+function pgLinkPC(url,title){const m=String(title||'').match(/صفحة\s*(\d+)/);
+  return m&&/^https:\/\/files\.capt\.gov\.kw\/.+\.pdf$/i.test(url)?`<a href="#" data-pgu="${esc(url)}" data-p="${m[1]}">📄 صفحة ${m[1]} ↗</a>`:`<a href="#" data-off="${esc(url)}">↗</a>`}
+document.addEventListener('click',async e=>{const a=e.target.closest&&e.target.closest('[data-pgu],[data-mp]');if(!a)return;e.preventDefault();e.stopPropagation();
+  if(a.dataset.mp)return minutesPages(+a.dataset.mp);
+  busy('📄 بجيب الصفحة من المحضر...');try{const r=await post('/api/pdf-page',{url:a.dataset.pgu,page:+a.dataset.p});showFile('📄 صفحة '+a.dataset.p+' من المحضر',r.path,r.name)}catch(x){closeOv();toast(x.message,8000)}},true);
 function wireOff(root){(root||document).querySelectorAll('[data-off]').forEach(a=>a.onclick=e=>{e.preventDefault();e.stopPropagation();openOfficial(a.dataset.off)})}
 function isNew(r){return r.first_seen&&(Date.now()-new Date(r.first_seen))<3*864e5}
 function isChg(r){return r.changed&&(Date.now()-new Date(r.changed))<3*864e5}
@@ -602,7 +608,7 @@ async function detail(id){
       ['أول ما ظهرت',r.first_seen&&!r.first_seen.startsWith('2000')?esc(r.first_seen.replace('T',' ').slice(0,16)):'من أول تحميل'],['ملاحظات',esc(r.notes)]];
     let h=`<div class="pad"><div class="card"><div class="kv">${F.filter(x=>x[1]).map(x=>`<div>${x[0]}</div><div>${x[1]}</div>`).join('')}</div></div>`;
     if(d.changes.length)h+=`<h4>التغييرات اللي اترصدت (${d.changes.length})</h4><table><tr><th>وقت الرصد</th><th>البند</th><th>كان</th><th>بقى</th></tr>${d.changes.map(c=>`<tr class="chg"><td>${esc(c.at.replace('T',' ').slice(0,16))}</td><td>${esc(c.field)}</td><td>${esc(c.old)}</td><td><b>${esc(c.new)}</b></td></tr>`).join('')}</table>`;
-    if(d.events.length)h+=`<h4>كل اللي اتنشر عنها (${d.events.length})</h4><table><tr><th>التاريخ</th><th>المصدر</th><th>الحدث</th><th>التفاصيل</th></tr>${d.events.map((e,i)=>`<tr><td>${dmy(e.date)}</td><td>${esc(e.source)}</td><td>${esc(e.etype)}</td><td>${esc(e.text)}${e.file&&e.page?` · <a href="#" data-ev="${i}">صفحة الجريدة</a>`:''}${e.url&&e.url.startsWith('http')?` · <a href="#" data-off="${esc(e.url)}">المصدر ↗</a>`:''}</td></tr>`).join('')}</table>`;
+    if(d.events.length)h+=`<h4>كل اللي اتنشر عنها (${d.events.length})</h4><table><tr><th>التاريخ</th><th>المصدر</th><th>الحدث</th><th>التفاصيل</th></tr>${d.events.map((e,i)=>`<tr><td>${dmy(e.date)}</td><td>${esc(e.source)}</td><td>${esc(e.etype)}</td><td>${esc(e.text)}${e.file&&e.page?` · <a href="#" data-ev="${i}">صفحة الجريدة</a>`:''}${e.url&&e.url.startsWith('http')?' · '+(/صفحة\s*\d+/.test(e.text+' '+e.etype)&&/files\.capt\.gov\.kw/.test(e.url)?pgLinkPC(e.url,e.text+' '+e.etype):`<a href="#" data-off="${esc(e.url)}">المصدر ↗</a>`):''}</td></tr>`).join('')}</table>`;
     if(d.bids&&d.bids.rows.length){const val=x=>{const m=(x[3]||'').replace(/,/g,'').match(/-?\d+(\.\d+)?/);return m?+m[0]:Infinity};
       const rows=[...d.bids.rows].sort((a,b)=>(/مستبعد/.test(a[1]+a[2])-/مستبعد/.test(b[1]+b[2]))||val(a)-val(b));
       h+=`<h4>كشف تفريغ الأسعار - فض العطاءات اجتماع ${esc(d.bids.meeting)} (${esc(d.bids.meeting_date)})</h4><table><tr><th>#</th><th>المقاول</th><th>الحالة</th><th>إجمالي العرض</th></tr>${rows.map((x,i)=>`<tr><td>${/مستبعد/.test(x[1]+x[2])?'-':'L'+(i+1)}</td><td class="${isFz(x[0])?'fz':''}">${esc(x[0])}</td><td>${esc(x[1])}${x[2]&&x[2]!==x[1]?' - '+esc(x[2]):''}</td><td class="money">${esc(x[3]||'-')}</td></tr>`).join('')}</table>`}
@@ -798,7 +804,7 @@ function tenderDetail(key){
   if(t.bidders.length)h+=`<h4>الأسعار (L1 ...)</h4><table><tr><th>#</th><th>الشركة</th><th>السعر</th></tr>${t.bidders.map((b,i)=>`<tr><td>L${i+1}</td><td class="${isFz(b[0])?'fz':''}">${esc(b[0])}</td><td>${esc(b[1])}</td></tr>`).join('')}</table>`;
   const items=t.links.filter(l=>l.kind==='item');
   if(items.length)h+=`<h4>نفس المناقصة في الدليل</h4>${items.map(l=>`<div class="m"><a href="#" data-item="${esc(l.ref)}">${esc(l.title)}</a>${l.url?`<a class="off" href="#" data-off="${esc(l.url)}">الإعلان الرسمي ↗</a>`:''}</div>`).join('')}`;
-  if(feed.length)h+=`<h4>كل اللي اترصد عنها (${feed.length})</h4>${feed.map(f=>`<div class="hit"><div style="flex:1"><div class="m"><span class="wk">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div>${/^(الكويت اليوم|محضر)/.test(f.title)?`<b>${esc(f.title)}</b> · `:''}${esc(f.text)}${f.url?` <a href="#" data-off="${esc(f.url)}">↗</a>`:''}</div></div></div>`).join('')}`;
+  if(feed.length)h+=`<h4>كل اللي اترصد عنها (${feed.length})</h4>${feed.map(f=>`<div class="hit"><div style="flex:1"><div class="m"><span class="wk">${esc(f.kind)}</span><span>${f.at.startsWith('2000')?'من أول تحميل':esc(f.at.replace('T',' ').slice(0,16))}</span></div><div>${/^(الكويت اليوم|محضر)/.test(f.title)?`<b>${esc(f.title)}</b> · `:''}${esc(f.text)}${f.url?' '+pgLinkPC(f.url,f.title):''}</div></div></div>`).join('')}`;
   h+='</div>'+tenderButtons(t.number||'x',t.client);$('#detail').innerHTML=h;wireOff($('#detail'));
   wireTenderButtons(t.number,t.client,items.length?+items[0].ref:0);
   document.querySelectorAll('[data-item]').forEach(a=>a.onclick=e=>{e.preventDefault();detail(+a.dataset.item)});

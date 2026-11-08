@@ -122,9 +122,20 @@ def phone_url(f):
     return ""
 
 
+PAGE_PAIRS = set()                                      # (CAPT minutes url, page) the phone links to - drawn as images
+
+
+def _page_pair(url, title):
+    m = re.search(r"صفحة\s*(\d+)", title or "")
+    if m and re.match(r"https://files\.capt\.gov\.kw/.+\.pdf$", url or "", re.I):
+        PAGE_PAIRS.add((url, int(m.group(1))))
+
+
 def private_bundle():
     import fawaz_watch as fw
     d = fw.data(limit_feed=600)
+    for f in list(d["feed"]) + list(d.get("mentions", [])[:700]):
+        _page_pair(phone_url(f), f.get("title"))
     return {"updated": datetime.datetime.now().isoformat(timespec="minutes"),
             "feed": [[f["id"], f["at"][:16], f["kind"], f["title"], f["text"], phone_url(f), f["tender_key"], f.get("rank", "")]
                      for f in d["feed"]],
@@ -279,6 +290,13 @@ def build_feed(log=print):
     except Exception as e:                              # noqa: BLE001
         log(f"مفتاح أوامر الموبايل: {e}")
     (data / "skeys.json").write_text(json.dumps(skeys), encoding="utf-8")
+    try:                                                # the minutes pages the phone links to (feed / mentions lines with a page)
+        import gulf_directory as gd
+        n = gd.page_images(PAGE_PAIRS, log)
+        if n:
+            log(f"اترسمت {n} صفحة محضر للموبايل")
+    except Exception as e:                              # noqa: BLE001
+        log(f"صفحات المحاضر: {e}")
     try:                                                # 🔔 what the cloud needs to notify while this PC is off (sealed)
         import push
         (data / "push.enc").write_text(json.dumps(push.feed_blob()), encoding="utf-8")

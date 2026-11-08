@@ -2165,6 +2165,76 @@ def minutes_index(progress=print, days=240, max_new_files=12):
     return {u: {n: p for n, p in m.items() if p} for u, m in idx.items() if any(m.values())}
 
 
+CAPT_PDF = re.compile(r"^https://files\.capt\.gov\.kw/.+\.pdf$", re.I)
+
+
+def capt_pdf(url, fetch=True):
+    """a CAPT minutes PDF kept on this PC -> path (downloaded once) or None"""
+    import hashlib
+    import tender_docs as td
+    if not CAPT_PDF.match(url or ""):
+        return None
+    f = MIN_CACHE / (hashlib.sha1(url.encode()).hexdigest()[:16] + ".pdf")
+    if not f.exists():
+        if not fetch:
+            return None
+        MIN_CACHE.mkdir(parents=True, exist_ok=True)
+        f.write_bytes(urllib.request.urlopen(urllib.request.Request(url, headers=td.UA), timeout=120).read())
+    return f
+
+
+def page_images(pairs, progress=print, max_new_files=12):
+    """(minutes url, page) -> each page drawn once as an image (uploaded for the phone's page viewer)"""
+    import pymupdf, hashlib
+    by = {}
+    for u, p in pairs:
+        if CAPT_PDF.match(u or "") and int(p or 0) > 0:
+            by.setdefault(u, set()).add(int(p))
+    fetched = made = 0
+    for u, ps in by.items():
+        h = hashlib.sha1(u.encode()).hexdigest()[:16]
+        need = [p for p in ps if not (MIN_PAGES / f"{h}-{p}.jpg").exists()]
+        if not need:
+            continue
+        try:
+            f = capt_pdf(u, fetch=fetched < max_new_files)
+            if not f:
+                continue
+            fetched += 1
+            doc = pymupdf.open(f)
+            MIN_PAGES.mkdir(parents=True, exist_ok=True)
+            for p in need:
+                if p <= len(doc):
+                    (MIN_PAGES / f"{h}-{p}.jpg").write_bytes(doc[p - 1].get_pixmap(dpi=110, colorspace=pymupdf.csGRAY).tobytes("jpg", jpg_quality=70))
+                    made += 1
+            doc.close()
+        except Exception as e:          # noqa: BLE001 - next time
+            progress(f"صفحات المحاضر: {e}")
+    return made
+
+
+def pdf_page(url, page):
+    """one page of a CAPT minutes as its own PDF (the window shows it) -> path"""
+    import pymupdf
+    import tender_docs as td
+    f = capt_pdf(url)
+    if not f:
+        raise ValueError("اللينك ده مش محضر من موقع الجهاز")
+    doc = pymupdf.open(f)
+    page = int(page)
+    if not 0 < page <= len(doc):
+        raise ValueError("الصفحة مش موجودة في المحضر")
+    out = pymupdf.open()
+    out.insert_pdf(doc, from_page=page - 1, to_page=page - 1)
+    folder = DOCS_OUT / "صفحات المحاضر"
+    folder.mkdir(parents=True, exist_ok=True)
+    dst = folder / f"{f.stem} - صفحة {page}.pdf"
+    dst.write_bytes(out.tobytes())
+    out.close()
+    doc.close()
+    return dst
+
+
 def tender_pages(pdf_bytes_or_path, number, org=""):
     """the pages of a big PDF (CAPT minutes, a gazette issue) that carry this tender's number -> new PDF bytes or None"""
     import pymupdf
@@ -2532,7 +2602,7 @@ def serve(open_browser=True):
             "/api/watch": "watch", "/api/open-file": "fawaz", "/api/accounts": "admin", "/api/projects": "projects",
             "/api/summary": "summary", "/api/ocr-image": "scan", "/api/routines": "routines", "/api/routines/run": "run",
             "/api/routines/send": "send", "/api/routines/copy": "share", "/api/routines/recipients": "admin",
-            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin", "/api/match": "dir", "/api/out": "", "/api/minutes-pages": "dir", "/api/push": "", "/api/push/prefs": "", "/api/push/test": "", "/api/push/remove": "",
+            "/api/routines/open": "share", "/api/summary/send": "send", "/api/bnb": "bnb", "/api/routines/signin": "admin", "/api/match": "dir", "/api/out": "", "/api/minutes-pages": "dir", "/api/pdf-page": "any:dir,watch,news", "/api/push": "", "/api/push/prefs": "", "/api/push/test": "", "/api/push/remove": "",
             "/api/suggest": "", "/api/companies": "any:dir,awards", "/api/company": "any:dir,awards", "/api/zatoona": "zatoona",
             ("POST", "/api/settings"): "admin", ("POST", "/api/gazette-account"): "watch", ("POST", "/api/capt-account"): "dir"}
     OPEN = {"/", "/api/me", "/api/login", "/api/logout", "/api/forgot"}
@@ -2792,6 +2862,9 @@ def serve(open_browser=True):
                         return self.send({"ok": True})
                     n = push.deliver(who, [{"t": "🔔 تجربة من الكمبيوتر", "b": "الإشعارات واصلة تمام", "u": "#", "tag": "test"}])
                     return self.send({"ok": bool(n), "sent": n})
+                if u.path == "/api/pdf-page":                  # one page of a CAPT minutes (a news / feed line with its page)
+                    f = pdf_page(body.get("url", ""), body.get("page", 0))
+                    return self.send({"path": str(f), "name": f.name})
                 if u.path == "/api/minutes-pages":             # the official minutes cut to this tender's pages
                     self.item_ok(body["id"])
                     f = minutes_pages(int(body["id"]), body.get("url", ""))

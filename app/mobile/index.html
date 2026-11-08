@@ -567,7 +567,7 @@ function dirCard(r){const left=r.st==='مطروحة'&&r.cl?Math.round((new Date(
     <div class="m"><span class="st ${stClass(r.st,r.cl)}">${esc(r.st)}</span>${recent(r.fs)?'<span class="flag new">جديد</span>':recent(r.ch)?'<span class="flag chg">اتغيّر</span>':''}${country?'':`<span>${CN[r.c]}</span>`}${r.fz?'<span class="fzb">نطاق فواز</span>':''}</div>
     <div class="m">${r.n?`<span class="tno">${esc(r.n)}</span>`:''}<span>${esc(r.o)}</span></div>
     <div class="m">${r.p?`<span>طرح ${dmy(r.p)}</span>`:''}${r.cl?`<span class="${left!==null&&left<=7?'urgent':''}">إقفال ${dmy(r.cl)}${left!==null?` (باقي ${left} يوم)`:''}</span>`:''}${r.w?`<span class="${US.test(r.w)?'fz':''}">${esc(r.w.slice(0,60))}</span>`:''}${r.v?`<span class="money">${esc(r.v)}</span>`:''}
-    ${r.off?`<a class="off" href="${esc(r.off)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">الإعلان الرسمي ↗</a>`:''}</div></div>`}
+    ${r.off?(minPages(r)?`<a class="off" href="#" data-mvi="${r.i}">📄 صفحة المحضر ↗</a>`:`<a class="off" href="${esc(r.off)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">الإعلان الرسمي ↗</a>`):''}</div></div>`}
 function renderDir(q){
   const lim=new Date(Date.now()+soon*864e5).toISOString().slice(0,10);
   let res=[];
@@ -687,7 +687,8 @@ function renderWatch(q){
     it.sort((a,b)=>b.d.localeCompare(a.d));h+=it.slice(0,shown).map(x=>x.h).join('')||'<div class="empty">لسه مفيش أخبار عن فواز أو KJAC - بتتجمع كل تحديث</div>'}
   else if(wsec==='won'){const w=wonList();h+=w.a.filter(a=>m(a.s+' '+a.n+' '+a.o)).slice(0,shown).map(a=>awCard(a,0)).join('')+w.d.filter(r=>m(r.s+' '+r.n+' '+r.o)).map(dirCard).join('')}
   $('#list').innerHTML=h||'<div class="empty">مفيش حاجة هنا</div>';
-  document.querySelectorAll('.card[data-tk]').forEach(c=>c.onclick=()=>{if(c.dataset.tk)openTender(c.dataset.tk);else if(c.dataset.u)window.open(c.dataset.u,'_blank')});
+  document.querySelectorAll('.card[data-tk]').forEach(c=>c.onclick=()=>{if(c.dataset.tk)openTender(c.dataset.tk);else if(c.dataset.u){const t=(c.querySelector('.t')||{}).textContent||'',pg=CAPT_PDF.test(c.dataset.u)?pageOf(t):0;
+    if(pg)pageView(c.dataset.u,pg,t.split(' - صفحة')[0].slice(0,60));else window.open(c.dataset.u,'_blank')}});
   document.querySelectorAll('[data-tko]').forEach(a=>a.onclick=e=>{e.preventDefault();e.stopPropagation();openTender(a.dataset.tko)});
   document.querySelectorAll('.card[data-mail]').forEach(c=>c.onclick=()=>openMail(P.emails[+c.dataset.mail]));
   document.querySelectorAll('.card[data-r]').forEach(c=>c.onclick=()=>openAward(+c.dataset.r));
@@ -703,7 +704,7 @@ function openTender(k){const t=P&&P.tenders.find(x=>x.k===k);if(!t)return;
   const same=sameItems(t);if(same.length)h+=`<h3>حالتها دلوقتي في الدليل</h3>`+same.map(dirCard).join('');
   const fd=[...new Map(P.feed.filter(f=>f[6]===k).map(f=>[f[0],[f[0],f[1],f[2],f[3],f[4],f[5]]])).values()];
   (P.mn||[]).filter(f=>f[9]===k&&!fd.some(x=>x[0]===f[0])).forEach(f=>fd.push([f[0],f[1],f[2],f[3],f[4],f[5]]));
-  if(fd.length)h+=`<h3>كل اللي اترصد عنها (${fd.length})</h3>`+fd.map(f=>`<div class="ev"><b>${f[1].startsWith('2000')?'':esc(f[1].replace('T',' '))+' · '}${esc(f[2])}</b><div>${/^(الكويت اليوم|محضر)/.test(f[3])?esc(f[3])+' · ':''}${esc(f[4])}${f[5]?` <a class="off" href="${esc(f[5])}" target="_blank" rel="noopener">↗</a>`:''}</div></div>`).join('');
+  if(fd.length)h+=`<h3>كل اللي اترصد عنها (${fd.length})</h3>`+fd.map(f=>`<div class="ev"><b>${f[1].startsWith('2000')?'':esc(f[1].replace('T',' '))+' · '}${esc(f[2])}</b><div>${/^(الكويت اليوم|محضر)/.test(f[3])?esc(f[3])+' · ':''}${esc(f[4])}${f[5]?' '+pgLink(f[5],f[3]):''}</div></div>`).join('');
   showSheet('مناقصة لينا',h);document.querySelectorAll('#sbody .card[data-i]').forEach(c=>c.onclick=()=>openItem(+c.dataset.i))}
 function openMail(e){showSheet('إيميل',`<div style="font-weight:700;font-size:15px">${esc(e.s)}</div><div class="m" style="margin-bottom:8px"><span>${esc(e.f)}</span><span>${esc(e.d.replace('T',' '))}</span>${e.a?`<span>📎 ${esc(e.a)}</span>`:''}</div><div class="mail">${esc(e.b)}</div><p class="note">ملف الإكسيل المرفق بيتفتح من برنامج الكمبيوتر.</p>`)}
 
@@ -731,7 +732,7 @@ function openItem(i){const r=D.find(x=>x.i===i);if(!r)return;
     const rows=[...r.bd.r].sort((a,b)=>(/مستبعد/.test(a[1]+a[2])-/مستبعد/.test(b[1]+b[2]))||val(a)-val(b));
     h+=`<h3>كشف تفريغ الأسعار (فض العطاءات ${esc(r.bd.m)})</h3><table><tr><th>#</th><th>المقاول</th><th>العرض</th></tr>${rows.map((x,i)=>`<tr><td>${/مستبعد/.test(x[1]+x[2])?'✖':'L'+(i+1)}</td><td class="${US.test(x[0])?'fz':''}">${esc(x[0])}${/مستبعد/.test(x[1]+x[2])?` <span class="note">(${esc(x[2]||x[1])})</span>`:''}</td><td class="money">${esc(x[3]||'-')}</td></tr>`).join('')}</table>`}
   if(r.chg.length)h+=`<h3>التغييرات اللي اترصدت</h3><table><tr><th>الوقت</th><th>البند</th><th>كان</th><th>بقى</th></tr>${r.chg.map(c=>`<tr><td>${esc(c[0].replace('T',' '))}</td><td>${esc(c[1])}</td><td>${esc(c[2])}</td><td><b>${esc(c[3])}</b></td></tr>`).join('')}</table>`;
-  if(r.ev.length)h+=`<h3>كل اللي اتنشر عنها</h3>`+r.ev.map(e=>`<div class="ev"><b>${dmy(e[0])} · ${esc(e[1])} · ${esc(e[2])}</b><div>${esc(e[3])}${e[4]?` <a class="off" href="${esc(e[4])}" target="_blank" rel="noopener">المصدر ↗</a>`:''}</div></div>`).join('');
+  if(r.ev.length)h+=`<h3>كل اللي اتنشر عنها</h3>`+r.ev.map(e=>`<div class="ev"><b>${dmy(e[0])} · ${esc(e[1])} · ${esc(e[2])}</b><div>${esc(e[3])}${e[4]?' '+pgLink(e[4],e[3]+' '+e[2],'المصدر ↗'):''}</div></div>`).join('');
 
   if(r.c==='KW'){const sim=similarAwards(r.s,-1);if(sim.length)h+=`<h3>ترسيات قديمة لمناقصات شبيهة (مش المناقصة دي - للمقارنة في التسعير)</h3>`+awTable(sim)}
   const nw=N.filter(n=>n.c===r.c).map(n=>[score(r.s,tokset(n,o=>o.t),''),n]).filter(x=>x[0]>=.5).sort((a,b)=>b[0]-a[0]).slice(0,6);
@@ -986,9 +987,20 @@ if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
 // ---------------------------------------------------------------- 📄 the CAPT minutes: only this tender's page(s), drawn by the PC as images
 const MIN_MIRROR='https://raw.githubusercontent.com/ahmedtarekfahim-bot/fawaz-tenders-apps/minutes/';
 const minPages=r=>((MP||{})[r.off]||{})[r.n]||null;
+const CAPT_PDF=/^https:\/\/files\.capt\.gov\.kw\/.+\.pdf$/i;
+const pageOf=t=>{const m=String(t||'').match(/صفحة\s*(\d+)/);return m?+m[1]:0};
+const sha16=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-1',new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+// a link to the minutes: the page itself when the text says which page, else the whole file
+function pgLink(url,text,label){const p=CAPT_PDF.test(url||'')?pageOf(text):0;
+  return p?`<a class="off" href="#" data-pg="${esc(url)}" data-p="${p}" data-t="${esc(String(text||'').split(' - صفحة')[0].slice(0,60))}">📄 صفحة ${p} ↗</a>`:`<a class="off" href="${esc(url)}" target="_blank" rel="noopener">${label||'↗'}</a>`}
+async function pageView(url,page,title){
+  const h=await sha16(url),img=`${MIN_MIRROR}${h}-${page}.jpg`;
+  showSheet('📄 '+(title||'المحضر'),`<div class="note" style="margin:6px 0">صفحة ${page} من المحضر</div><a href="${img}" target="_blank" rel="noopener"><img src="${img}" alt="صفحة ${page}" style="width:100%;border:1px solid #d5deec;border-radius:8px;margin:6px 0;background:#fff" onerror="this.outerHTML='<div class=&quot;empty&quot;>الصفحة لسه بتتجهز من الكمبيوتر - جرّب بعد شوية أو افتح المحضر كامل</div>'"></a><p class="note" style="text-align:center">دوس على الصفحة تفتح كبيرة وتعمل زووم</p><p class="note" style="text-align:center"><a href="${esc(url)}" target="_blank" rel="noopener">افتح المحضر كامل ↗</a></p>`)}
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('[data-pg],[data-mvi]');if(!a)return;e.preventDefault();e.stopPropagation();
+  if(a.dataset.pg)pageView(a.dataset.pg,+a.dataset.p,a.dataset.t);else{const r=D.find(x=>x.i===+a.dataset.mvi);if(r)minutesView(r)}},true);
 async function minutesView(r){
   const pages=minPages(r)||[],full=`<p class="note" style="text-align:center"><a href="${esc(r.off)}" target="_blank" rel="noopener">افتح ${esc(r.ol||'المحضر')} كامل ↗</a></p>`;
-  const h=[...new Uint8Array(await crypto.subtle.digest('SHA-1',new TextEncoder().encode(r.off)))].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16);
+  const h=await sha16(r.off);
   showSheet('📄 '+(r.ol||'المحضر'),`<div class="note">${esc(r.n||'')} - ${esc(r.s||'')}</div><div class="note" style="margin:6px 0">${pages.length===1?'الصفحة':'الصفحات'} ${pages.join('، ')} من المحضر</div>`+
     pages.map(p=>`<a href="${MIN_MIRROR}${h}-${p}.jpg" target="_blank" rel="noopener"><img src="${MIN_MIRROR}${h}-${p}.jpg" alt="صفحة ${p}" style="width:100%;border:1px solid #d5deec;border-radius:8px;margin:6px 0;background:#fff" onerror="this.outerHTML='<div class=&quot;empty&quot;>الصفحة لسه بتترفع - جرّب بعد شوية أو افتح المحضر كامل</div>'"></a>`).join('')+'<p class="note" style="text-align:center">دوس على الصفحة تفتح كبيرة وتعمل زووم</p>'+full)}
 
